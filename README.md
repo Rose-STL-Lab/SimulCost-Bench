@@ -4,7 +4,7 @@
 
 ```bash
 # Clone repository
-git clone git@github.com:howard881010/casebench.git
+git clone git@github.com:Rose-STL-Lab/coastbench.git
 
 # Create Conda environment
 conda env create -n casebench --file environment.yml
