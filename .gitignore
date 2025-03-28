@@ -1,0 +1,26 @@
+.env
+build
+wandb
+.vscode
+models
+Mistral*
+config/launch.yaml
+launch.py
+Makefile
+src/toolbox
+openai
+LLaMA-Factory
+data
+result
+results
+Howard881010
+training_results
+# In your .gitignore file
+**/__pycache__/
+**/*.pyc
+*.log
+*.egg-info/
+tool_result/
+*.xlsx
+*.md
+!**/README.md

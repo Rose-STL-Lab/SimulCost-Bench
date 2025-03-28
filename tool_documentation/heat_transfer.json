@@ -1,0 +1,136 @@
+{
+    "run_1d_heat_transfer_PDE_exp": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "run_1d_heat_transfer_PDE_exp",
+                "description": "Conduct a 1D heat transfer PDE simulation and evaluate its spatial/temporal convergence. This experiment will conduct both PDE solving and convergence testing in one function. The big O complexity is O(n_space * n_time), and the actual cost is 5 * n_space * n_time. Results will be stored in an HDF5 file, the experiment configuration in a JSON file, and a convergence report will provide the spatial and temporal convergence information. It will return {\"spatial_l2_error\": float, \"temporal_l2_error\": float, \"is_experiment_ended\": bool, \"accumulated_cost\": int}." ,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "L": {
+                            "type": "float",
+                            "description": "Wall thickness in meters"
+                        },
+                        "k": {
+                            "type": "float",
+                            "description": "Thermal conductivity in W/(m·K)"
+                        },
+                        "h": {
+                            "type": "float",
+                            "description": "Heat transfer coefficient in W/(m²·K)"
+                        },
+                        "rho": {
+                            "type": "float",
+                            "description": "Density of wall material in kg/m³"
+                        },
+                        "cp": {
+                            "type": "float",
+                            "description": "Specific heat capacity in J/(kg·K)"
+                        },
+                        "T_inf": {
+                            "type": "float",
+                            "description": "Ambient temperature in Celsius"
+                        },
+                        "T_init": {
+                            "type": "float",
+                            "description": "Initial temperature in Celsius"
+                        },
+                        "t_final": {
+                            "type": "float",
+                            "description": "Final time for simulation in seconds"
+                        },
+                        "n_space": {
+                            "type": "integer",
+                            "description": "Number of spatial segments"
+                        },
+                        "n_time": {
+                            "type": "integer",
+                            "description": "Number of time segments"
+                        },
+                        "cache_file": {
+                            "type": "string",
+                            "description": "HDF5 file path (.h5) to store PDE results (e.g. tool_result/qid_{qid}.h5)"
+                        },
+                        "config_file": {
+                            "type": "string",
+                            "description": "JSON file path (.json) to store experiment config (e.g. tool_result/qid_{qid}.json)"
+                        },
+                        "convergence_threshold": {
+                            "type": "float",
+                            "description": "Threshold to decide if spatial/temporal convergence is satisfied"
+                        }
+                    },
+                    "required": [
+                        "L",
+                        "k",
+                        "h",
+                        "rho",
+                        "cp",
+                        "T_inf",
+                        "T_init",
+                        "t_final",
+                        "n_space",
+                        "n_time",
+                        "cache_file",
+                        "config_file",
+                        "convergence_threshold"
+                    ]
+                }
+            }
+        }
+    },
+    "get_heat_transfer_exp_summary": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "get_heat_transfer_exp_summary",
+                "description": "Once converged or if the budget is exceeded, get the summary of 1D heat transfer PDE simulation. It will return {\"converged\": bool, \"times\": int, \"sequence\": [{\"n_space\": int, \"n_time\": int}, ...], \"accumulated_cost\": int}",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "converged": {
+                            "type": "boolean",
+                            "description": "Whether the simulation has converged (not dependent on budget)"
+                        },
+                        "out_of_budget": {
+                            "type": "boolean",
+                            "description": "Whether the simulation has run out of budget"
+                        },
+                        "times": {
+                            "type": "integer",
+                            "description": "Number of times the PDE experiment function has been called"
+                        },
+                        "sequence": {
+                            "type": "array",
+                            "description": "Sequence of n_space and n_time you tryed (should also include the out of budget ones if any)",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "n_space": {
+                                        "type": "integer",
+                                        "description": "Number of spatial segments"
+                                    },
+                                    "n_time": {
+                                        "type": "integer",
+                                        "description": "Number of time segments"
+                                    }
+                                },
+                                "required": [
+                                    "n_space",
+                                    "n_time"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "converged",
+                        "out_of_budget",
+                        "times",
+                        "sequence"
+                    ]
+                }
+            }
+        }           
+    }
+}
