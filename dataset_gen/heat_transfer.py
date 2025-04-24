@@ -35,7 +35,7 @@ HUMAN_CODE = """def forward(self, data: dict):
         tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager)
         messages.append({"role": "user", "content": json.dumps(tool_result)})
         # Continue conversation if not in summary phase
-        if tool_result["is_experiment_ended"] or acc_cost >= budget:
+        if acc_cost >= budget or tool_result.get("is_experiment_ended", True):
             break
     
     # Set up experiment summary agent

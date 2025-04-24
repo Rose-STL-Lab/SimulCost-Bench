@@ -66,7 +66,7 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
 
 
 
-## Human Written Version
+## 🧐 Human Written Version
 ### Generate Questions Or Use the Previous one
 ```bash
 python qs_gen/heat_transfer.py -n 10
@@ -76,12 +76,12 @@ python qs_gen/heat_transfer.py -n 10
 #### Outpts:
 - output_file: data/heat_transfer/question.json
 
-### Generate the Dataset for Human Written Workflow and code
+### 🕵️ Generate the Dataset for Human Written Workflow and code
 ```bash
 python dataset_gen/heat_transfer.py 
 ```
 
-### Evaluate Model using test dataset
+### 🔍 Evaluate Model using test dataset
 ```bash
 python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_transfer -hv
 ```
@@ -92,7 +92,22 @@ python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_trans
 - d: str, dataset name
 - hv: bool, human written version
 
-## TODO
+### 📊 Generate Evaluation Report 
+```bash
+python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -t
+```
+
+#### Parameters
+- m: str, model name
+- d: str, dataset name
+- v: bool, using the result from validation dataset
+- t: bool, using the result from test dataset
+- g: int, the version of generated agent
+
+#### Outputs
+- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md
+
+## TODOs
 1. Error Handling Analysis:
 - Implement tracking for tool call failures
 - Add metrics for incomplete experiment

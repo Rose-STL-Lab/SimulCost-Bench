@@ -71,9 +71,10 @@ def main():
         logger.info(f"===== Generation times: {i + 1} =====")
         logger.info(f"Using model_name: {args.model_name}" )
         system_prompt, prompt = get_init_prompt(archive)
+        force_output_in_json = """Output only one JSON object with strictly valid format, and no additional explanation or text. All internal line breaks must be escaped using \\n. All property names must be enclosed in double quotes ("). Do not use single quotes or Python dict syntax."""
         msg_list = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt + "\n\n" + force_output_in_json}
         ]
         # get the agent 
         agent = query(msg_list, args.provider, args.model_name)
@@ -88,7 +89,8 @@ def main():
                 results, tool_call_df = parallel_inference(valid_dataset, agent["code"], logger, args.provider, args.model_name)
                 break
             except Exception as e:
-                logger.error(f"Error: {e} During generation times: {i}")
+                logger.error(f"Error: {e} During generation times: {i + 1}")
+                logger.error(f"Trying to debug the code for the {_ + 1} time......")
                 msg_list.append({"role": "assistant", "content": str(agent)})
                 msg_list.append({"role": "user", "content": "Error during evaluation:\n{e}\nCarefully consider where you went wrong in your latest implementation. Using insights from previous attempts, try to debug the current code to implement the same thought."})
                 agent = query(msg_list, args.provider, args.model_name)

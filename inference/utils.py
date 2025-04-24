@@ -8,6 +8,15 @@ from api_call import *
 from typing import List, Dict, Any, Tuple
 import pandas as pd
 
+import numpy as np
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.integer, np.floating, np.bool_)):
+            return obj.item()
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 def setup_logging(filename: str = None) -> logging.Logger:
     """Setup logging configuration with filtered handlers"""
     # Clear previous log file's contents
@@ -48,8 +57,7 @@ def save_result(dataset: List[Dict], filename: str):
     if not os.path.exists(dir):
         os.makedirs(dir)
     with open(filename, "w") as f:
-        json.dump(dataset, f, indent=4)
-
+        json.dump(dataset, f, indent=4, cls=NumpyEncoder)
 
 def find_json(response: str) -> Dict[str, Any]:
     try:
@@ -74,11 +82,19 @@ class ToolCallManager:
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
         try:
-            self.logger.info(f"Received tool call: {json.dumps({'tool_reason': tool_reason, 'tool_name': tool_name, 'tool_args': tool_args})}")
+            self.logger.info(
+               "Received tool call: " +
+                json.dumps(
+                    {"tool_reason": tool_reason,
+                     "tool_name": tool_name,
+                     "tool_args": tool_args},
+                    cls=NumpyEncoder
+                )
+            )
             func = globals()[tool_name]
             result = func(tool_args, self.accumulated_cost)
             self.accumulated_cost = result['accumulated_cost']
-            self.logger.info(f"Tool call result: {json.dumps(result)}")
+            self.logger.info(f"Tool call result: {json.dumps(result, cls=NumpyEncoder)}")
             if not tool_name.endswith('summary'):
                 self._record_tool_call(tool_name, tool_args, tool_reason, result)
 

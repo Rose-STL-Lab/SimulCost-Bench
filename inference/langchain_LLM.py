@@ -1,5 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,6 +12,8 @@ import logging
 import argparse
 import json
 from evaluation.heat_transfer.eval import evaluate
+from dotenv import load_dotenv
+load_dotenv()
 
 FORMAT_INST = lambda request_keys: f"Reply EXACTLY with the JSON format that contains the following keys: {str(request_keys)}\nDO NOT MISS ANY REQUEST FIELDS and ensure that your response is a well-formed JSON object!\n"
 
@@ -32,6 +35,15 @@ class LLMAgentBase():
                 model=model_name_global,
                 temperature=0,
                 google_api_key=os.getenv("GOOGLE_API_KEY")
+            )
+        elif provider_global == "claude" or provider_global == "deepseek":
+            self.llm = ChatBedrock(
+                model_id="us." + model_name_global,
+                temperature=0,
+                max_tokens=2048,
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                region_name=os.getenv("AWS_REGION_NAME")
             )
         else:
             raise ValueError(f"Unsupported provider: {provider_global}")
@@ -85,26 +97,34 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
         futures = {executor.submit(agent.forward, data) for data in dataset}
 
         for future in as_completed(futures):
-            try:
-                result, tool_df = future.result()
-                all_results.append(result)
-                all_tool_dfs.append(tool_df)
-            except Exception as e:
-                logger.error(f"Error occurred: {str(e)}")
+            result, tool_df = future.result()
+            all_results.append(result)
+            all_tool_dfs.append(tool_df)
+
     final_tool_df = pd.concat(all_tool_dfs, ignore_index=True) if all_tool_dfs else pd.DataFrame()
 
     return all_results, final_tool_df
 
+def ensure_file(path, default_content):
+    dirpath = os.path.dirname(path)
+    if dirpath and not os.path.exists(dirpath):
+        os.makedirs(dirpath, exist_ok=True)
+        print(f"[INFO] A directory has been made:{dirpath}")
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(default_content, f, ensure_ascii=False, indent=2)
+        print(f"[INFO] An empty file has been made: {path}")
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--start_index", type=str,
-                        default="3", help="Start index")
+    parser.add_argument("-s", "--start_index", type=int,
+                         default=3, help="Start index")
     parser.add_argument("-p", "--provider", type=str,
                         default="gemini", help="Provider (openai/gemini)")
     parser.add_argument("-m", "--model_name", type=str,
                         default="gemini-1.5-pro", help="Model name")
-    parser.add_argument("-hv", "--human_version", action="store_true", default=False,
-                        help="Human version")
+    parser.add_argument("-H",  "--human_version", action="store_true",
+                         default=False, help="Human-written version")
     parser.add_argument("-d", "--dataset", type=str,
                         default="heat_transfer", help="Domain of the dataset")
     args = parser.parse_args()
@@ -127,16 +147,20 @@ def main():
         result_file = f"{result_dir}/{args.model_name}.json"
         table_file = f"{result_dir}/tool_call_{args.model_name}.xlsx"
 
+    ensure_file(dataset_file, default_content=[])
+    ensure_file(archive_file, default_content=[])
+
     with open(dataset_file, "r") as f:
         dataset = json.load(f)
-    
     with open(archive_file, "r") as f:
         agents = json.load(f)
+        
     # use the latest agent
     agent = agents[-1]
     logger = setup_logging(log_file)
 
-    test_dataset = dataset[int(args.start_index):]
+    test_dataset = dataset[args.start_index:]
+
     results, tool_call_df = parallel_inference(test_dataset, agent["code"], logger, args.provider, args.model_name)
 
     logger.info(f"Saving results to {result_file}")

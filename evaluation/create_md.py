@@ -12,26 +12,44 @@ def main():
                         default="heat_transfer", help="Domain of the dataset")
     parser.add_argument("-v", "--validation", action="store_true", default=False, help="Use validation dataset")
     parser.add_argument("-t", "--test", action="store_true", default=False, help="Use test dataset")
-    parser.add_argument("-g", "--generated_version", type=int, default=1, help="Generate version")
+    parser.add_argument("-g", "--generated_version", type=int, default=None, help="Generate version (optional)")
     args = parser.parse_args()
 
-    # Define paths
+    if args.generated_version is None:
+        args.model_name = f"human_write_{args.model_name}"
+
+    # Check mode
     if args.validation:
-        excel_file_path = f"log/{args.dataset}/validation/tool_call_{args.model_name}_g{args.generated_version}.xlsx"
-        md_file_path = f"evaluation/{args.dataset}/validation/{args.model_name}_g{args.generated_version}.md"
-        result_file_path = f"result/{args.dataset}/validation/{args.model_name}_g{args.generated_version}.json"
+        subdir = "validation"
     elif args.test:
-        excel_file_path = f"log/{args.dataset}/test/tool_call_{args.model_name}_g{args.generated_version}.xlsx"
-        md_file_path = f"evaluation/{args.dataset}/test/{args.model_name}_g{args.generated_version}.md"
-        result_file_path = f"result/{args.dataset}/test/{args.model_name}_g{args.generated_version}.json"
+        subdir = "test"
     else:
         raise ValueError("Please specify either --validation or --test")
-    
+
+    # Construct file paths with and without _g{version}
+    base_name = f"{args.model_name}"
+    if args.generated_version is not None:
+        base_name_with_g = f"{args.model_name}_g{args.generated_version}"
+    else:
+        base_name_with_g = None
+
+    excel_file_path = f"result/{args.dataset}/{subdir}/tool_call_{base_name}.xlsx"
+    md_file_path = f"evaluation/{args.dataset}/{subdir}/{base_name}.md"
+    result_file_path = f"result/{args.dataset}/{subdir}/{base_name}.json"
+
+    if base_name_with_g:
+        alt_excel_path = f"log/{args.dataset}/{subdir}/tool_call_{base_name_with_g}.xlsx"
+        alt_md_path = f"evaluation/{args.dataset}/{subdir}/{base_name_with_g}.md"
+        alt_result_path = f"result/{args.dataset}/{subdir}/{base_name_with_g}.json"
+        # If files with generated version exist, override
+        if os.path.exists(alt_excel_path):
+            excel_file_path = alt_excel_path
+            md_file_path = alt_md_path
+            result_file_path = alt_result_path
+
     question_file_path = f"data/{args.dataset}/question.json"
-    # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(md_file_path), exist_ok=True)
 
-    # Load the data
     with open(question_file_path, "r") as f:
         question_dataset = json.load(f)
 

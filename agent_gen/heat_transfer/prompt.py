@@ -3,8 +3,11 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_aws import ChatBedrock
 from inference import find_json
 from typing import Dict, List
+from dotenv import load_dotenv
+load_dotenv()
 
 EXAMPLE = {
     "thought": "**Insights:**\nYour insights on what should be the next interesting agent.\n**Overall Idea:**\nyour reasoning and the overall concept behind the agent design.\n**Workflow**\ndescribe the workflow step by step.",
@@ -322,9 +325,19 @@ def query(messages: List[Dict], provider: str = "gemini", model_name: str = "gem
             temperature=0,
             google_api_key=os.getenv("GOOGLE_API_KEY")
         )
+    elif provider == "claude" or provider == "deepseek":
+        llm = ChatBedrock(
+            model_id="us." + model_name,
+            temperature=0,
+            max_tokens=2048,
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_REGION_NAME")
+        )
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 
     response = llm.invoke(messages).content.strip()
+    # print(response)
     
     return find_json(response)
