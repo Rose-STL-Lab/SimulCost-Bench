@@ -1,4 +1,3 @@
-litellm_proxy
 .env
 build
 wandb

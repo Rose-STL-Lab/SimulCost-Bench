@@ -1,0 +1,13 @@
+L: 0.195
+k: 0.87
+h: 1.33
+rho: 1599
+cp: 831
+T_inf: 6
+T_init: 22
+n_space: 20
+cfl: 1.0
+record_dt: 70
+end_frame: 24
+dump_dir: sim_res/heat_1d/p2
+verbose: false

@@ -36,10 +36,6 @@
                             "type": "float",
                             "description": "Initial temperature in Celsius"
                         },
-                        "t_final": {
-                            "type": "float",
-                            "description": "Final time for simulation in seconds"
-                        },
                         "n_space": {
                             "type": "integer",
                             "description": "Number of spatial segments"
@@ -69,7 +65,6 @@
                         "cp",
                         "T_inf",
                         "T_init",
-                        "t_final",
                         "n_space",
                         "n_time",
                         "cache_file",

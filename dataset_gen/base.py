@@ -14,7 +14,7 @@ class DatasetGenerator(ABC):
     def __init__(self, doc_file: str):
         self.doc_file = doc_file
 
-    def create_data(self, instruction, user,):
+    def create_data(self, instruction, user):
         return [
             {"role": "system", "content": instruction},
             {"role": "user", "content": user},
@@ -37,7 +37,7 @@ class DatasetGenerator(ABC):
     
     def generate_dataset(self, workflow: str, questions: List[Dict]) -> List[Dict]:
         instruction = self.get_instruction_template()
-        instruction = instruction + "\nWorkflow:\n" + workflow
+        instruction = instruction + "\nWorkflow:\n" + workflow # System prompt + Workflow
 
         dataset = []
         for q in questions:

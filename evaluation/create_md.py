@@ -1,7 +1,17 @@
 import argparse
 import json
-import pandas as pd
 import os
+import pandas as pd
+
+
+def md_escape(val):
+    """
+    Escape characters that would break GitHub-flavoured Markdown tables
+    and normalise NaNs to empty strings.
+    """
+    if pd.isna(val):
+        return ""
+    return str(val).replace("|", r"\|").replace("\n", "<br>")
 
 
 def main():
@@ -10,96 +20,89 @@ def main():
                         default="gemini-1.5-pro", help="Model name")
     parser.add_argument("-d", "--dataset", type=str,
                         default="heat_transfer", help="Domain of the dataset")
-    parser.add_argument("-v", "--validation", action="store_true", default=False, help="Use validation dataset")
-    parser.add_argument("-t", "--test", action="store_true", default=False, help="Use test dataset")
-    parser.add_argument("-g", "--generated_version", type=int, default=None, help="Generate version (optional)")
+    parser.add_argument("-v", "--validation", action="store_true", default=False,
+                        help="Use validation dataset")
+    parser.add_argument("-t", "--test", action="store_true", default=False,
+                        help="Use test dataset")
+    parser.add_argument("-g", "--generated_version", type=int, default=None,
+                        help="Generate version (optional)")
     args = parser.parse_args()
 
+    # Decide effective model name
     if args.generated_version is None:
         args.model_name = f"human_write_{args.model_name}"
 
     # Check mode
-    if args.validation:
-        subdir = "validation"
-    elif args.test:
-        subdir = "test"
-    else:
-        raise ValueError("Please specify either --validation or --test")
+    if args.validation == args.test:
+        raise ValueError("Specify exactly one of --validation or --test")
+    subdir = "validation" if args.validation else "test"
 
-    # Construct file paths with and without _g{version}
-    base_name = f"{args.model_name}"
-    if args.generated_version is not None:
-        base_name_with_g = f"{args.model_name}_g{args.generated_version}"
-    else:
-        base_name_with_g = None
+    # Build file paths
+    suffix = f"_g{args.generated_version}" if args.generated_version else ""
+    base_name = f"{args.model_name}{suffix}"
+    excel_path = f"result/{args.dataset}/{subdir}/tool_call_{base_name}.xlsx"
+    json_path  = f"result/{args.dataset}/{subdir}/{base_name}.json"
+    md_path    = f"evaluation/{args.dataset}/{subdir}/{base_name}.md"
 
-    excel_file_path = f"result/{args.dataset}/{subdir}/tool_call_{base_name}.xlsx"
-    md_file_path = f"evaluation/{args.dataset}/{subdir}/{base_name}.md"
-    result_file_path = f"result/{args.dataset}/{subdir}/{base_name}.json"
+    # Fallback to log/ if Excel is missing
+    alt_excel = f"log/{args.dataset}/{subdir}/tool_call_{base_name}.xlsx"
+    if not os.path.exists(excel_path) and os.path.exists(alt_excel):
+        excel_path = alt_excel
 
-    if base_name_with_g:
-        alt_excel_path = f"log/{args.dataset}/{subdir}/tool_call_{base_name_with_g}.xlsx"
-        alt_md_path = f"evaluation/{args.dataset}/{subdir}/{base_name_with_g}.md"
-        alt_result_path = f"result/{args.dataset}/{subdir}/{base_name_with_g}.json"
-        # If files with generated version exist, override
-        if os.path.exists(alt_excel_path):
-            excel_file_path = alt_excel_path
-            md_file_path = alt_md_path
-            result_file_path = alt_result_path
+    # Ensure directories exist
+    for p in (md_path, excel_path, json_path):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
 
-    question_file_path = f"data/{args.dataset}/question.json"
-    os.makedirs(os.path.dirname(md_file_path), exist_ok=True)
-
-    with open(question_file_path, "r") as f:
-        question_dataset = json.load(f)
-
-    with open(result_file_path, "r") as f:
+    # ---------- load data ----------
+    question_path = f"data/{args.dataset}/question.json"
+    with open(question_path, "r") as f:
+        questions = json.load(f)
+    with open(json_path, "r") as f:
         results = json.load(f)
 
-    df = pd.read_excel(excel_file_path)
-    grouped_df = df.groupby("QID")
+    # ---------- build lookup dicts ----------
+    # *Compatibility patch* — fall back to index if no "QID" / "qid"
+    # ---------------------------------------------------------------
+    def get_qid(idx, item):
+        """Return str(QID) when present, otherwise use list index."""
+        return str(item.get("QID") or item.get("qid") or idx)
 
-    with open(md_file_path, "w") as md_file:
-        md_file.write(f"# {args.dataset.replace('_', ' ').title()} PDE Convergence Analysis - {args.model_name}\n\n")
-        
-        # Iterate through each question ID
-        for idx, (qid, group_df) in enumerate(grouped_df):
-            # Get the corresponding data from dataset and results using the index
-            question_data = question_dataset[idx]
-            result_data = results[idx]
-            
-            # Write question header
-            md_file.write(f"# Question ID: {qid}\n\n")
-            
-            # Write problem statement from dataset
-            md_file.write("## Problem Statement\n\n")
-            md_file.write(f"{question_data['question']}\n\n")
-            
-            # Write simulation process header
-            md_file.write("## Simulation Process\n\n")
-            
-            # Create table header from DataFrame columns
-            columns = group_df.columns.tolist()
-            md_file.write("| " + " | ".join(columns) + " |\n")
-            md_file.write("|" + "|".join(["---" for _ in columns]) + "|\n")
-            
-            # Add table rows
+    qid_to_question = {get_qid(i, q): q for i, q in enumerate(questions)}  # <-- modified
+    qid_to_result   = {get_qid(i, r): r for i, r in enumerate(results)}    # <-- modified
+
+    # ---------- read Excel ----------
+    df = pd.read_excel(excel_path)
+    grouped = df.groupby("QID")
+
+    # ---------- write Markdown ----------
+    with open(md_path, "w") as md:
+        md.write(f"# {args.dataset.replace('_', ' ').title()} PDE Convergence Analysis - {args.model_name}\n\n")
+
+        for qid, group_df in grouped:
+            qid_str = str(qid)                                      # <-- modified
+            question_data = qid_to_question.get(qid_str)
+            result_data   = qid_to_result.get(qid_str)
+
+            # Skip group if we cannot find matching data
+            if question_data is None or result_data is None:
+                continue
+
+            md.write(f"# Question ID: {qid}\n\n")
+            md.write("## Problem Statement\n\n")
+            md.write(f"{question_data['question']}\n\n")
+
+            md.write("## Simulation Process\n\n")
+            cols = group_df.columns.tolist()
+            md.write("| " + " | ".join(cols) + " |\n")
+            md.write("|" + "|".join(["---"] * len(cols)) + "|\n")
+
             for _, row in group_df.iterrows():
-                row_values = []
-                for col in columns:
-                    # Add values as they are
-                    row_values.append(str(row[col]))
-                
-                md_file.write("| " + " | ".join(row_values) + " |\n")
-            
-            # Write the final response
-            md_file.write("\n## Final Response\n\n")
-            md_file.write("```\n")
-            md_file.write(json.dumps(result_data, indent=2))
-            md_file.write("\n```\n")
-            
-            # Add separator between questions
-            md_file.write("\n---\n\n")
+                md.write("| " + " | ".join(md_escape(row[c]) for c in cols) + " |\n")
+
+            md.write("\n## Final Response\n\n```\n")
+            md.write(json.dumps(result_data, indent=2, ensure_ascii=False))
+            md.write("\n```\n\n---\n\n")
+
 
 if __name__ == "__main__":
     main()

@@ -117,35 +117,41 @@ def ensure_file(path, default_content):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--start_index", type=int,
-                         default=3, help="Start index")
+    parser.add_argument("-n", "--num_samples", type=int,
+                         default=2, help="Number of samples to test")
     parser.add_argument("-p", "--provider", type=str,
                         default="gemini", help="Provider (openai/gemini)")
     parser.add_argument("-m", "--model_name", type=str,
                         default="gemini-1.5-pro", help="Model name")
-    parser.add_argument("-H",  "--human_version", action="store_true",
-                         default=False, help="Human-written version")
+    # parser.add_argument("-H",  "--human_version", action="store_true",
+    #                      default=True, help="Human-written version")
     parser.add_argument("-d", "--dataset", type=str,
-                        default="heat_transfer", help="Domain of the dataset")
+                        default="1D_heat_transfer", help="Domain of the dataset")
+    parser.add_argument("-t", "--task", type=str, default="n_space",
+                        help="Task of problem to solve")
+    parser.add_argument("-z", "--zero_shot", action="store_true",
+                    help="Enable zero-shot mode")
     args = parser.parse_args()
+    zero_shot = args.zero_shot
+    flag = "zero_shot" if zero_shot else "iterative"
 
-    result_dir = f"result/{args.dataset}/test"
+    result_dir = f"results/{args.dataset}"
     os.makedirs(result_dir, exist_ok=True)
-    log_dir = f"log/{args.dataset}/test"
+    log_dir = f"log/{args.dataset}"
     os.makedirs(log_dir, exist_ok=True)
 
-    if args.human_version:
-        dataset_file = f"data/{args.dataset}/human_write/dataset.json"
-        log_file = f"{log_dir}/human_write_{args.model_name}.log"
-        archive_file = f"data/{args.dataset}/human_write/agent.json"
-        result_file = f"{result_dir}/human_write_{args.model_name}.json"
-        table_file = f"{result_dir}/tool_call_human_write_{args.model_name}.xlsx"
-    else:
-        dataset_file = f"data/{args.dataset}/{args.model_name}/dataset.json"
-        log_file = f"{log_dir}/{args.model_name}.log"
-        archive_file = f"data/{args.dataset}/{args.model_name}/agent.json"
-        result_file = f"{result_dir}/{args.model_name}.json"
-        table_file = f"{result_dir}/tool_call_{args.model_name}.xlsx"
+    # if args.human_version:
+    dataset_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_dataset.json"
+    log_file = f"{log_dir}/{args.task}/{flag}_{args.model_name}.log"
+    archive_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_agent.json"
+    result_file = f"{result_dir}/{args.task}/{flag}_{args.model_name}.json"
+    table_file = f"{result_dir}/{args.task}/{flag}_tool_call_{args.model_name}.xlsx"
+    # else:
+    #     dataset_file = f"data/{args.dataset}/{args.model_name}/dataset.json"
+    #     log_file = f"{log_dir}/{args.model_name}.log"
+    #     archive_file = f"data/{args.dataset}/{args.model_name}/agent.json"
+    #     result_file = f"{result_dir}/{args.model_name}.json"
+    #     table_file = f"{result_dir}/tool_call_{args.model_name}.xlsx"
 
     ensure_file(dataset_file, default_content=[])
     ensure_file(archive_file, default_content=[])
@@ -159,7 +165,7 @@ def main():
     agent = agents[-1]
     logger = setup_logging(log_file)
 
-    test_dataset = dataset[args.start_index:]
+    test_dataset = dataset[:args.num_samples]
 
     results, tool_call_df = parallel_inference(test_dataset, agent["code"], logger, args.provider, args.model_name)
 

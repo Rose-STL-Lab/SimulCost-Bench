@@ -14,7 +14,7 @@ conda activate casebench
 poetry install
 ```
 
-## 🚀 Meta Agent Usage
+<!-- ## 🚀 Meta Agent Usage
 ### Generate Questions
 ```bash
 python qs_gen/heat_transfer.py -n 10
@@ -62,28 +62,28 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
 - g: int, the version of generated agent
 
 #### Outputs
-- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md
-
-
+- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
 
 ## 🧐 Human Written Version
 ### Generate Questions Or Use the Previous one
 ```bash
-python qs_gen/heat_transfer.py -n 10
+python qs_gen/1D_heat_transfer.py -n 2 -t n_space
 ```
 #### Parameters:
 - n: int, number of example 
+- t: problem task
+- -z: zero-shot 
 #### Outpts:
 - output_file: data/heat_transfer/question.json
 
 ### 🕵️ Generate the Dataset for Human Written Workflow and code
 ```bash
-python dataset_gen/heat_transfer.py 
+python dataset_gen/heat_transfer.py -t n_space
 ```
 
 ### 🔍 Evaluate Model using test dataset
 ```bash
-python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_transfer -hv
+python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_transfer
 ```
 #### Parameters
 - s: int, start idx
