@@ -3,10 +3,10 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from typing import Dict, Any
-from qs_gen.base import QuestionGenerator
+# from qs_gen.base import QuestionGenerator
 from qs_gen.utils import *
 import time
-from api_call.heat_transfer.wall_heat_transfer_solver import dummy_strategy
+# from api_call.heat_transfer.wall_heat_transfer_solver import dummy_strategy
 import argparse
 from costsci_tools.gen_cfgs.heat_1d import create_heat1d_profiles
 from costsci_tools.dummy_sols.heat_1d import find_convergent_cfl, find_convergent_n_space
@@ -57,11 +57,11 @@ class oneD_HeatTransferQuestionGenerator():
             if best_param is not None:
                 print(f"\nRecommended {param_tag}: {best_param}, the total cost is {cost_history}")
             else:
-                print(f"\nNo convergent {param_tag} found within the given iterations, the total cost is {cost_history}")
+                print(f"\nNo convergent {param_tag} found within the given iterations, the total cost is {sum(cost_history[:-1])}")
 
-            dummy_cost = sum(cost_history[-2:]) if zero_shot else sum(cost_history)
+            dummy_cost = cost_history[-2] if zero_shot else sum(cost_history[:-1])
 
-            question = self.generate_question(dummy_cost, params)
+            question = self.generate_question(dummy_cost, params, task)
             dataset.append(
                 {
                     "QID":    idx,
@@ -77,7 +77,8 @@ class oneD_HeatTransferQuestionGenerator():
 
         return dataset
 
-    def generate_question(self, cost: int, params: Dict[str, Any]) -> str:
+    def generate_question(self, cost: int, params: Dict[str, Any], task: str) -> str:
+        error_type = "Courant-Friedrichs-Lewy" if task == "cfl" else "Spatial"
         question_lines = [
             "Problem: 1D transient heat conduction in a wall with:",
             f"- Wall thickness: {params['L']:.6f} m",
@@ -91,10 +92,10 @@ class oneD_HeatTransferQuestionGenerator():
             f"- Recording interval: {params['record_dt']:.4f} s",
             "",
             "Convergence criteria:",
-            "Spatial L2 error < 1e-4 C",
+            f"{error_type} L2 error < 1e-4 C",
             "The criteria must be satisfied for convergence.",
             "",
-            f"Cost budget: {cost}",
+            f"Dummy Solution Cost: {cost}",
         ]
 
         return "\n".join(question_lines)

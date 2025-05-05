@@ -78,21 +78,26 @@ python qs_gen/1D_heat_transfer.py -n 2 -t n_space
 
 ### 🕵️ Generate the Dataset for Human Written Workflow and code
 ```bash
-python dataset_gen/heat_transfer.py -t n_space
+python dataset_gen/oneD_heat_transfer.py -t n_space
 ```
+#### Parameters:
+- t: problem task
+- -z: zero-shot 
 
 ### 🔍 Evaluate Model using test dataset
 ```bash
-python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_transfer
+python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet-20250219-v1:0 -d 1D_heat_transfer -t n_space
 ```
 #### Parameters
-- s: int, start idx
-- p: str, provider
+- n: int, number of samples to test
+- p: str, LLM provider (openai, gemini, bedrock)
 - m: str, model name
 - d: str, dataset name
-- hv: bool, human written version
+- t: problem task
+- -z: zero-shot 
+<!-- - hv: bool, human written version -->
 
-### 📊 Generate Evaluation Report 
+<!-- ### 📊 Generate Evaluation Report 
 ```bash
 python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -t
 ```
@@ -102,12 +107,12 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -t
 - d: str, dataset name
 - v: bool, using the result from validation dataset
 - t: bool, using the result from test dataset
-- g: int, the version of generated agent
+- g: int, the version of generated agent -->
 
-#### Outputs
-- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md
+<!-- #### Outputs
+- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
 
-## TODOs
+<!-- ## TODOs
 1. Error Handling Analysis:
 - Implement tracking for tool call failures
 - Add metrics for incomplete experiment
@@ -115,4 +120,4 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -t
 - Use results generated from current agent to LLMs for feedback generation to the agent for further improvement
 3. In-context Learning:
 - Generate valid example for LLMs 
-4. Span the domain of others dataset
+4. Span the domain of others dataset -->

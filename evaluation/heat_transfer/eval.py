@@ -2,6 +2,10 @@ from typing import List, Dict
 
 def evaluate(base_dataset: List[Dict], result_dataset: List[Dict], agent: Dict) -> Dict:
     comparison_results = []
+    total_success = 0
+    total_cost = 0.0
+    total_dummy_cost = 0.0  # For dummy solution
+
     for i in range(len(result_dataset)):
         base = base_dataset[i]
         llm_result = result_dataset[i]
@@ -20,10 +24,17 @@ def evaluate(base_dataset: List[Dict], result_dataset: List[Dict], agent: Dict) 
             out_of_budget = None
             converged = None
             success = False
+            cost = 0.0
         else:
-            out_of_budget = True if llm_result["accumulated_cost"] > base["budget"] else False
+            out_of_budget = True if llm_result["accumulated_cost"] > base["dummy_cost"] else False
             success = True if llm_result["converged"] and not out_of_budget else False
             converged = llm_result["converged"]
+            cost = llm_result["accumulated_cost"]
+
+        if success:
+            total_success += 1
+        total_cost += cost
+        total_dummy_cost += base["dummy_cost"]
 
         comparison_results.append({
             "success": success,
@@ -41,9 +52,18 @@ def evaluate(base_dataset: List[Dict], result_dataset: List[Dict], agent: Dict) 
     # exclude the cases that converged are None
     converged_result = [llm_result["converged"] for llm_result in comparison_results if llm_result["converged"] is not None]
     converged_rate = sum(converged_result) / len(converged_result)
-    # Add the all llm_result to the last one workflow
+    
+    # Cost efficiency
+    model_cost_efficiency = total_success / total_cost if total_cost > 0 else 0.0
+    dummy_cost_efficiency = len(base_dataset) / total_dummy_cost if total_dummy_cost > 0 else 0.0
+    relative_cost_efficiency = model_cost_efficiency / dummy_cost_efficiency if dummy_cost_efficiency > 0 else 0.0
+
+    # Add to agent
     agent["success_rate"] = success_rate
     agent["out_of_budget_rate"] = out_of_budget_rate
     agent["converged_rate"] = converged_rate
+    agent["model_cost_efficiency"] = model_cost_efficiency
+    agent["dummy_cost_efficiency"] = dummy_cost_efficiency
+    agent["relative_cost_efficiency"] = relative_cost_efficiency
 
     return agent

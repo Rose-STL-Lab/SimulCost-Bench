@@ -1,10 +1,10 @@
-
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import logging
 import json
-from api_call import *
+# from api_call import *
+from tool_call import *
 from typing import List, Dict, Any, Tuple
 import pandas as pd
 
@@ -70,16 +70,16 @@ def find_json(response: str) -> Dict[str, Any]:
         return {"error": error_msg}
 
 class ToolCallManager:
-    def __init__(self, logger: logging.Logger, qid: int, focused_parameters: List[str] = None, budget: int = 100):
+    def __init__(self, logger: logging.Logger, qid: int, focused_parameters: List[str] = None, dummy_cost: int = 100):
         self.logger = logger
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
         self.focused_parameters = focused_parameters
         self.qid = qid
         self.accumulated_cost = 0
-        self.budget = budget
+        self.dummy_cost = dummy_cost
 
-    def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+    def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], qid: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
         try:
             self.logger.info(
@@ -91,8 +91,28 @@ class ToolCallManager:
                     cls=NumpyEncoder
                 )
             )
+
             func = globals()[tool_name]
-            result = func(tool_args, self.accumulated_cost)
+            profile = f"p{qid}"
+            print("tool_args: ", tool_args)
+            # print("accumulated_cost: ", self.accumulated_cost)
+            # print("profile: ", profile)
+
+            if tool_name == "get_heat_transfer_exp_summary":
+                result = func(
+                    **tool_args,
+                    qid=qid,
+                    accumulated_cost=self.accumulated_cost
+                )
+            else:
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    current_n_space=tool_args["n_space"],
+                    current_cfl=tool_args["cfl"],
+                    tolerance=1e-4
+                )
+
             self.accumulated_cost = result['accumulated_cost']
             self.logger.info(f"Tool call result: {json.dumps(result, cls=NumpyEncoder)}")
             if not tool_name.endswith('summary'):

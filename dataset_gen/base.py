@@ -35,8 +35,8 @@ class DatasetGenerator(ABC):
 
         return f"""Available functions: \n{method_description} \nQID: {QID} \n{question}"""
     
-    def generate_dataset(self, workflow: str, questions: List[Dict]) -> List[Dict]:
-        instruction = self.get_instruction_template()
+    def generate_dataset(self, workflow: str, questions: List[Dict], zero_shot: bool) -> List[Dict]:
+        instruction = self.get_instruction_template(zero_shot)
         instruction = instruction + "\nWorkflow:\n" + workflow # System prompt + Workflow
 
         dataset = []
@@ -46,7 +46,7 @@ class DatasetGenerator(ABC):
             user_question = self.generate_user_template(question, idx)
             dataset.append({
                 "QID": idx,
-                "budget": q["budget"],
+                "dummy_cost": q["dummy_cost"],
                 "messages": self.create_data(instruction, user_question)
             })
 

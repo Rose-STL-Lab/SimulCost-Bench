@@ -36,7 +36,7 @@ class LLMAgentBase():
                 temperature=0,
                 google_api_key=os.getenv("GOOGLE_API_KEY")
             )
-        elif provider_global == "claude" or provider_global == "deepseek":
+        elif provider_global == "bedrock":
             self.llm = ChatBedrock(
                 model_id="us." + model_name_global,
                 temperature=0,
@@ -64,8 +64,8 @@ class LLMAgentBase():
 
         return output_infos
 
-    def execute_tool(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], tool_manager: ToolCallManager) -> dict:
-        tool_result, acc_cost = tool_manager.execute_tool_call(tool_reason, tool_name, tool_args)
+    def execute_tool(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], tool_manager: ToolCallManager, profile: int) -> dict:
+        tool_result, acc_cost = tool_manager.execute_tool_call(tool_reason, tool_name, tool_args, profile)
         
         return tool_result, acc_cost
     
@@ -100,6 +100,9 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
             result, tool_df = future.result()
             all_results.append(result)
             all_tool_dfs.append(tool_df)
+            print("all_results: ", all_results)
+            print("all_tool_dfs: ", all_tool_dfs)
+            # exit()
 
     final_tool_df = pd.concat(all_tool_dfs, ignore_index=True) if all_tool_dfs else pd.DataFrame()
 
@@ -135,17 +138,17 @@ def main():
     zero_shot = args.zero_shot
     flag = "zero_shot" if zero_shot else "iterative"
 
-    result_dir = f"results/{args.dataset}"
+    result_dir = f"results/{args.dataset}/{args.task}"
     os.makedirs(result_dir, exist_ok=True)
-    log_dir = f"log/{args.dataset}"
+    log_dir = f"log/{args.dataset}/{args.task}"
     os.makedirs(log_dir, exist_ok=True)
 
     # if args.human_version:
     dataset_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_dataset.json"
-    log_file = f"{log_dir}/{args.task}/{flag}_{args.model_name}.log"
+    log_file = f"{log_dir}/{flag}_{args.model_name}.log"
     archive_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_agent.json"
-    result_file = f"{result_dir}/{args.task}/{flag}_{args.model_name}.json"
-    table_file = f"{result_dir}/{args.task}/{flag}_tool_call_{args.model_name}.xlsx"
+    result_file = f"{result_dir}/{flag}_{args.model_name}.json"
+    table_file = f"{result_dir}/{flag}_tool_call_{args.model_name}.xlsx"
     # else:
     #     dataset_file = f"data/{args.dataset}/{args.model_name}/dataset.json"
     #     log_file = f"{log_dir}/{args.model_name}.log"
@@ -171,6 +174,7 @@ def main():
 
     logger.info(f"Saving results to {result_file}")
     save_result(results, result_file)
+
     # evaluate the results
     agent = evaluate(test_dataset, results, agent)
     logger.info(f"Saving tool call to {table_file}")
@@ -178,6 +182,9 @@ def main():
     logger.info(f"Success rate: {agent['success_rate']}")
     logger.info(f"Converged rate: {agent['converged_rate']}")
     logger.info(f"Out of budget rate: {agent['out_of_budget_rate']}")
+    logger.info(f"Model cost efficiency: {agent['model_cost_efficiency']:.2e}")
+    logger.info(f"Dummy cost efficiency: {agent['dummy_cost_efficiency']:.2e}")
+    logger.info(f"Relative cost efficiency (model vs dummy): {agent['relative_cost_efficiency']:.3f}")
 
 if __name__ == "__main__":
     main()

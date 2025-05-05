@@ -1,0 +1,76 @@
+{
+    "run_oneD_heat_transfer_PDE_exp": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "check_converge_n_space",
+                "description": "Conduct a 1D heat transfer PDE simulation and evaluate its spatial convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"spatial_l2_error\": float, \"is_converged\": bool, \"accumulated_cost\": int}." ,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "n_space": {
+                            "type": "integer",
+                            "description": "Number of spatial segments"
+                        },
+                        "cfl": {
+                            "type": "float",
+                            "description": "Number of cfl"
+                        }
+                    },
+                    "required": [
+                        "n_space",
+                        "cfl"
+                    ]
+                }
+            }
+        }
+    },
+    "get_heat_transfer_exp_summary": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "get_heat_transfer_exp_summary",
+                "description": "Once converged or if the budget is exceeded, get the summary of 1D heat transfer PDE simulation. It will return {\"converged\": bool, \"times\": int, \"sequence\": [{\"cfl\": float, \"n_space\": int}, ...], \"accumulated_cost\": int}",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "converged": {
+                            "type": "boolean",
+                            "description": "Whether the simulation has converged (not dependent on budget)"
+                        },
+                        "times": {
+                            "type": "integer",
+                            "description": "Number of times the PDE experiment function has been called"
+                        },
+                        "sequence": {
+                            "type": "array",
+                            "description": "Sequence of n_space and cfl you tryed (should also include the out of budget ones if any)",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "n_space": {
+                                        "type": "integer",
+                                        "description": "Number of spatial segments"
+                                    },
+                                    "cfl": {
+                                        "type": "float",
+                                        "description": "Number of cfl segments"
+                                    }
+                                },
+                                "required": [
+                                    "n_space",
+                                    "cfl"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "converged",
+                        "times",
+                        "sequence"
+                    ]
+                }
+            }
+        }           
+    }
+}

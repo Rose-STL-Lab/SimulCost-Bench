@@ -1,7 +1,6 @@
 from typing import Dict, Any
 from api_call.heat_transfer.wall_heat_transfer_solver import WallHeatTransfer, test_convergence
 
-
 def run_1d_heat_transfer_PDE_exp(params: Dict[str, Any], accumulated_cost: int) -> Dict[str, Any]:
     """
     API interface for heat transfer calculations
