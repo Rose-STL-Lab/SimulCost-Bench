@@ -15,20 +15,18 @@ Please strike a balance between being too conservative and too aggressive:
 - If it's too large, the cost may increase dramatically.
 The value of cfl is 1.0; You don't need to change it.
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the PDE function; store the problem configuration in the config file.
-Step 3: Call the Convergence Test Function; check if the solution has converged.
-Step 4: Respond using the final response format and make no further PDE calls.
+Step 2: Call the Convergence Test Function; check if the solution has converged.
+Step 3: Respond using the final response format and make no further function calls.
 """
 
 n_space_iterative_HUMAN_WORKFLOW = """
 Choose a reasonable value for n_space the number of spatial segments to solve a given PDE problem.
 The value of cfl is 1.0; You don't need to change it.
 Step 1: Estimate an initial fairly coarse choice of n_space (the number of segments in length), as you will gradually refine the solution and check convergence.
-Step 2: Call the PDE function; store the question config in the config file.
-Step 3: Call the Convergence Test Function; check if converged.
-Step 4: If not converged, refine n_space based on the trajectory of previous errors, and the distance to the convergence threshold. You should always refine resolution by multiplying, and the multiplier depends on your previous analysis.
-Step 5: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 6: If the solution converges on or before the 10th refinement, you must respond with the final response format and make no further PDE calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further PDE calls."""
+Step 2: Call the Convergence Test Function; check if converged.
+Step 3: If not converged, refine n_space based on the trajectory of previous errors, and the distance to the convergence threshold.
+Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
+Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
 
 cfl_zero_shot_HUMAN_WORKFLOW = """
 You have only one opportunity to choose a reasonable value for cfl, the number of Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.
@@ -39,20 +37,18 @@ Please strike a balance between being too conservative and too aggressive:
 - If it's too small, the cost may increase dramatically.
 The value of n_space is 100; You don't need to change it.
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the PDE function; store the problem configuration in the config file.
-Step 3: Call the Convergence Test Function; check if the solution has converged.
-Step 4: Respond using the final response format and make no further PDE calls.
+Step 2: Call the Convergence Test Function; check if the solution has converged.
+Step 3: Respond using the final response format and make no further function calls.
 """
 
 cfl_iterative_HUMAN_WORKFLOW = """
 Choose a reasonable value for cfl, the number of Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.
 The value of n_space is 100; You don't need to change it.
 Step 1: Estimate an initial fairly coarse choice of cfl, as you will gradually refine the solution and check convergence.
-Step 2: Call the PDE function; store the question config in the config file.
-Step 3: Call the Convergence Test Function; check if converged.
-Step 4: If not converged, refine cfl based on the trajectory of previous errors, and the distance to the convergence threshold. You should always refine resolution by division, and the multiplier depends on your previous analysis.
-Step 5: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 6: If the solution converges on or before the 10th refinement, you must respond with the final response format and make no further PDE calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further PDE calls."""
+Step 2: Call the Convergence Test Function; check if converged.
+Step 3: If not converged, refine cfl based on the trajectory of previous errors, and the distance to the convergence threshold.
+Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
+Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
 
 zero_shot_HUMAN_CODE = """def forward(self, data: dict):
     # Extract input data
@@ -94,24 +90,31 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
     experiment_manager = ToolCallManager(self.logger, qid, dummy_cost=dummy_cost)
 
     # Set up experiment agent
-    experiment_instruction = "Given the problem, you should use the tool call to run the experiment."
-    experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args"], "Experiment Agent")
+    experiment_instruction = "Given the problem, you should use the tool call to run the experiment. When you think the experiment can be stopped, set should_stop to true, otherwise set it to false."
+    experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args", "should_stop"], "Experiment Agent")
     
     # Main interaction loop
     for _ in range(10):
         # Query agent for next action and inject query
-        tool_reason, tool_name, tool_args = experiment_agent.query(messages, experiment_instruction)
-        messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
+        tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(messages, experiment_instruction)
+        messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args, "should_stop": should_stop})})
         # Execute tool and inject results from tool
         tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
         messages.append({"role": "user", "content": json.dumps(tool_result)})
+
         # Continue conversation if not in summary phase
-        if tool_result.get("is_converged"):
+        print(f"should_stop: {should_stop}")
+        if isinstance(should_stop, bool):
+            stop_flag = should_stop
+        else:
+            stop_flag = str(should_stop).lower() == "true"
+
+        if stop_flag:
             break
     
     # Set up experiment summary agent
     summary_instruction = "Given the process of the experiment, you should use the tool call to summarize the experiment "
-    tool_reason, tool_name, tool_args = experiment_agent.query(messages, summary_instruction)
+    tool_reason, tool_name, tool_args, _ = experiment_agent.query(messages, summary_instruction)
     messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
     tool_result, _ = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
     tool_df = experiment_manager.get_tool_call_df()
@@ -157,10 +160,10 @@ def main():
 
     if task == "n_space":
         workflow = n_space_zero_shot_HUMAN_WORKFLOW if zero_shot else n_space_iterative_HUMAN_WORKFLOW
-        human_code = zero_shot_HUMAN_CODE if zero_shot else iterative_HUMAN_CODE
     else:
         workflow = cfl_zero_shot_HUMAN_WORKFLOW if zero_shot else cfl_iterative_HUMAN_WORKFLOW
-        human_code = zero_shot_HUMAN_CODE if zero_shot else iterative_HUMAN_CODE
+
+    human_code = zero_shot_HUMAN_CODE if zero_shot else iterative_HUMAN_CODE
 
     agent = {
         "workflow": workflow,
@@ -171,7 +174,7 @@ def main():
     with open(question_file, "r") as f:
         questions = json.load(f)
     # Generate the dataset
-    generator = oneD_HeatTransferDatasetGenerator(f"tool_documentation/oneD_heat_transfer_{task}.json")
+    generator = oneD_HeatTransferDatasetGenerator(f"tool_documentation/oneD_heat_transfer/{task}.json")
     dataset = generator.generate_dataset(workflow, questions, zero_shot)
     save_result(dataset, dataset_file)
 

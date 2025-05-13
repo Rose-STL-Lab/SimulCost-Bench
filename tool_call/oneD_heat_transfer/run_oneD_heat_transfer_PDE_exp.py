@@ -1,4 +1,3 @@
-import argparse
 from costsci_tools.wrappers.heat_1d import run_sim_heat_1d, compare_res_heat_1d
 
 def check_converge_n_space(*, accumulated_cost: int, profile: str,

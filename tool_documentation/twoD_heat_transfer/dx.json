@@ -1,0 +1,96 @@
+{
+    "run_twoD_heat_transfer_PDE_exp": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "check_converge_dx",
+                "description": "Conduct a 2D heat transfer PDE simulation and evaluate its dx convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"Error_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int}.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "current_dx": {
+                            "type": "float",
+                            "description": "Number of dx"
+                        },
+                        "current_relax": {
+                            "type": "float",
+                            "description": "Number of relax"
+                        },
+                        "current_t_init": {
+                            "type": "float",
+                            "description": "Number of t_init"
+                        },
+                        "current_error_threshold": {
+                            "type": "float",
+                            "description": "Number of error_threshold"
+                        }
+                    },
+                    "required": [
+                        "current_dx",
+                        "current_relax",
+                        "current_t_init",
+                        "current_error_threshold"
+                    ]
+                }
+            }
+        }
+    },
+    "get_twoD_heat_transfer_exp_summary": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "get_twoD_heat_transfer_exp_summary",
+                "description": "Once converged or the max attempt times are reached, get the summary of 2D heat transfer PDE simulation. It will return {\"converged\": bool, \"times\": int, \"sequence\": [{\"dx\": float, \"relax\": float, \"t_init\": float, \"error_threshold\": float}, ...], \"accumulated_cost\": int}",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "converged": {
+                            "type": "boolean",
+                            "description": "Whether the simulation has converged"
+                        },
+                        "times": {
+                            "type": "integer",
+                            "description": "Number of times the PDE experiment function has been called"
+                        },
+                        "sequence": {
+                            "type": "array",
+                            "description": "Sequence of dx, relax, t_init and error_threshold you tried",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "dx": {
+                                        "type": "float",
+                                        "description": "Number of dx"
+                                    },
+                                    "relax": {
+                                        "type": "float",
+                                        "description": "Number of relax"
+                                    },
+                                    "t_init": {
+                                        "type": "float",
+                                        "description": "Number of t_init"
+                                    },
+                                    "error_threshold": {
+                                        "type": "float",
+                                        "description": "Number of error_threshold"
+                                    }
+                                },
+                                "required": [
+                                    "dx",
+                                    "relax",
+                                    "t_init",
+                                    "error_threshold"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "converged",
+                        "times",
+                        "sequence"
+                    ]
+                }
+            }
+        }           
+    }
+}

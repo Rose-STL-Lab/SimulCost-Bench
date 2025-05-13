@@ -130,12 +130,15 @@ def main():
     #                      default=True, help="Human-written version")
     parser.add_argument("-d", "--dataset", type=str,
                         default="1D_heat_transfer", help="Domain of the dataset")
-    parser.add_argument("-t", "--task", type=str, default="n_space",
-                        help="Task of problem to solve")
+    choices = ["cfl", "n_space", "dx", "relax", "t_init", "error_threshold"]
+    parser.add_argument("-t", "--task", type=str, choices=choices,
+                    default="cfl", help="Task of problem to solve")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                     help="Enable zero-shot mode")
     args = parser.parse_args()
-    zero_shot = args.zero_shot
+
+    # Force zero_shot to True for specific tasks
+    zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
     flag = "zero_shot" if zero_shot else "iterative"
 
     result_dir = f"results/{args.dataset}/{args.task}"
@@ -143,18 +146,11 @@ def main():
     log_dir = f"log/{args.dataset}/{args.task}"
     os.makedirs(log_dir, exist_ok=True)
 
-    # if args.human_version:
     dataset_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_dataset.json"
     log_file = f"{log_dir}/{flag}_{args.model_name}.log"
     archive_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_agent.json"
     result_file = f"{result_dir}/{flag}_{args.model_name}.json"
     table_file = f"{result_dir}/{flag}_tool_call_{args.model_name}.xlsx"
-    # else:
-    #     dataset_file = f"data/{args.dataset}/{args.model_name}/dataset.json"
-    #     log_file = f"{log_dir}/{args.model_name}.log"
-    #     archive_file = f"data/{args.dataset}/{args.model_name}/agent.json"
-    #     result_file = f"{result_dir}/{args.model_name}.json"
-    #     table_file = f"{result_dir}/tool_call_{args.model_name}.xlsx"
 
     ensure_file(dataset_file, default_content=[])
     ensure_file(archive_file, default_content=[])
@@ -175,13 +171,18 @@ def main():
     logger.info(f"Saving results to {result_file}")
     save_result(results, result_file)
 
+    question_path = f"data/{args.dataset}/{args.task}/{flag}_question.json"
+    with open(question_path, "r") as f:
+        dummy_question = json.load(f)
+    dummy_question = dummy_question[:args.num_samples]
+
     # evaluate the results
-    agent = evaluate(test_dataset, results, agent)
+    agent = evaluate(args.dataset, args.task, dummy_question, results, agent)
     logger.info(f"Saving tool call to {table_file}")
     tool_call_df.to_excel(table_file, index=False)
+    logger.info(f"Converged rate (convergence does not guarantee success): {agent['converged_rate']}")
     logger.info(f"Success rate: {agent['success_rate']}")
-    logger.info(f"Converged rate: {agent['converged_rate']}")
-    logger.info(f"Out of budget rate: {agent['out_of_budget_rate']}")
+    # logger.info(f"Out of budget rate: {agent['out_of_budget_rate']}")
     logger.info(f"Model cost efficiency: {agent['model_cost_efficiency']:.2e}")
     logger.info(f"Dummy cost efficiency: {agent['dummy_cost_efficiency']:.2e}")
     logger.info(f"Relative cost efficiency (model vs dummy): {agent['relative_cost_efficiency']:.3f}")

@@ -69,6 +69,7 @@ class oneD_HeatTransferQuestionGenerator():
                     "zero_shot": zero_shot,
                     "is_converged": is_converged,
                     "dummy_cost":  dummy_cost,
+                    "cost_history": cost_history,
                     param_tag: best_param,
                     "param_history": param_history,
                     "question":  question,
@@ -78,7 +79,7 @@ class oneD_HeatTransferQuestionGenerator():
         return dataset
 
     def generate_question(self, cost: int, params: Dict[str, Any], task: str) -> str:
-        error_type = "Courant-Friedrichs-Lewy" if task == "cfl" else "Spatial"
+        error_type = "Courant-Friedrichs-Lewy" if task == "cfl" else "n_space"
         question_lines = [
             "Problem: 1D transient heat conduction in a wall with:",
             f"- Wall thickness: {params['L']:.6f} m",
@@ -92,10 +93,10 @@ class oneD_HeatTransferQuestionGenerator():
             f"- Recording interval: {params['record_dt']:.4f} s",
             "",
             "Convergence criteria:",
-            f"{error_type} L2 error < 1e-4 C",
+            f"{error_type} L2 error: the T gradient at the left tip between the adjacent parameters",
             "The criteria must be satisfied for convergence.",
             "",
-            f"Dummy Solution Cost: {cost}",
+            # f"Dummy Solution Cost: {cost}",
         ]
 
         return "\n".join(question_lines)
@@ -124,7 +125,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--num_samples", type=int, default=5,
                         help="Number of samples to generate")
-    parser.add_argument("-t", "--task", type=str, default="n_space",
+    parser.add_argument("-t", "--task", type=str, choices=["cfl", "n_space"], default="n_space",
                         help="Task of problem to solve")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                     help="Enable zero-shot mode")
@@ -139,8 +140,15 @@ if __name__ == "__main__":
 
     question_file = f"{dataset_dir}/{flag}_question.json"
     os.makedirs(dataset_dir, exist_ok=True)
+    print(f"[INFO] Generating {num_samples} samples for task '{task}'")
+    print(f"[INFO] Zero-shot mode: {'ON' if zero_shot else 'OFF'}")
+    print(f"[INFO] Output path: {question_file}")
     
+    base_profile_path = "costsci_tools/run_configs/heat_1d/p1.yaml"
+    if not os.path.isfile(base_profile_path):
+        raise FileNotFoundError(f"Base profile path not found: {base_profile_path}")
+
     generator = oneD_HeatTransferQuestionGenerator()
-    random_profiles = create_heat1d_profiles(num_profiles=num_samples-1, base_profile_path="costsci_tools/run_configs/heat_1d/p1.yaml")
+    random_profiles = create_heat1d_profiles(num_profiles=num_samples-1, base_profile_path=base_profile_path, solver_name="heat_1d")
     dataset = generator.generate_question_dataset(num_samples=num_samples, task=task, zero_shot=zero_shot)
     save_dataset(dataset, question_file)  

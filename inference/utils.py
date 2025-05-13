@@ -94,7 +94,7 @@ class ToolCallManager:
 
             func = globals()[tool_name]
             profile = f"p{qid}"
-            print("tool_args: ", tool_args)
+            # print("tool_args: ", tool_args)
             # print("accumulated_cost: ", self.accumulated_cost)
             # print("profile: ", profile)
 
@@ -104,13 +104,29 @@ class ToolCallManager:
                     qid=qid,
                     accumulated_cost=self.accumulated_cost
                 )
-            else:
+            elif tool_name in ["check_converge_cfl", "check_converge_n_space"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
                     current_n_space=tool_args["n_space"],
                     current_cfl=tool_args["cfl"],
                     tolerance=1e-4
+                )
+            elif tool_name == "get_twoD_heat_transfer_exp_summary":
+                result = func(
+                    **tool_args,
+                    qid=qid,
+                    accumulated_cost=self.accumulated_cost
+                )
+            elif tool_name in ["check_converge_dx", "check_converge_relax", "check_converge_t_init", "check_converge_error_threshold"]:
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    current_dx=tool_args["current_dx"],
+                    current_relax=tool_args["current_relax"],
+                    current_t_init=tool_args["current_t_init"],
+                    current_error_threshold=tool_args["current_error_threshold"],
+                    tolerance=1e-3
                 )
 
             self.accumulated_cost = result['accumulated_cost']

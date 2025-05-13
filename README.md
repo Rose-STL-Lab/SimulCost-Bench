@@ -67,7 +67,8 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
 ## 🧐 Human Written Version
 ### Generate Questions Or Use the Previous one
 ```bash
-python qs_gen/1D_heat_transfer.py -n 2 -t n_space
+python qs_gen/1D_heat_transfer.py -n 2 -t cfl
+python qs_gen/2D_heat_transfer.py -n 2 -t dx
 ```
 #### Parameters:
 - n: int, number of example 
@@ -78,7 +79,8 @@ python qs_gen/1D_heat_transfer.py -n 2 -t n_space
 
 ### 🕵️ Generate the Dataset for Human Written Workflow and code
 ```bash
-python dataset_gen/oneD_heat_transfer.py -t n_space
+python dataset_gen/oneD_heat_transfer.py -t cfl
+python dataset_gen/twoD_heat_transfer.py -t dx
 ```
 #### Parameters:
 - t: problem task
@@ -86,7 +88,8 @@ python dataset_gen/oneD_heat_transfer.py -t n_space
 
 ### 🔍 Evaluate Model using test dataset
 ```bash
-python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet-20250219-v1:0 -d 1D_heat_transfer -t n_space
+python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl
+python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet-20250219-v1:0 -d 2D_heat_transfer -t dx
 ```
 #### Parameters
 - n: int, number of samples to test
@@ -96,6 +99,11 @@ python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet
 - t: problem task
 - -z: zero-shot 
 <!-- - hv: bool, human written version -->
+
+### Models
+1. anthropic.claude-3-5-haiku-20241022-v1:0
+2. anthropic.claude-3-5-sonnet-20240620-v1:0
+3. anthropic.claude-3-7-sonnet-20250219-v1:0
 
 <!-- ### 📊 Generate Evaluation Report 
 ```bash
