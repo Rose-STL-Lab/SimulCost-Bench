@@ -1,0 +1,445 @@
+[
+    {
+        "QID": 1,
+        "is_converged": true,
+        "times": 2,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 165084,
+        "cost_sequence": [
+            11616,
+            153468
+        ]
+    },
+    {
+        "QID": 2,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 379701,
+        "cost_sequence": [
+            379701
+        ]
+    },
+    {
+        "QID": 3,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.14,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.135,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.127,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 383254,
+        "cost_sequence": [
+            310905,
+            24442,
+            3773,
+            10854,
+            6656,
+            6656,
+            6656,
+            6656,
+            6656
+        ]
+    },
+    {
+        "QID": 4,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 371763,
+        "cost_sequence": [
+            371763
+        ]
+    },
+    {
+        "QID": 5,
+        "is_converged": false,
+        "times": 7,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.11,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.105,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.102,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 420403,
+        "cost_sequence": [
+            327663,
+            25531,
+            3969,
+            11340,
+            17300,
+            17300,
+            17300
+        ]
+    },
+    {
+        "QID": 6,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.12,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.14,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.115,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.11,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.09,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 134377,
+        "cost_sequence": [
+            26257,
+            11583,
+            4067,
+            11583,
+            7104,
+            7104,
+            11583,
+            17800,
+            37296
+        ]
+    },
+    {
+        "QID": 7,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 328986,
+        "cost_sequence": [
+            328986
+        ]
+    },
+    {
+        "QID": 8,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.075,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.06,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.055,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.0575,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.0565,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.0555,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.056,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.05575,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 1861592,
+        "cost_sequence": [
+            359856,
+            72520,
+            156638,
+            242953,
+            196668,
+            196668,
+            242953,
+            196668,
+            196668
+        ]
+    },
+    {
+        "QID": 9,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.14,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.135,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.127,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 405187,
+        "cost_sequence": [
+            329427,
+            25652,
+            3969,
+            11259,
+            6976,
+            6976,
+            6976,
+            6976,
+            6976
+        ]
+    },
+    {
+        "QID": 10,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 384111,
+        "cost_sequence": [
+            384111
+        ]
+    }
+]

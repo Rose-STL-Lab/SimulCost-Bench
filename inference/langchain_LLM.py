@@ -14,6 +14,7 @@ import json
 from evaluation.heat_transfer.eval import evaluate
 from dotenv import load_dotenv
 load_dotenv()
+from tqdm import tqdm
 
 FORMAT_INST = lambda request_keys: f"Reply EXACTLY with the JSON format that contains the following keys: {str(request_keys)}\nDO NOT MISS ANY REQUEST FIELDS and ensure that your response is a well-formed JSON object!\n"
 
@@ -87,22 +88,18 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     if not callable(func):
         raise AssertionError(f"{func} is not callable")
     setattr(AgentSystem, "forward", func)
-    
-    # Run inference
+
+    # Run inference (sequential with progress bar)
     agent = AgentSystem(logger)
-    max_workers = 2
     all_results = []
     all_tool_dfs = []
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(agent.forward, data) for data in dataset}
 
-        for future in as_completed(futures):
-            result, tool_df = future.result()
-            all_results.append(result)
-            all_tool_dfs.append(tool_df)
-            print("all_results: ", all_results)
-            print("all_tool_dfs: ", all_tool_dfs)
-            # exit()
+    for data in tqdm(dataset, desc="Running inference"):
+        result, tool_df = agent.forward(data)
+        all_results.append(result)
+        all_tool_dfs.append(tool_df)
+        print("all_results: ", all_results)
+        print("all_tool_dfs: ", all_tool_dfs)
 
     final_tool_df = pd.concat(all_tool_dfs, ignore_index=True) if all_tool_dfs else pd.DataFrame()
 
@@ -141,9 +138,9 @@ def main():
     zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
     flag = "zero_shot" if zero_shot else "iterative"
 
-    result_dir = f"results/{args.dataset}/{args.task}"
+    result_dir = f"results_model_attempt/{args.dataset}/{args.task}"
     os.makedirs(result_dir, exist_ok=True)
-    log_dir = f"log/{args.dataset}/{args.task}"
+    log_dir = f"log_model_tool_call/{args.dataset}/{args.task}"
     os.makedirs(log_dir, exist_ok=True)
 
     dataset_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_dataset.json"
@@ -165,8 +162,10 @@ def main():
     logger = setup_logging(log_file)
 
     test_dataset = dataset[:args.num_samples]
+    # test_dataset = dataset[4:5]
 
     results, tool_call_df = parallel_inference(test_dataset, agent["code"], logger, args.provider, args.model_name)
+    tool_call_df.to_excel(table_file, index=False)
 
     logger.info(f"Saving results to {result_file}")
     save_result(results, result_file)
@@ -175,17 +174,6 @@ def main():
     with open(question_path, "r") as f:
         dummy_question = json.load(f)
     dummy_question = dummy_question[:args.num_samples]
-
-    # evaluate the results
-    agent = evaluate(args.dataset, args.task, dummy_question, results, agent)
-    logger.info(f"Saving tool call to {table_file}")
-    tool_call_df.to_excel(table_file, index=False)
-    logger.info(f"Converged rate (convergence does not guarantee success): {agent['converged_rate']}")
-    logger.info(f"Success rate: {agent['success_rate']}")
-    # logger.info(f"Out of budget rate: {agent['out_of_budget_rate']}")
-    logger.info(f"Model cost efficiency: {agent['model_cost_efficiency']:.2e}")
-    logger.info(f"Dummy cost efficiency: {agent['dummy_cost_efficiency']:.2e}")
-    logger.info(f"Relative cost efficiency (model vs dummy): {agent['relative_cost_efficiency']:.3f}")
 
 if __name__ == "__main__":
     main()

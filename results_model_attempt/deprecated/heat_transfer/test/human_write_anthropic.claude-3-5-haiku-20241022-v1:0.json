@@ -1,0 +1,412 @@
+[
+    {
+        "converged": false,
+        "times": 9,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 50
+            },
+            {
+                "n_space": 20,
+                "n_time": 100
+            },
+            {
+                "n_space": 40,
+                "n_time": 200
+            },
+            {
+                "n_space": 80,
+                "n_time": 400
+            },
+            {
+                "n_space": 160,
+                "n_time": 800
+            },
+            {
+                "n_space": 320,
+                "n_time": 1600
+            },
+            {
+                "n_space": 640,
+                "n_time": 3200
+            },
+            {
+                "n_space": 1280,
+                "n_time": 6400
+            }
+        ],
+        "accumulated_cost": 54612500
+    },
+    {
+        "converged": false,
+        "times": 10,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 20
+            },
+            {
+                "n_space": 20,
+                "n_time": 40
+            },
+            {
+                "n_space": 40,
+                "n_time": 80
+            },
+            {
+                "n_space": 80,
+                "n_time": 160
+            },
+            {
+                "n_space": 160,
+                "n_time": 320
+            },
+            {
+                "n_space": 320,
+                "n_time": 640
+            },
+            {
+                "n_space": 640,
+                "n_time": 1280
+            },
+            {
+                "n_space": 1280,
+                "n_time": 2560
+            },
+            {
+                "n_space": 2560,
+                "n_time": 5120
+            },
+            {
+                "n_space": 5120,
+                "n_time": 10240
+            }
+        ],
+        "accumulated_cost": 349525000
+    },
+    {
+        "converged": false,
+        "times": 11,
+        "sequence": [
+            {
+                "n_space": 20,
+                "n_time": 50
+            },
+            {
+                "n_space": 40,
+                "n_time": 100
+            },
+            {
+                "n_space": 80,
+                "n_time": 200
+            },
+            {
+                "n_space": 160,
+                "n_time": 400
+            },
+            {
+                "n_space": 320,
+                "n_time": 800
+            },
+            {
+                "n_space": 640,
+                "n_time": 1600
+            },
+            {
+                "n_space": 1280,
+                "n_time": 3200
+            },
+            {
+                "n_space": 2560,
+                "n_time": 6400
+            },
+            {
+                "n_space": 5120,
+                "n_time": 12800
+            },
+            {
+                "n_space": 10240,
+                "n_time": 25600
+            },
+            {
+                "n_space": 10240,
+                "n_time": 25600
+            }
+        ],
+        "accumulated_cost": 3058345000
+    },
+    {
+        "converged": false,
+        "times": 10,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 10
+            },
+            {
+                "n_space": 20,
+                "n_time": 20
+            },
+            {
+                "n_space": 40,
+                "n_time": 40
+            },
+            {
+                "n_space": 80,
+                "n_time": 80
+            },
+            {
+                "n_space": 160,
+                "n_time": 160
+            },
+            {
+                "n_space": 320,
+                "n_time": 320
+            },
+            {
+                "n_space": 640,
+                "n_time": 640
+            },
+            {
+                "n_space": 1280,
+                "n_time": 1280
+            },
+            {
+                "n_space": 2560,
+                "n_time": 2560
+            },
+            {
+                "n_space": 5120,
+                "n_time": 5120
+            }
+        ],
+        "accumulated_cost": 174762500
+    },
+    {
+        "converged": true,
+        "times": 10,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 50
+            },
+            {
+                "n_space": 20,
+                "n_time": 100
+            },
+            {
+                "n_space": 40,
+                "n_time": 200
+            },
+            {
+                "n_space": 80,
+                "n_time": 400
+            },
+            {
+                "n_space": 160,
+                "n_time": 800
+            },
+            {
+                "n_space": 320,
+                "n_time": 1600
+            },
+            {
+                "n_space": 640,
+                "n_time": 3200
+            },
+            {
+                "n_space": 1280,
+                "n_time": 6400
+            },
+            {
+                "n_space": 2560,
+                "n_time": 12800
+            },
+            {
+                "n_space": 5120,
+                "n_time": 25600
+            }
+        ],
+        "accumulated_cost": 873812500
+    },
+    {
+        "converged": false,
+        "times": 9,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 20
+            },
+            {
+                "n_space": 30,
+                "n_time": 60
+            },
+            {
+                "n_space": 90,
+                "n_time": 180
+            },
+            {
+                "n_space": 180,
+                "n_time": 360
+            },
+            {
+                "n_space": 360,
+                "n_time": 720
+            },
+            {
+                "n_space": 540,
+                "n_time": 1080
+            },
+            {
+                "n_space": 720,
+                "n_time": 1440
+            },
+            {
+                "n_space": 900,
+                "n_time": 1800
+            }
+        ],
+        "accumulated_cost": 17911000
+    },
+    {
+        "converged": true,
+        "times": 7,
+        "sequence": [
+            {
+                "n_space": 20,
+                "n_time": 50
+            },
+            {
+                "n_space": 40,
+                "n_time": 50
+            },
+            {
+                "n_space": 80,
+                "n_time": 50
+            },
+            {
+                "n_space": 160,
+                "n_time": 75
+            },
+            {
+                "n_space": 320,
+                "n_time": 150
+            },
+            {
+                "n_space": 640,
+                "n_time": 300
+            },
+            {
+                "n_space": 1280,
+                "n_time": 600
+            }
+        ],
+        "accumulated_cost": 5135000
+    },
+    {
+        "converged": false,
+        "times": 10,
+        "sequence": [
+            {
+                "n_space": 20,
+                "n_time": 50
+            },
+            {
+                "n_space": 40,
+                "n_time": 50
+            },
+            {
+                "n_space": 80,
+                "n_time": 50
+            },
+            {
+                "n_space": 160,
+                "n_time": 100
+            },
+            {
+                "n_space": 320,
+                "n_time": 200
+            },
+            {
+                "n_space": 640,
+                "n_time": 400
+            },
+            {
+                "n_space": 1280,
+                "n_time": 800
+            },
+            {
+                "n_space": 2560,
+                "n_time": 1600
+            },
+            {
+                "n_space": 2560,
+                "n_time": 1600
+            },
+            {
+                "n_space": 2560,
+                "n_time": 1600
+            }
+        ],
+        "accumulated_cost": 47795000
+    },
+    {
+        "converged": false,
+        "times": 4,
+        "sequence": [
+            {
+                "n_space": 10,
+                "n_time": 20
+            },
+            {
+                "n_space": 20,
+                "n_time": 40
+            },
+            {
+                "n_space": 40,
+                "n_time": 80
+            },
+            {
+                "n_space": 80,
+                "n_time": 160
+            }
+        ],
+        "accumulated_cost": 85000
+    },
+    {
+        "converged": false,
+        "times": 7,
+        "sequence": [
+            {
+                "n_space": 20,
+                "n_time": 50
+            },
+            {
+                "n_space": 40,
+                "n_time": 100
+            },
+            {
+                "n_space": 80,
+                "n_time": 200
+            },
+            {
+                "n_space": 160,
+                "n_time": 400
+            },
+            {
+                "n_space": 320,
+                "n_time": 800
+            },
+            {
+                "n_space": 640,
+                "n_time": 1600
+            },
+            {
+                "n_space": 1280,
+                "n_time": 3200
+            }
+        ],
+        "accumulated_cost": 27305000
+    }
+]

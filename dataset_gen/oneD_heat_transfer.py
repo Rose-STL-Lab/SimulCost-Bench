@@ -54,10 +54,16 @@ zero_shot_HUMAN_CODE = """def forward(self, data: dict):
     # Extract input data
     messages = data["messages"]
     qid = data["QID"]
-    dummy_cost = data["dummy_cost"]
 
-    # Initialize experiment manager and state
-    experiment_manager = ToolCallManager(self.logger, qid, dummy_cost=dummy_cost)
+    # Initialize experiment manager
+    experiment_manager = ToolCallManager(
+        self.logger,
+        qid,
+        focused_parameters=[
+            "current_cfl",
+            "current_n_space"
+        ]
+    )
 
     # Set up experiment agent
     experiment_instruction = "Given the problem, you should use the tool call to run the experiment."
@@ -65,29 +71,53 @@ zero_shot_HUMAN_CODE = """def forward(self, data: dict):
     
     # Zero-Shot
     tool_reason, tool_name, tool_args = experiment_agent.query(messages, experiment_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    # Execute tool and inject results from tool
+    messages.append({
+        "role": "assistant",
+        "content": json.dumps({
+            "tool_reason": tool_reason,
+            "tool_name": tool_name,
+            "tool_args": tool_args
+        })
+    })
+
+    # Execute tool and inject results
     tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-    messages.append({"role": "user", "content": json.dumps(tool_result)})
-    
-    # Set up experiment summary agent
-    summary_instruction = "Given the process of the experiment, you should use the tool call to summarize the experiment "
-    tool_reason, tool_name, tool_args = experiment_agent.query(messages, summary_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    tool_result, _ = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+    messages.append({
+        "role": "user",
+        "content": json.dumps(tool_result)
+    })
+
+    # Collect true history from tool manager
+    param_seq = experiment_manager.get_param_sequence()
+    cost_seq = experiment_manager.get_cost_sequence()
+
+    summary_data = {
+        "QID": qid,
+        "is_converged": tool_result.get("is_converged", False),
+        "times": len(param_seq),
+        "param_sequence": param_seq,
+        "accumulated_cost": experiment_manager.accumulated_cost,
+        "cost_sequence": cost_seq
+    }
+
     tool_df = experiment_manager.get_tool_call_df()
-    # Return final result (summary)
-    return tool_result, tool_df
+    return summary_data, tool_df
 """
 
 iterative_HUMAN_CODE = """def forward(self, data: dict):
     # Extract input data
     messages = data["messages"]
     qid = data["QID"]
-    dummy_cost = data["dummy_cost"]
 
     # Initialize experiment manager and state
-    experiment_manager = ToolCallManager(self.logger, qid, dummy_cost=dummy_cost)
+    experiment_manager = ToolCallManager(
+        self.logger,
+        qid,
+        focused_parameters=[
+            "current_cfl",
+            "current_n_space"
+        ]
+    )
 
     # Set up experiment agent
     experiment_instruction = "Given the problem, you should use the tool call to run the experiment. When you think the experiment can be stopped, set should_stop to true, otherwise set it to false."
@@ -98,12 +128,8 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
         # Query agent for next action and inject query
         tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(messages, experiment_instruction)
         messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args, "should_stop": should_stop})})
-        # Execute tool and inject results from tool
-        tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-        messages.append({"role": "user", "content": json.dumps(tool_result)})
-
-        # Continue conversation if not in summary phase
-        print(f"should_stop: {should_stop}")
+        
+        self.logger.info(f"should_stop: {should_stop}")
         if isinstance(should_stop, bool):
             stop_flag = should_stop
         else:
@@ -111,15 +137,24 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
 
         if stop_flag:
             break
+        
+        # Execute tool and inject results from tool
+        tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+        messages.append({"role": "user", "content": json.dumps(tool_result)})
     
-    # Set up experiment summary agent
-    summary_instruction = "Given the process of the experiment, you should use the tool call to summarize the experiment "
-    tool_reason, tool_name, tool_args, _ = experiment_agent.query(messages, summary_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    tool_result, _ = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+    param_seq = experiment_manager.get_param_sequence()
+    cost_seq = experiment_manager.get_cost_sequence()
+    summary_data = {
+        "QID": qid,
+        "is_converged": tool_result["is_converged"],
+        "times": len(param_seq),
+        "param_sequence": param_seq,
+        "accumulated_cost": experiment_manager.accumulated_cost,
+        "cost_sequence": cost_seq
+    }
+
     tool_df = experiment_manager.get_tool_call_df()
-    # Return final result (summary)
-    return tool_result, tool_df
+    return summary_data, tool_df
 """
 
 class oneD_HeatTransferDatasetGenerator(DatasetGenerator):

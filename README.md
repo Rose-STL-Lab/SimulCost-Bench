@@ -64,34 +64,34 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
 #### Outputs
 - Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
 
-## 🧐 Human Written Version
-### Generate Questions Or Use the Previous one
+<!-- ## 🧐 Human Written Version -->
+## 🕵️ Generate Questions
 ```bash
-python qs_gen/1D_heat_transfer.py -n 2 -t cfl
-python qs_gen/2D_heat_transfer.py -n 2 -t dx
+python qs_gen/1D_heat_transfer.py -n 10 -t cfl
+python qs_gen/2D_heat_transfer.py -n 10 -t dx
 ```
-#### Parameters:
+### Parameters:
 - n: int, number of example 
 - t: problem task
 - -z: zero-shot 
-#### Outpts:
+### Outputs:
 - output_file: data/heat_transfer/question.json
 
-### 🕵️ Generate the Dataset for Human Written Workflow and code
+## 🚀 Generate Benchmark Datasets
 ```bash
 python dataset_gen/oneD_heat_transfer.py -t cfl
 python dataset_gen/twoD_heat_transfer.py -t dx
 ```
-#### Parameters:
+### Parameters:
 - t: problem task
 - -z: zero-shot 
 
-### 🔍 Evaluate Model using test dataset
+## 🧠 Run Inference
 ```bash
-python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl
-python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet-20250219-v1:0 -d 2D_heat_transfer -t dx
+python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl
+python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx
 ```
-#### Parameters
+### Parameters
 - n: int, number of samples to test
 - p: str, LLM provider (openai, gemini, bedrock)
 - m: str, model name
@@ -100,32 +100,19 @@ python inference/langchain_LLM.py -n 2 -p bedrock -m anthropic.claude-3-7-sonnet
 - -z: zero-shot 
 <!-- - hv: bool, human written version -->
 
-### Models
+## 📊 Evaluate Models' Performance
+```bash
+python PYTHONPATH=$(pwd) evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx
+```
+### Parameters
+- m: str, model name
+- d: str, dataset name
+- t: problem task
+- -z: zero-shot 
+
+## 🤖 Models
 1. anthropic.claude-3-5-haiku-20241022-v1:0
 2. anthropic.claude-3-5-sonnet-20240620-v1:0
 3. anthropic.claude-3-7-sonnet-20250219-v1:0
 
-<!-- ### 📊 Generate Evaluation Report 
-```bash
-python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -t
-```
 
-#### Parameters
-- m: str, model name
-- d: str, dataset name
-- v: bool, using the result from validation dataset
-- t: bool, using the result from test dataset
-- g: int, the version of generated agent -->
-
-<!-- #### Outputs
-- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
-
-<!-- ## TODOs
-1. Error Handling Analysis:
-- Implement tracking for tool call failures
-- Add metrics for incomplete experiment
-2. Feedback for Current Agent:
-- Use results generated from current agent to LLMs for feedback generation to the agent for further improvement
-3. In-context Learning:
-- Generate valid example for LLMs 
-4. Span the domain of others dataset -->

@@ -1,0 +1,172 @@
+[
+    {
+        "QID": 1,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 2,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 3,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 4,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 5,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 6,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 7,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 8,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 9,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    },
+    {
+        "QID": 10,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "current_dx": 0.005,
+                "current_relax": 1.5,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 4040100000,
+        "cost_sequence": [
+            4040100000
+        ]
+    }
+]

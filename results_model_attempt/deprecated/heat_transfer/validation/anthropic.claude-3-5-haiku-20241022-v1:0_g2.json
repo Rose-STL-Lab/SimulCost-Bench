@@ -1,0 +1,35 @@
+[
+    {
+        "converged": false,
+        "times": 12,
+        "sequence": [
+            {
+                "n_space": 400,
+                "n_time": 400
+            }
+        ],
+        "accumulated_cost": 9975000
+    },
+    {
+        "converged": false,
+        "times": 12,
+        "sequence": [
+            {
+                "n_space": 200,
+                "n_time": 200
+            }
+        ],
+        "accumulated_cost": 14137500
+    },
+    {
+        "converged": false,
+        "times": 12,
+        "sequence": [
+            {
+                "n_space": 100,
+                "n_time": 100
+            }
+        ],
+        "accumulated_cost": 11025000
+    }
+]

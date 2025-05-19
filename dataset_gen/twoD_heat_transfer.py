@@ -16,7 +16,8 @@ Your goal is to select a value that is likely to converge, while also keeping th
 Please strike a balance between being too conservative and too aggressive:
 - If dx is too large, the process may fail to converge.
 - If it's too small, the cost may increase dramatically.
-The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You shouldn't change them.
+The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS dx!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
 Step 3: Respond using the final response format and make no further function calls.
@@ -27,7 +28,8 @@ The grid resolution determines the spatial discretization accuracy.
 A finer grid (smaller dx) provides more accurate solutions but increases computational cost.
 The convergence metric is the temperature distribution at the middle (vertical) line.
 Choose a reasonable value for dx, to find an optimal grid resolution.
-The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You shouldn't change them.
+The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS dx!
 Step 1: Estimate an initial fairly coarse choice of dx, as you will gradually refine the solution and check convergence.
 Step 2: Call the Convergence Test Function; check if converged.
 Step 3: If not converged, refine dx based on the trajectory of previous errors, and the distance to the convergence threshold.
@@ -43,7 +45,8 @@ Your goal is to select a value that is likely to converge, while also keeping th
 Please strike a balance between being too conservative and too aggressive:
 - If the error_threshold is too large, the process may fail to converge.
 - If it's too small, the cost may increase dramatically.
-The value of dx is 0.005, relax is 1.0, T_init is 0.25. You shouldn't change them.
+The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS error_threshold!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
 Step 3: Respond using the final response format and make no further function calls.
@@ -53,7 +56,8 @@ error_threshold_iterative_HUMAN_WORKFLOW = """
 The error threshold determines when to stop the Jacobi iteration process. 
 The convergence metric is the temperature distribution at the middle (vertical) line.
 Choose a reasonable value for error_threshold which is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, relax is 1.0, T_init is 0.25. You shouldn't change them.
+The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS error_threshold!
 Step 1: Estimate an initial fairly coarse choice of error_threshold, as you will gradually refine the solution and check convergence.
 Step 2: Call the Convergence Test Function; check if converged.
 Step 3: If not converged, refine error_threshold based on the trajectory of previous errors, and the distance to the convergence threshold.
@@ -69,7 +73,8 @@ Your goal is to select a value that is likely to converge, while also keeping th
 Please strike a balance between being too conservative and too aggressive:
 - If relax is too large, the process may fail to converge.
 - If it's too small, the cost may increase dramatically.
-The value of dx is 0.005, T_init is 0.25, error_threshold is 1e-7. You shouldn't change them.
+The value of dx is 0.005, T_init is 0.25, error_threshold is 1e-7. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS relax!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
 Step 3: Respond using the final response format and make no further function calls.
@@ -81,7 +86,8 @@ Note for t_init, a bad choice may lead to NAN/INFITY solution or unable to conve
 You have only one opportunity to choose an optimal value for t_init.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, relax is 1.0, error_threshold is 1e-7. You shouldn't change them.
+The value of dx is 0.005, relax is 1.0, error_threshold is 1e-7. You must not change them!
+THE ONLY CHANGABLE PARAMETER IS t_init!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
 Step 3: Respond using the final response format and make no further function calls.
@@ -91,10 +97,18 @@ zero_shot_HUMAN_CODE = """def forward(self, data: dict):
     # Extract input data
     messages = data["messages"]
     qid = data["QID"]
-    dummy_cost = data["dummy_cost"]
 
-    # Initialize experiment manager and state
-    experiment_manager = ToolCallManager(self.logger, qid, dummy_cost=dummy_cost)
+    # Initialize experiment manager
+    experiment_manager = ToolCallManager(
+        self.logger,
+        qid,
+        focused_parameters=[
+            "current_dx",
+            "current_relax",
+            "current_t_init",
+            "current_error_threshold"
+        ]
+    )
 
     # Set up experiment agent
     experiment_instruction = "Given the problem, you should use the tool call to run the experiment."
@@ -102,29 +116,55 @@ zero_shot_HUMAN_CODE = """def forward(self, data: dict):
     
     # Zero-Shot
     tool_reason, tool_name, tool_args = experiment_agent.query(messages, experiment_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    # Execute tool and inject results from tool
+    messages.append({
+        "role": "assistant",
+        "content": json.dumps({
+            "tool_reason": tool_reason,
+            "tool_name": tool_name,
+            "tool_args": tool_args
+        })
+    })
+
+    # Execute tool and inject results
     tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-    messages.append({"role": "user", "content": json.dumps(tool_result)})
-    
-    # Set up experiment summary agent
-    summary_instruction = "Given the process of the experiment, you should use the tool call to summarize the experiment "
-    tool_reason, tool_name, tool_args = experiment_agent.query(messages, summary_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    tool_result, _ = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+    messages.append({
+        "role": "user",
+        "content": json.dumps(tool_result)
+    })
+
+    # Collect true history from tool manager
+    param_seq = experiment_manager.get_param_sequence()
+    cost_seq = experiment_manager.get_cost_sequence()
+
+    summary_data = {
+        "QID": qid,
+        "is_converged": tool_result.get("is_converged", False),
+        "times": len(param_seq),
+        "param_sequence": param_seq,
+        "accumulated_cost": experiment_manager.accumulated_cost,
+        "cost_sequence": cost_seq
+    }
+
     tool_df = experiment_manager.get_tool_call_df()
-    # Return final result (summary)
-    return tool_result, tool_df
+    return summary_data, tool_df
 """
 
 iterative_HUMAN_CODE = """def forward(self, data: dict):
     # Extract input data
     messages = data["messages"]
     qid = data["QID"]
-    dummy_cost = data["dummy_cost"]
 
     # Initialize experiment manager and state
-    experiment_manager = ToolCallManager(self.logger, qid, dummy_cost=dummy_cost)
+    experiment_manager = ToolCallManager(
+        self.logger,
+        qid,
+        focused_parameters=[
+            "current_dx",
+            "current_relax",
+            "current_t_init",
+            "current_error_threshold"
+        ]
+    )
 
     # Set up experiment agent
     experiment_instruction = "Given the problem, you should use the tool call to run the experiment. When you think the experiment can be stopped, set should_stop to true, otherwise set it to false."
@@ -135,12 +175,8 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
         # Query agent for next action and inject query
         tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(messages, experiment_instruction)
         messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args, "should_stop": should_stop})})
-        # Execute tool and inject results from tool
-        tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-        messages.append({"role": "user", "content": json.dumps(tool_result)})
-
-        # Continue conversation if not in summary phase
-        print(f"should_stop: {should_stop}")
+        
+        self.logger.info(f"should_stop: {should_stop}")
         if isinstance(should_stop, bool):
             stop_flag = should_stop
         else:
@@ -148,15 +184,24 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
 
         if stop_flag:
             break
+        
+        # Execute tool and inject results from tool
+        tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+        messages.append({"role": "user", "content": json.dumps(tool_result)})
     
-    # Set up experiment summary agent
-    summary_instruction = "Given the process of the experiment, you should use the tool call to summarize the experiment "
-    tool_reason, tool_name, tool_args, _ = experiment_agent.query(messages, summary_instruction)
-    messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args})})
-    tool_result, _ = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
+    param_seq = experiment_manager.get_param_sequence()
+    cost_seq = experiment_manager.get_cost_sequence()
+    summary_data = {
+        "QID": qid,
+        "is_converged": tool_result["is_converged"],
+        "times": len(param_seq),
+        "param_sequence": param_seq,
+        "accumulated_cost": experiment_manager.accumulated_cost,
+        "cost_sequence": cost_seq
+    }
+
     tool_df = experiment_manager.get_tool_call_df()
-    # Return final result (summary)
-    return tool_result, tool_df
+    return summary_data, tool_df
 """
 
 class twoD_HeatTransferDatasetGenerator(DatasetGenerator):

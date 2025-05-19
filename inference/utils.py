@@ -7,8 +7,9 @@ import json
 from tool_call import *
 from typing import List, Dict, Any, Tuple
 import pandas as pd
-
 import numpy as np
+from logging import LoggerAdapter
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (np.integer, np.floating, np.bool_)):
@@ -25,7 +26,17 @@ def setup_logging(filename: str = None) -> logging.Logger:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter('%(levelname)s - %(asctime)s - %(message)s')
+    formatter = logging.Formatter(
+        '[%(levelname)s %(asctime)s] QID=%(qid)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    class QIDFilter(logging.Filter):
+        """给没有 qid 字段的 LogRecord 自动补 '-'，保证 formatter 不报错"""
+        def filter(self, record):
+            if not hasattr(record, 'qid'):
+                record.qid = '-'
+            return True
 
     # Create filters
     class ConsoleFilter(logging.Filter):
@@ -40,6 +51,7 @@ def setup_logging(filename: str = None) -> logging.Logger:
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     console_handler.addFilter(ConsoleFilter())
+    console_handler.addFilter(QIDFilter())
     logger.addHandler(console_handler)
 
     # File handler with filter
@@ -47,6 +59,7 @@ def setup_logging(filename: str = None) -> logging.Logger:
         file_handler = logging.FileHandler(filename)
         file_handler.setFormatter(formatter)
         file_handler.addFilter(FileFilter())
+        file_handler.addFilter(QIDFilter())
         logger.addHandler(file_handler)
 
     return logger
@@ -70,14 +83,16 @@ def find_json(response: str) -> Dict[str, Any]:
         return {"error": error_msg}
 
 class ToolCallManager:
-    def __init__(self, logger: logging.Logger, qid: int, focused_parameters: List[str] = None, dummy_cost: int = 100):
-        self.logger = logger
+    def __init__(self, base_logger: logging.Logger, qid: int,
+                 focused_parameters: List[str] = None):
+        self.logger = LoggerAdapter(base_logger, {'qid': qid})
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
         self.focused_parameters = focused_parameters
         self.qid = qid
+        self.param_sequence = []
+        self.cost_sequence  = [] 
         self.accumulated_cost = 0
-        self.dummy_cost = dummy_cost
 
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], qid: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
@@ -88,35 +103,21 @@ class ToolCallManager:
                     {"tool_reason": tool_reason,
                      "tool_name": tool_name,
                      "tool_args": tool_args},
-                    cls=NumpyEncoder
+                    cls=NumpyEncoder,
+                    indent=2
                 )
             )
 
             func = globals()[tool_name]
             profile = f"p{qid}"
-            # print("tool_args: ", tool_args)
-            # print("accumulated_cost: ", self.accumulated_cost)
-            # print("profile: ", profile)
 
-            if tool_name == "get_heat_transfer_exp_summary":
-                result = func(
-                    **tool_args,
-                    qid=qid,
-                    accumulated_cost=self.accumulated_cost
-                )
-            elif tool_name in ["check_converge_cfl", "check_converge_n_space"]:
+            if tool_name in ["check_converge_cfl", "check_converge_n_space"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
                     current_n_space=tool_args["n_space"],
                     current_cfl=tool_args["cfl"],
                     tolerance=1e-4
-                )
-            elif tool_name == "get_twoD_heat_transfer_exp_summary":
-                result = func(
-                    **tool_args,
-                    qid=qid,
-                    accumulated_cost=self.accumulated_cost
                 )
             elif tool_name in ["check_converge_dx", "check_converge_relax", "check_converge_t_init", "check_converge_error_threshold"]:
                 result = func(
@@ -129,8 +130,13 @@ class ToolCallManager:
                     tolerance=1e-3
                 )
 
+            prev_cost = self.accumulated_cost
             self.accumulated_cost = result['accumulated_cost']
-            self.logger.info(f"Tool call result: {json.dumps(result, cls=NumpyEncoder)}")
+
+            step_cost = self.accumulated_cost - prev_cost
+            self.cost_sequence.append(step_cost)
+
+            self.logger.info(f"Tool call result: {json.dumps(result, cls=NumpyEncoder, indent=2)}")
             if not tool_name.endswith('summary'):
                 self._record_tool_call(tool_name, tool_args, tool_reason, result)
 
@@ -165,6 +171,9 @@ class ToolCallManager:
             new_row = pd.DataFrame([row_data])    
             self.tool_call_df = pd.concat([self.tool_call_df, new_row], ignore_index=True)
 
+            if not tool_name.endswith("summary"):           # 过滤掉总结类工具
+                self.param_sequence.append(focus_args)      # focus_args 已只保留关心的字段
+
         except Exception as e:
             self.logger.error(f"Error recording tool call: {str(e)}")
     
@@ -173,6 +182,12 @@ class ToolCallManager:
         if self.tool_call_df.empty:
             return pd.DataFrame(columns=['qid', 'step', 'tool_name', 'parameters'])
         return self.tool_call_df
+    
+    def get_param_sequence(self) -> List[Dict[str, Any]]:
+        return self.param_sequence
+    
+    def get_cost_sequence(self) -> List[int]:
+        return self.cost_sequence
 
 def add_example_data(dataset: List[Dict], example_data: List[Dict]):
     example = example_data[1]["messages"]

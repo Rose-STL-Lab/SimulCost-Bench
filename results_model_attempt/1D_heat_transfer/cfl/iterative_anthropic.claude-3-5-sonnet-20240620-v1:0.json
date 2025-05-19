@@ -1,0 +1,242 @@
+[
+    {
+        "QID": 2,
+        "converged": true,
+        "times": 1,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            }
+        ],
+        "accumulated_cost": 118776
+    },
+    {
+        "QID": 1,
+        "converged": true,
+        "times": 6,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.8
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.3
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.2
+            }
+        ],
+        "accumulated_cost": 242400
+    },
+    {
+        "QID": 4,
+        "converged": true,
+        "times": 1,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            }
+        ],
+        "accumulated_cost": 104232
+    },
+    {
+        "QID": 5,
+        "converged": true,
+        "times": 5,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 1.0
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.25
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.1
+            }
+        ],
+        "accumulated_cost": 252096
+    },
+    {
+        "QID": 3,
+        "converged": false,
+        "times": 10,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 1.0
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.55
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.58
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.59
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.575
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.5725
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.5725
+            }
+        ],
+        "accumulated_cost": 150288
+    },
+    {
+        "QID": 7,
+        "converged": true,
+        "times": 4,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 1.0
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            }
+        ],
+        "accumulated_cost": 244824
+    },
+    {
+        "QID": 6,
+        "converged": true,
+        "times": 4,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            }
+        ],
+        "accumulated_cost": 249672
+    },
+    {
+        "QID": 9,
+        "converged": true,
+        "times": 1,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            }
+        ],
+        "accumulated_cost": 92112
+    },
+    {
+        "QID": 8,
+        "converged": true,
+        "times": 2,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            }
+        ],
+        "accumulated_cost": 458136
+    },
+    {
+        "QID": 10,
+        "converged": true,
+        "times": 6,
+        "sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.8
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.3
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.2
+            }
+        ],
+        "accumulated_cost": 264216
+    }
+]

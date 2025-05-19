@@ -25,7 +25,7 @@ def check_converge_dx(*, accumulated_cost: int, profile: str,
         print(f"No convergence between dx {current_dx} and {refine}")
 
     return {
-        "Error_RMSE": round(rmse, 6),
+        "RMSE": round(rmse, 6),
         "is_converged": bool(is_converged),
         "accumulated_cost": accumulated_cost,
     }
@@ -55,7 +55,7 @@ def check_converge_error_threshold(*, accumulated_cost: int, profile: str,
         print(f"No convergence between error_threshold {current_error_threshold} and {refine}")
 
     return {
-        "Error_RMSE": round(rmse, 6),
+        "RMSE": round(rmse, 6),
         "is_converged": bool(is_converged),
         "accumulated_cost": accumulated_cost,
     }
@@ -67,24 +67,22 @@ def check_converge_relax(*, accumulated_cost: int, profile: str,
     """Perform grid search for optimal relaxation factor."""
     print(f"\nRunning simulation with relax = {current_relax}")
 
-    if current_relax > 1.0 or current_relax < 0.05:
-        print(f"Relaxation factor {current_relax} is out of range.")
-        accumulated_cost += 15000000000
-        return {
-            "Error_RMSE": float('inf'),
-            "is_converged": False,
-            "accumulated_cost": accumulated_cost,
-        }
-
     # Run simulation and load results
     accumulated_cost += run_sim_heat_steady_2d(profile=profile, dx=current_dx, relax=current_relax, 
                                                t_init=current_t_init, error_threshold=current_error_threshold)
 
+    if current_relax > 1.0 or current_relax < 0.05:
+        print(f"Relaxation factor {current_relax} is out of range.")
+        return {
+            "RMSE": 0.0,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost,
+        }
 
     print(f"Convergence achieved with relax = {current_relax}")
-
+    
     return {
-        "Error_RMSE": 0.0,
+        "RMSE": 0.0,
         "is_converged": True,
         "accumulated_cost": accumulated_cost,
     }
@@ -100,7 +98,7 @@ def check_converge_t_init(*, accumulated_cost: int, profile: str,
     print(f"Convergence achieved with t_init = {current_t_init}")
 
     return {
-        "Error_RMSE": 0.0,
+        "RMSE": 0.0,
         "is_converged": True,
         "accumulated_cost": accumulated_cost,
     }
