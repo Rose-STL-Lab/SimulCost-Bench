@@ -26,3 +26,7 @@ tool_result/
 !**/README.md
 **/*.yaml
 **/sim_res/*
+
+eval_results
+log_model_tool_call
+results_model_attempt

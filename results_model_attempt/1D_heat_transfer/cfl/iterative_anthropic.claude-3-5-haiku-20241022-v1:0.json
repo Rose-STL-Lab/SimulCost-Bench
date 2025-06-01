@@ -1,21 +1,9 @@
 [
     {
-        "QID": 2,
-        "converged": true,
-        "times": 1,
-        "sequence": [
-            {
-                "n_space": 100,
-                "cfl": 0.5
-            }
-        ],
-        "accumulated_cost": 118776
-    },
-    {
         "QID": 1,
-        "converged": false,
+        "is_converged": false,
         "times": 8,
-        "sequence": [
+        "param_sequence": [
             {
                 "n_space": 100,
                 "cfl": 0.5
@@ -34,68 +22,53 @@
             },
             {
                 "n_space": 100,
-                "cfl": 0.5
-            },
-            {
-                "n_space": 100,
                 "cfl": 0.55
             },
             {
                 "n_space": 100,
-                "cfl": 0.5
+                "cfl": 0.52
             },
             {
                 "n_space": 100,
                 "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.51
             }
         ],
-        "accumulated_cost": 189072
+        "accumulated_cost": 218160,
+        "cost_sequence": [
+            31512,
+            16968,
+            21816,
+            26664,
+            29088,
+            29088,
+            31512,
+            31512
+        ]
     },
     {
-        "QID": 4,
-        "converged": true,
+        "QID": 2,
+        "is_converged": true,
         "times": 1,
-        "sequence": [
+        "param_sequence": [
             {
                 "n_space": 100,
                 "cfl": 0.5
             }
         ],
-        "accumulated_cost": 104232
-    },
-    {
-        "QID": 5,
-        "converged": true,
-        "times": 6,
-        "sequence": [
-            {
-                "n_space": 100,
-                "cfl": 0.5
-            },
-            {
-                "n_space": 100,
-                "cfl": 1.0
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.75
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.25
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.125
-            }
-        ],
-        "accumulated_cost": 225432
+        "accumulated_cost": 118776,
+        "cost_sequence": [
+            118776
+        ]
     },
     {
         "QID": 3,
-        "converged": false,
-        "times": 10,
-        "sequence": [
+        "is_converged": false,
+        "times": 8,
+        "param_sequence": [
             {
                 "n_space": 100,
                 "cfl": 0.5
@@ -115,30 +88,113 @@
             {
                 "n_space": 100,
                 "cfl": 0.55
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.65
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.57
             },
             {
                 "n_space": 100,
                 "cfl": 0.53
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.52
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.51
             }
         ],
-        "accumulated_cost": 135744
+        "accumulated_cost": 140592,
+        "cost_sequence": [
+            19392,
+            12120,
+            14544,
+            16968,
+            19392,
+            19392,
+            19392,
+            19392
+        ]
     },
     {
-        "QID": 6,
-        "converged": true,
-        "times": 3,
-        "sequence": [
+        "QID": 4,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
             {
                 "n_space": 100,
                 "cfl": 0.5
+            }
+        ],
+        "accumulated_cost": 104232,
+        "cost_sequence": [
+            104232
+        ]
+    },
+    {
+        "QID": 5,
+        "is_converged": false,
+        "times": 8,
+        "param_sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 1.0
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.75
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.3
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.2
+            }
+        ],
+        "accumulated_cost": 264216,
+        "cost_sequence": [
+            29088,
+            14544,
+            19392,
+            24240,
+            29088,
+            33936,
+            46056,
+            67872
+        ]
+    },
+    {
+        "QID": 6,
+        "is_converged": true,
+        "times": 7,
+        "param_sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.8
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
             },
             {
                 "n_space": 100,
@@ -146,48 +202,33 @@
             },
             {
                 "n_space": 100,
-                "cfl": 0.4
-            }
-        ],
-        "accumulated_cost": 196344
-    },
-    {
-        "QID": 8,
-        "converged": true,
-        "times": 2,
-        "sequence": [
+                "cfl": 0.55
+            },
             {
                 "n_space": 100,
                 "cfl": 0.5
             },
             {
                 "n_space": 100,
-                "cfl": 1.0
+                "cfl": 0.45
             }
         ],
-        "accumulated_cost": 412080
-    },
-    {
-        "QID": 9,
-        "converged": true,
-        "times": 1,
-        "sequence": [
-            {
-                "n_space": 100,
-                "cfl": 0.5
-            }
-        ],
-        "accumulated_cost": 92112
+        "accumulated_cost": 412080,
+        "cost_sequence": [
+            65448,
+            43632,
+            55752,
+            48480,
+            60600,
+            65448,
+            72720
+        ]
     },
     {
         "QID": 7,
-        "converged": false,
-        "times": 10,
-        "sequence": [
-            {
-                "n_space": 100,
-                "cfl": 0.1
-            },
+        "is_converged": false,
+        "times": 8,
+        "param_sequence": [
             {
                 "n_space": 100,
                 "cfl": 0.5
@@ -195,42 +236,6 @@
             {
                 "n_space": 100,
                 "cfl": 1.0
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.75
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.6
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.65
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.55
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.6
-            },
-            {
-                "n_space": 100,
-                "cfl": 0.55
-            }
-        ],
-        "accumulated_cost": 809616
-    },
-    {
-        "QID": 10,
-        "converged": false,
-        "times": 10,
-        "sequence": [
-            {
-                "n_space": 100,
-                "cfl": 0.5
             },
             {
                 "n_space": 100,
@@ -254,13 +259,99 @@
             },
             {
                 "n_space": 100,
-                "cfl": 0.57
-            },
-            {
-                "n_space": 100,
                 "cfl": 0.56
             }
         ],
-        "accumulated_cost": 235128
+        "accumulated_cost": 460560,
+        "cost_sequence": [
+            70296,
+            36360,
+            48480,
+            60600,
+            55752,
+            65448,
+            60600,
+            63024
+        ]
+    },
+    {
+        "QID": 8,
+        "is_converged": true,
+        "times": 2,
+        "param_sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.8
+            }
+        ],
+        "accumulated_cost": 446016,
+        "cost_sequence": [
+            273912,
+            172104
+        ]
+    },
+    {
+        "QID": 9,
+        "is_converged": true,
+        "times": 1,
+        "param_sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            }
+        ],
+        "accumulated_cost": 92112,
+        "cost_sequence": [
+            92112
+        ]
+    },
+    {
+        "QID": 10,
+        "is_converged": true,
+        "times": 7,
+        "param_sequence": [
+            {
+                "n_space": 100,
+                "cfl": 0.5
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.8
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.6
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.7
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.4
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.3
+            },
+            {
+                "n_space": 100,
+                "cfl": 0.2
+            }
+        ],
+        "accumulated_cost": 288456,
+        "cost_sequence": [
+            33936,
+            21816,
+            29088,
+            24240,
+            41208,
+            55752,
+            82416
+        ]
     }
 ]

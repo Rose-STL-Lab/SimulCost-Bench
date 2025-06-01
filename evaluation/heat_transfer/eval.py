@@ -43,22 +43,22 @@ def evaluate(
     log_file    = f"{log_dir}/{flag}_{model_name}.log"
 
     logger = setup_logging(log_file)
-    logger.info(f"Loading model results from {result_path}")
-    logger.info(f"Loading dummy solutions from {dummy_path}")
+    logger.info(f"✅ Loading model results from {result_path}")
+    logger.info(f"✅ Loading dummy solutions from {dummy_path}")
 
     # ---------- 读文件 ----------
     try:
         with open(result_path, "r") as f:
             result_dataset: List[Dict] = json.load(f)
     except FileNotFoundError:
-        logger.error(f"Result file not found: {result_path}")
+        logger.error(f"❌ Result file not found: {result_path}")
         raise
 
     try:
         with open(dummy_path, "r") as f:
             dummy_dataset: List[Dict] = json.load(f)
     except FileNotFoundError:
-        logger.error(f"Dummy file not found: {dummy_path}")
+        logger.error(f"❌ Dummy file not found: {dummy_path}")
         raise
 
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
@@ -67,11 +67,12 @@ def evaluate(
     total_model_cost = total_dummy_cost = 0.0
     success_cnt = 0
     converged_valid = converged_cnt = evaluated = 0
+    total_error = 0.0
 
     for res in result_dataset:
         qid = res.get("QID")
         if qid is None or qid not in dummy_by_qid:
-            logger.warning(f"Skip entry without valid QID: {res}")
+            logger.warning(f"⚠️ Skip entry without valid QID: {res}")
             continue
 
         dummy = dummy_by_qid[qid]
@@ -93,17 +94,19 @@ def evaluate(
 
         # -------- 成功判定 --------
         if dataset == "1D_heat_transfer":
-            success, _ = compare_res_heat_1d(
+            tolerance = 1e-4
+            success, error = compare_res_heat_1d(
                 profile1=dummy["profile"],
                 cfl1=_fetch_param(last_iter, "cfl", "current_cfl"),
                 n_space1=_fetch_param(last_iter, "n_space", "current_n_space"),
                 profile2=dummy["profile"],
                 cfl2=ref_iter["cfl"],
                 n_space2=ref_iter["n_space"],
-                tolerance=1e-4,
+                tolerance=tolerance,
             )
         elif dataset == "2D_heat_transfer":
-            success, _ = compare_res_heat_steady_2d(
+            tolerance = 1e-3
+            success, error = compare_res_heat_steady_2d(
                 profile1=dummy["profile"],
                 dx1=_fetch_param(last_iter, "dx", "current_dx"),
                 relax1=_fetch_param(last_iter, "relax", "current_relax"),
@@ -116,7 +119,7 @@ def evaluate(
                 relax2=ref_iter["relax"],
                 error_threshold2=ref_iter["error_threshold"],
                 t_init2=ref_iter.get("t_init", ref_iter.get("T_init")),
-                tolerance=1e-3,
+                tolerance=tolerance,
             )
         else:
             raise ValueError(f"Unsupported dataset type: {dataset}")
@@ -127,10 +130,19 @@ def evaluate(
         success_cnt += int(success)
         converged_valid += 1
         converged_cnt += int(converged)
+        total_error += error
 
         logger.info(
-            f"QID={qid} | success={success} | converged={converged} | "
-            f"model_cost={cost} | dummy_cost={dummy['dummy_cost']}"
+            f"\n📊 --- Evaluation Result ---\n"
+            f"🆔 QID: {qid}\n"
+            f"🔄 Converged: {converged}\n"
+            f"🎯 Success: {success}\n"
+            f"💰 Model Cost: {cost}\n"
+            f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
+            f"📉 Error (model vs. dummy): {error}\n"
+            f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
+            f"📌 Dummy Parameters:\n{json.dumps(ref_iter, indent=2, cls=NumpyEncoder)}\n"
+            f"------------------------------"
         )
 
     # ---------- 汇总 ----------
@@ -139,20 +151,23 @@ def evaluate(
     model_cost_eff = success_cnt / total_model_cost if total_model_cost else 0.0
     dummy_cost_eff = evaluated / total_dummy_cost if total_dummy_cost else 0.0
     relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
+    mean_error = total_error / evaluated if evaluated else 0.0
 
     metrics = {
         "converged_rate (converge does not guarantee success)": converged_rate,
         "success_rate": success_rate,
         "model_cost_efficiency": model_cost_eff,
         "dummy_cost_efficiency": dummy_cost_eff,
-        "relative_cost_efficiency": round(relative_eff, 3),
+        "relative_cost_efficiency": f"{relative_eff:.3f}",
+        "mean_error (model vs. dummy)": f"{mean_error:.2e}",
+        "tolerance": f"{tolerance:.2e}",
     }
 
     for k in ["model_cost_efficiency", "dummy_cost_efficiency"]:
         if k in metrics:
             metrics[k] = f"{metrics[k]:.2e}"
 
-    logger.info("Evaluation summary:\n" + json.dumps(metrics, indent=2))
+    logger.info("🧾 Evaluation summary:\n" + json.dumps(metrics, indent=2))
 
     return metrics
 

@@ -4,7 +4,7 @@
             "type": "function",
             "function": {
                 "name": "check_converge_dx",
-                "description": "Conduct a 2D heat transfer PDE simulation and evaluate its dx convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"Error_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int}.",
+                "description": "Conduct a 2D heat transfer PDE simulation and evaluate its dx convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"Error_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The number of iterations the solver will perform to simulate the environment based on the parameters you have given\": int, \"The number of iterations the solver will try to verify convergence based on the parameters you have given\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
                 "parameters": {
                     "type": "object",
                     "properties": {

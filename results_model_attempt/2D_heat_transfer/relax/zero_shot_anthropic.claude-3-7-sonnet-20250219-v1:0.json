@@ -6,7 +6,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.2,
+                "current_relax": 1.85,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
@@ -23,7 +23,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.7,
+                "current_relax": 1.8,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
@@ -57,7 +57,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.8,
+                "current_relax": 1.85,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
@@ -74,7 +74,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.8,
+                "current_relax": 1.7,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
@@ -91,7 +91,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.7,
+                "current_relax": 1.5,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
@@ -142,7 +142,7 @@
         "param_sequence": [
             {
                 "current_dx": 0.005,
-                "current_relax": 1.7,
+                "current_relax": 1.8,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }

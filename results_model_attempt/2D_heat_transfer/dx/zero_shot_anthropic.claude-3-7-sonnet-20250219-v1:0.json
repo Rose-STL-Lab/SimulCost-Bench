@@ -5,15 +5,15 @@
         "times": 1,
         "param_sequence": [
             {
-                "current_dx": 0.01,
+                "current_dx": 0.025,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 63093185,
+        "accumulated_cost": 2059225,
         "cost_sequence": [
-            63093185
+            2059225
         ]
     },
     {
@@ -22,15 +22,15 @@
         "times": 1,
         "param_sequence": [
             {
-                "current_dx": 0.05,
+                "current_dx": 0.02,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 379701,
+        "accumulated_cost": 11730510,
         "cost_sequence": [
-            379701
+            11730510
         ]
     },
     {
@@ -56,15 +56,15 @@
         "times": 1,
         "param_sequence": [
             {
-                "current_dx": 0.01,
+                "current_dx": 0.02,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 151546056,
+        "accumulated_cost": 11379375,
         "cost_sequence": [
-            151546056
+            11379375
         ]
     },
     {
@@ -90,15 +90,15 @@
         "times": 1,
         "param_sequence": [
             {
-                "current_dx": 0.025,
+                "current_dx": 0.02,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 4429435,
+        "accumulated_cost": 10167309,
         "cost_sequence": [
-            4429435
+            10167309
         ]
     },
     {

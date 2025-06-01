@@ -143,13 +143,13 @@
             {
                 "current_dx": 0.005,
                 "current_relax": 1.0,
-                "current_t_init": 0.355,
+                "current_t_init": 0.32,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 772386318,
+        "accumulated_cost": 1180436418,
         "cost_sequence": [
-            772386318
+            1180436418
         ]
     },
     {

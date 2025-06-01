@@ -1,8 +1,88 @@
 [
     {
         "QID": 1,
+        "is_converged": false,
+        "times": 10,
+        "param_sequence": [
+            {
+                "current_dx": 0.05,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.075,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.06,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.07,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.08,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.09,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.085,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.082,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.084,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 398425,
+        "cost_sequence": [
+            153468,
+            11616,
+            30772,
+            66759,
+            40500,
+            22815,
+            16560,
+            16560,
+            22815,
+            16560
+        ]
+    },
+    {
+        "QID": 2,
         "is_converged": true,
-        "times": 2,
+        "times": 9,
         "param_sequence": [
             {
                 "current_dx": 0.1,
@@ -11,33 +91,65 @@
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.05,
+                "current_dx": 0.15,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
-            }
-        ],
-        "accumulated_cost": 165084,
-        "cost_sequence": [
-            11616,
-            153468
-        ]
-    },
-    {
-        "QID": 2,
-        "is_converged": true,
-        "times": 1,
-        "param_sequence": [
+            },
             {
-                "current_dx": 0.05,
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.135,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.127,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1225,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.124,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 379701,
+        "accumulated_cost": 103381,
         "cost_sequence": [
-            379701
+            29040,
+            4459,
+            12798,
+            7872,
+            7872,
+            7872,
+            7872,
+            12798,
+            12798
         ]
     },
     {
@@ -45,12 +157,6 @@
         "is_converged": false,
         "times": 9,
         "param_sequence": [
-            {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
             {
                 "current_dx": 0.1,
                 "current_relax": 1.0,
@@ -71,6 +177,73 @@
             },
             {
                 "current_dx": 0.14,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.12,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.124,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.127,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 87401,
+        "cost_sequence": [
+            24442,
+            3773,
+            10854,
+            6656,
+            6656,
+            10854,
+            10854,
+            6656,
+            6656
+        ]
+    },
+    {
+        "QID": 4,
+        "is_converged": false,
+        "times": 7,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
@@ -100,55 +273,24 @@
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 383254,
+        "accumulated_cost": 76039,
         "cost_sequence": [
-            310905,
-            24442,
-            3773,
-            10854,
-            6656,
-            6656,
-            6656,
-            6656,
-            6656
-        ]
-    },
-    {
-        "QID": 4,
-        "is_converged": true,
-        "times": 1,
-        "param_sequence": [
-            {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            }
-        ],
-        "accumulated_cost": 371763,
-        "cost_sequence": [
-            371763
+            28435,
+            4410,
+            12474,
+            7680,
+            7680,
+            7680,
+            7680
         ]
     },
     {
         "QID": 5,
-        "is_converged": false,
-        "times": 7,
+        "is_converged": true,
+        "times": 6,
         "param_sequence": [
             {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
                 "current_dx": 0.1,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.15,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
@@ -172,36 +314,35 @@
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.102,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            }
-        ],
-        "accumulated_cost": 420403,
-        "cost_sequence": [
-            327663,
-            25531,
-            3969,
-            11340,
-            17300,
-            17300,
-            17300
-        ]
-    },
-    {
-        "QID": 6,
-        "is_converged": false,
-        "times": 9,
-        "param_sequence": [
-            {
-                "current_dx": 0.1,
+                "current_dx": 0.095,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.125,
+                "current_dx": 0.0975,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 122533,
+        "cost_sequence": [
+            25531,
+            11340,
+            17300,
+            17300,
+            25531,
+            25531
+        ]
+    },
+    {
+        "QID": 6,
+        "is_converged": false,
+        "times": 10,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
@@ -213,7 +354,7 @@
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.12,
+                "current_dx": 0.125,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
@@ -231,138 +372,55 @@
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.115,
+                "current_dx": 0.128,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.11,
+                "current_dx": 0.126,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.09,
+                "current_dx": 0.1255,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1252,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125001,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 134377,
+        "accumulated_cost": 91635,
         "cost_sequence": [
             26257,
-            11583,
             4067,
             11583,
             7104,
             7104,
-            11583,
-            17800,
-            37296
+            7104,
+            7104,
+            7104,
+            7104,
+            7104
         ]
     },
     {
         "QID": 7,
         "is_converged": true,
-        "times": 1,
-        "param_sequence": [
-            {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            }
-        ],
-        "accumulated_cost": 328986,
-        "cost_sequence": [
-            328986
-        ]
-    },
-    {
-        "QID": 8,
-        "is_converged": false,
         "times": 9,
         "param_sequence": [
-            {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.075,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.06,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.055,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.0575,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.0565,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.0555,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.056,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
-            {
-                "current_dx": 0.05575,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            }
-        ],
-        "accumulated_cost": 1861592,
-        "cost_sequence": [
-            359856,
-            72520,
-            156638,
-            242953,
-            196668,
-            196668,
-            242953,
-            196668,
-            196668
-        ]
-    },
-    {
-        "QID": 9,
-        "is_converged": false,
-        "times": 9,
-        "param_sequence": [
-            {
-                "current_dx": 0.05,
-                "current_relax": 1.0,
-                "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
-            },
             {
                 "current_dx": 0.1,
                 "current_relax": 1.0,
@@ -382,7 +440,147 @@
                 "current_error_threshold": 1e-07
             },
             {
-                "current_dx": 0.14,
+                "current_dx": 0.135,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1275,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1255,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 87060,
+        "cost_sequence": [
+            25531,
+            3969,
+            11340,
+            6976,
+            6976,
+            6976,
+            6976,
+            6976,
+            11340
+        ]
+    },
+    {
+        "QID": 8,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.135,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.13,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1275,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.126,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1255,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1251,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            }
+        ],
+        "accumulated_cost": 89010,
+        "cost_sequence": [
+            27588,
+            4263,
+            12231,
+            7488,
+            7488,
+            7488,
+            7488,
+            7488,
+            7488
+        ]
+    },
+    {
+        "QID": 9,
+        "is_converged": false,
+        "times": 9,
+        "param_sequence": [
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
@@ -410,11 +608,22 @@
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1255,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 405187,
+        "accumulated_cost": 87019,
         "cost_sequence": [
-            329427,
             25652,
             3969,
             11259,
@@ -422,24 +631,88 @@
             6976,
             6976,
             6976,
+            11259,
             6976
         ]
     },
     {
         "QID": 10,
         "is_converged": true,
-        "times": 1,
+        "times": 10,
         "param_sequence": [
             {
-                "current_dx": 0.05,
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.15,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.125,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.08,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.1,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.09,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.095,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.098,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.099,
+                "current_relax": 1.0,
+                "current_t_init": 0.25,
+                "current_error_threshold": 1e-07
+            },
+            {
+                "current_dx": 0.0975,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
                 "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 384111,
+        "accumulated_cost": 292025,
         "cost_sequence": [
-            384111
+            29282,
+            4459,
+            12798,
+            57460,
+            29282,
+            41616,
+            29282,
+            29282,
+            29282,
+            29282
         ]
     }
 ]

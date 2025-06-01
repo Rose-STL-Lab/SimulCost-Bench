@@ -18,19 +18,19 @@
     },
     {
         "QID": 2,
-        "is_converged": false,
+        "is_converged": true,
         "times": 1,
         "param_sequence": [
             {
                 "current_dx": 0.005,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
-                "current_error_threshold": 1e-06
+                "current_error_threshold": 1e-07
             }
         ],
-        "accumulated_cost": 1217201328,
+        "accumulated_cost": 2016777519,
         "cost_sequence": [
-            1217201328
+            2016777519
         ]
     },
     {
@@ -52,19 +52,19 @@
     },
     {
         "QID": 4,
-        "is_converged": true,
+        "is_converged": false,
         "times": 1,
         "param_sequence": [
             {
                 "current_dx": 0.005,
                 "current_relax": 1.0,
                 "current_t_init": 0.25,
-                "current_error_threshold": 1e-07
+                "current_error_threshold": 1e-05
             }
         ],
-        "accumulated_cost": 1937349153,
+        "accumulated_cost": 393788547,
         "cost_sequence": [
-            1937349153
+            393788547
         ]
     },
     {

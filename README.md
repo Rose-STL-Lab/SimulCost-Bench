@@ -64,11 +64,34 @@ python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
 #### Outputs
 - Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
 
+## 📋 Tasks and Zero-Shot
+
+The table below summarizes the available tasks for each problem type and indicates whether each task supports zero-shot inference.
+
+| Problem Type             | Task Type        | Iterative & Zero-Shot |
+|--------------------------|------------------|--------------------|
+| 1D Heat Transfer         | `cfl`            | ✅ Supported        |
+| 1D Heat Transfer         | `n_space`        | ✅ Supported        |
+| 2D Steady Heat Transfer  | `dx`             | ✅ Supported        |
+| 2D Steady Heat Transfer  | `error_threshold`| ✅ Supported        |
+| 2D Steady Heat Transfer  | `relax`          | ❌ Only Zero-Shot   |
+| 2D Steady Heat Transfer  | `t_init`         | ❌ Only Zero-Shot   |
+| 1D Burgers               | `cfl`            | ✅ Supported        |
+| 1D Burgers               | `k`              | ✅ Supported (Mix)  |
+| 1D Burgers               | `w`              | ✅ Supported (Mix)  |
+
+
 <!-- ## 🧐 Human Written Version -->
 ## 🕵️ Generate Questions
 ```bash
-python qs_gen/1D_heat_transfer.py -n 10 -t cfl
-python qs_gen/2D_heat_transfer.py -n 10 -t dx
+# 1D Heat Transfer
+python qs_gen/1D_heat_transfer.py -n 10 -t cfl -z
+
+# 2D Steady Heat Transfer
+python qs_gen/2D_heat_transfer.py -n 10 -t dx -z
+
+# Burgers 1D Equation with 2nd Order Roe Method
+python qs_gen/1D_burgers.py -t cfl -z
 ```
 ### Parameters:
 - n: int, number of example 
@@ -79,8 +102,11 @@ python qs_gen/2D_heat_transfer.py -n 10 -t dx
 
 ## 🚀 Generate Benchmark Datasets
 ```bash
-python dataset_gen/oneD_heat_transfer.py -t cfl
-python dataset_gen/twoD_heat_transfer.py -t dx
+# 1D Heat Transfer
+python dataset_gen/oneD_heat_transfer.py -t cfl -z
+
+# 2D Steady Heat Transfer
+python dataset_gen/twoD_heat_transfer.py -t dx -z
 ```
 ### Parameters:
 - t: problem task
@@ -88,12 +114,15 @@ python dataset_gen/twoD_heat_transfer.py -t dx
 
 ## 🧠 Run Inference
 ```bash
-python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl
-python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx
+# 1D Heat Transfer
+python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+
+# 2D Steady Heat Transfer
+python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
 ```
 ### Parameters
 - n: int, number of samples to test
-- p: str, LLM provider (openai, gemini, bedrock)
+- p: str, LLMs provider (openai, gemini, bedrock)
 - m: str, model name
 - d: str, dataset name
 - t: problem task
@@ -102,7 +131,11 @@ python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku
 
 ## 📊 Evaluate Models' Performance
 ```bash
-python PYTHONPATH=$(pwd) evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx
+# 1D Heat Transfer
+PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+
+# 2D Steady Heat Transfer
+PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
 ```
 ### Parameters
 - m: str, model name
@@ -114,5 +147,3 @@ python PYTHONPATH=$(pwd) evaluation/heat_transfer/eval.py -m anthropic.claude-3-
 1. anthropic.claude-3-5-haiku-20241022-v1:0
 2. anthropic.claude-3-5-sonnet-20240620-v1:0
 3. anthropic.claude-3-7-sonnet-20250219-v1:0
-
-

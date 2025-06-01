@@ -171,11 +171,13 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
     experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args", "should_stop"], "Experiment Agent")
     
     # Main interaction loop
-    for _ in range(10):
+    for attempt in range(10):
         # Query agent for next action and inject query
         tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(messages, experiment_instruction)
         messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args, "should_stop": should_stop})})
         
+        if attempt == 0: self.logger.info(f"========== 🧐 The model begins to solve a new problem ==========")
+        self.logger.info(f"========== The {attempt + 1} attempt of the model ==========")
         self.logger.info(f"should_stop: {should_stop}")
         if isinstance(should_stop, bool):
             stop_flag = should_stop
@@ -183,6 +185,7 @@ iterative_HUMAN_CODE = """def forward(self, data: dict):
             stop_flag = str(should_stop).lower() == "true"
 
         if stop_flag:
+            self.logger.info("========== 🎯 The model stops the experiment! ==========")
             break
         
         # Execute tool and inject results from tool
