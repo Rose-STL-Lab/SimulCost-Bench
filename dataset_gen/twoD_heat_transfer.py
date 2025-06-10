@@ -93,119 +93,138 @@ Step 2: Call the Convergence Test Function; check if the solution has converged.
 Step 3: Respond using the final response format and make no further function calls.
 """
 
-zero_shot_HUMAN_CODE = """def forward(self, data: dict):
+zero_shot_HUMAN_CODE = r'''def forward(self, data: dict):
     # Extract input data
-    messages = data["messages"]
-    qid = data["QID"]
+    messages = data['messages']
+    qid = data['QID']
 
     # Initialize experiment manager
     experiment_manager = ToolCallManager(
         self.logger,
         qid,
         focused_parameters=[
-            "current_dx",
-            "current_relax",
-            "current_t_init",
-            "current_error_threshold"
+            'current_dx',
+            'current_relax',
+            'current_t_init',
+            'current_error_threshold'
         ]
     )
 
     # Set up experiment agent
-    experiment_instruction = "Given the problem, you should use the tool call to run the experiment."
-    experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args"], "Experiment Agent")
-    
+    experiment_instruction = (
+        'Given the problem, you should use the tool call to run the experiment.'
+    )
+    experiment_agent = LLMAgentBase(['tool_reason', 'tool_name', 'tool_args'], 'Experiment Agent')
+
     # Zero-Shot
     tool_reason, tool_name, tool_args = experiment_agent.query(messages, experiment_instruction)
     messages.append({
-        "role": "assistant",
-        "content": json.dumps({
-            "tool_reason": tool_reason,
-            "tool_name": tool_name,
-            "tool_args": tool_args
+        'role': 'assistant',
+        'content': json.dumps({
+            'tool_reason': tool_reason,
+            'tool_name':  tool_name,
+            'tool_args':  tool_args
         })
     })
 
     # Execute tool and inject results
-    tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-    messages.append({
-        "role": "user",
-        "content": json.dumps(tool_result)
-    })
+    tool_result, acc_cost = experiment_agent.execute_tool(
+        tool_reason, tool_name, tool_args, experiment_manager, qid
+    )
+    messages.append({'role': 'user', 'content': json.dumps(tool_result)})
 
     # Collect true history from tool manager
     param_seq = experiment_manager.get_param_sequence()
-    cost_seq = experiment_manager.get_cost_sequence()
+    cost_seq  = experiment_manager.get_cost_sequence()
 
     summary_data = {
-        "QID": qid,
-        "is_converged": tool_result.get("is_converged", False),
-        "times": len(param_seq),
-        "param_sequence": param_seq,
-        "accumulated_cost": experiment_manager.accumulated_cost,
-        "cost_sequence": cost_seq
+        'QID': qid,
+        'is_converged': tool_result.get('is_converged', False),
+        'times': len(param_seq),
+        'param_sequence': param_seq,
+        'accumulated_cost': experiment_manager.accumulated_cost,
+        'cost_sequence': cost_seq
     }
 
     tool_df = experiment_manager.get_tool_call_df()
     return summary_data, tool_df
-"""
+'''
 
-iterative_HUMAN_CODE = """def forward(self, data: dict):
+iterative_HUMAN_CODE = r'''def forward(self, data: dict):
     # Extract input data
-    messages = data["messages"]
-    qid = data["QID"]
+    messages = data['messages']
+    qid = data['QID']
 
     # Initialize experiment manager and state
     experiment_manager = ToolCallManager(
         self.logger,
         qid,
         focused_parameters=[
-            "current_dx",
-            "current_relax",
-            "current_t_init",
-            "current_error_threshold"
+            'current_dx',
+            'current_relax',
+            'current_t_init',
+            'current_error_threshold'
         ]
     )
 
     # Set up experiment agent
-    experiment_instruction = "Given the problem, you should use the tool call to run the experiment. When you think the experiment can be stopped, set should_stop to true, otherwise set it to false."
-    experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args", "should_stop"], "Experiment Agent")
-    
+    experiment_instruction = (
+        'Given the problem, you should use the tool call to run the experiment. '
+        'When you think the experiment can be stopped, set should_stop to true, '
+        'otherwise set it to false.'
+    )
+    experiment_agent = LLMAgentBase(
+        ['tool_reason', 'tool_name', 'tool_args', 'should_stop'],
+        'Experiment Agent'
+    )
+
     # Main interaction loop
     for attempt in range(10):
         # Query agent for next action and inject query
-        tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(messages, experiment_instruction)
-        messages.append({"role": "assistant", "content": json.dumps({"tool_reason": tool_reason, "tool_name": tool_name, "tool_args": tool_args, "should_stop": should_stop})})
-        
-        if attempt == 0: self.logger.info(f"========== 🧐 The model begins to solve a new problem ==========")
-        self.logger.info(f"========== The {attempt + 1} attempt of the model ==========")
-        self.logger.info(f"should_stop: {should_stop}")
-        if isinstance(should_stop, bool):
-            stop_flag = should_stop
-        else:
-            stop_flag = str(should_stop).lower() == "true"
+        tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(
+            messages, experiment_instruction
+        )
+        messages.append({
+            'role': 'assistant',
+            'content': json.dumps({
+                'tool_reason': tool_reason,
+                'tool_name':  tool_name,
+                'tool_args':  tool_args,
+                'should_stop': should_stop
+            })
+        })
 
+        if attempt == 0:
+            self.logger.info('\n\n\n')
+            self.logger.info('========== 🧐 The model begins to solve a new problem ==========')
+        self.logger.info(f'========== The {attempt + 1} attempt of the model ==========')
+        self.logger.info(f'should_stop: {should_stop}')
+
+        stop_flag = bool(should_stop) if isinstance(should_stop, bool) else str(should_stop).lower() == 'true'
         if stop_flag:
-            self.logger.info("========== 🎯 The model stops the experiment! ==========")
+            self.logger.info('========== 🎯 The model stops the experiment! ==========')
             break
-        
+
         # Execute tool and inject results from tool
-        tool_result, acc_cost = experiment_agent.execute_tool(tool_reason, tool_name, tool_args, experiment_manager, qid)
-        messages.append({"role": "user", "content": json.dumps(tool_result)})
-    
+        tool_result, acc_cost = experiment_agent.execute_tool(
+            tool_reason, tool_name, tool_args, experiment_manager, qid
+        )
+        messages.append({'role': 'user', 'content': json.dumps(tool_result)})
+
     param_seq = experiment_manager.get_param_sequence()
-    cost_seq = experiment_manager.get_cost_sequence()
+    cost_seq  = experiment_manager.get_cost_sequence()
     summary_data = {
-        "QID": qid,
-        "is_converged": tool_result["is_converged"],
-        "times": len(param_seq),
-        "param_sequence": param_seq,
-        "accumulated_cost": experiment_manager.accumulated_cost,
-        "cost_sequence": cost_seq
+        'QID': qid,
+        'is_converged': tool_result['is_converged'],
+        'times': len(param_seq),
+        'param_sequence': param_seq,
+        'accumulated_cost': experiment_manager.accumulated_cost,
+        'cost_sequence': cost_seq
     }
 
     tool_df = experiment_manager.get_tool_call_df()
     return summary_data, tool_df
-"""
+'''
 
 class twoD_HeatTransferDatasetGenerator(DatasetGenerator):
     def __init__(self, doc_file: str):

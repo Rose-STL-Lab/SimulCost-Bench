@@ -107,6 +107,9 @@ python dataset_gen/oneD_heat_transfer.py -t cfl -z
 
 # 2D Steady Heat Transfer
 python dataset_gen/twoD_heat_transfer.py -t dx -z
+
+# Burgers 1D Equation with 2nd Order Roe Method
+python dataset_gen/oneD_burgers.py -t cfl -z
 ```
 ### Parameters:
 - t: problem task
@@ -119,6 +122,10 @@ python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku
 
 # 2D Steady Heat Transfer
 python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+
+# Burgers 1D Equation with 2nd Order Roe Method
+python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
+Cases: blast, double_shock, rarefaction, sin, sod
 ```
 ### Parameters
 - n: int, number of samples to test
@@ -126,8 +133,8 @@ python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku
 - m: str, model name
 - d: str, dataset name
 - t: problem task
+- c: case
 - -z: zero-shot 
-<!-- - hv: bool, human written version -->
 
 ## 📊 Evaluate Models' Performance
 ```bash
@@ -136,11 +143,16 @@ PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-
 
 # 2D Steady Heat Transfer
 PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+
+# Burgers 1D Equation with 2nd Order Roe Method
+PYTHONPATH=$(pwd) python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
+Cases: blast, double_shock, rarefaction, sin, sod
 ```
 ### Parameters
 - m: str, model name
 - d: str, dataset name
 - t: problem task
+- c: case
 - -z: zero-shot 
 
 ## 🤖 Models

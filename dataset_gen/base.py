@@ -33,7 +33,7 @@ class DatasetGenerator(ABC):
         method_description = '\n'.join(json.dumps(
             method['description']) for method in func_description.values())
 
-        return f"""Available functions: \n{method_description} \nQID: {QID} \n{question}"""
+        return f"""QID: {QID} \n{question} \n\nAvailable functions: \n{method_description} """
     
     def generate_dataset(self, workflow: str, questions: List[Dict], zero_shot: bool) -> List[Dict]:
         instruction = self.get_instruction_template(zero_shot)

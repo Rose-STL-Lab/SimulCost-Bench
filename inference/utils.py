@@ -18,22 +18,6 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
-# class SeparatorFilter(logging.Filter):
-#     """
-#     每当 QID 从上一条日志变成新的值时，
-#     在消息前插入空行或分隔线，便于视觉分组。
-#     """
-#     _last_qid = None
-
-#     def filter(self, record: logging.LogRecord) -> bool:
-#         current_qid = getattr(record, 'qid', '-')
-#         if current_qid != self._last_qid:
-#             self._last_qid = current_qid
-#             # 下面两行二选一：空行 or 分隔线
-#             # record.msg = '\n' + record.msg
-#             record.msg = '\n' + '=' * 100 + '\n' + record.msg
-#         return True
-
 def setup_logging(filename: str = None) -> logging.Logger:
     """Setup logging configuration with filtered handlers"""
     # Clear previous log file's contents
@@ -68,7 +52,6 @@ def setup_logging(filename: str = None) -> logging.Logger:
     console_handler.setFormatter(formatter)
     console_handler.addFilter(ConsoleFilter())
     console_handler.addFilter(QIDFilter())
-    # console_handler.addFilter(SeparatorFilter()) 
     logger.addHandler(console_handler)
 
     # File handler with filter
@@ -77,7 +60,6 @@ def setup_logging(filename: str = None) -> logging.Logger:
         file_handler.setFormatter(formatter)
         file_handler.addFilter(FileFilter())
         file_handler.addFilter(QIDFilter())
-        # file_handler.addFilter(SeparatorFilter()) 
         logger.addHandler(file_handler)
 
     return logger
@@ -112,7 +94,7 @@ class ToolCallManager:
         self.cost_sequence  = [] 
         self.accumulated_cost = 0
 
-    def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], qid: int) -> Tuple[Dict[str, Any], int]:
+    def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], profile: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
         try:
             self.logger.info(
@@ -127,7 +109,10 @@ class ToolCallManager:
             )
 
             func = globals()[tool_name]
-            profile = f"p{qid}"
+            if "burgers_1d" in tool_name:
+                profile = f"{profile}"
+            else:
+                profile = f"p{profile}"
 
             if tool_name in ["check_converge_cfl", "check_converge_n_space"]:
                 result = func(
@@ -146,6 +131,16 @@ class ToolCallManager:
                     current_t_init=tool_args["current_t_init"],
                     current_error_threshold=tool_args["current_error_threshold"],
                     tolerance=1e-3
+                )
+            elif tool_name in ["burgers_1d"]:
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    current_cfl=tool_args["current_cfl"],
+                    k=tool_args["k"],
+                    w=tool_args["w"],
+                    linf_tolerance=5e-2,
+                    rmse_tolerance=5e-3,
                 )
 
             prev_cost = self.accumulated_cost
@@ -171,12 +166,7 @@ class ToolCallManager:
         """Record tool call details in the DataFrame."""
         try:
             focus_args = {}
-            # if self.focused_parameters is None:
             focus_args = tool_args
-            # else:
-            #     for param in self.focused_parameters:
-            #         if param in tool_args:
-            #             focus_args[param] = tool_args[param]
 
             row_data = {
                 "QID": self.qid,
@@ -190,8 +180,7 @@ class ToolCallManager:
             new_row = pd.DataFrame([row_data])    
             self.tool_call_df = pd.concat([self.tool_call_df, new_row], ignore_index=True)
 
-            # if not tool_name.endswith("summary"):           # 过滤掉总结类工具
-            self.param_sequence.append(focus_args)      # focus_args 已只保留关心的字段
+            self.param_sequence.append(focus_args)
 
         except Exception as e:
             self.logger.error(f"Error recording tool call: {str(e)}")

@@ -115,65 +115,102 @@ def ensure_file(path, default_content):
             json.dump(default_content, f, ensure_ascii=False, indent=2)
         print(f"[INFO] An empty file has been made: {path}")
 
+def build_paths(dataset: str, task: str, flag: str, model_name: str,
+                case: str | None = None) -> dict:
+    """
+    根据数据集类型自动拼接所有 I/O 路径。
+
+    参数
+    ----
+    dataset : "1D_heat_transfer" / "burgers_1d" / ...
+    task    : 如 "cfl"
+    flag    : "zero_shot" or "iterative"
+    model_name : 用于日志/结果文件
+    case    : burgers_1d 专用；其余数据集传 None
+
+    返回
+    ----
+    dict, 键包括 dataset_file / archive_file / log_file /
+                   result_file / table_file / result_dir / log_dir
+    """
+    # 通用顶层目录
+    case_suffix = f"/{case}" if case else ""
+    result_dir = f"results_model_attempt/{dataset}/{task}{case_suffix}"
+    log_dir    = f"log_model_tool_call/{dataset}/{task}{case_suffix}"
+    # --------------------------------
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(log_dir,    exist_ok=True)
+
+    # ==================================================
+    # 根据是否有 case 决定中间层路径
+    # ==================================================
+    if case:
+        dataset_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_dataset.json"
+        archive_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_agent.json"
+    else:
+        dataset_file = f"data/{dataset}/human_write/{task}_{flag}_dataset.json"
+        archive_file = f"data/{dataset}/human_write/{task}_{flag}_agent.json"
+
+    log_file    = f"{log_dir}/{flag}_{model_name}.log"
+    result_file = f"{result_dir}/{flag}_{model_name}.json"
+    table_file  = f"{result_dir}/{flag}_tool_call_{model_name}.xlsx"
+
+    return dict(dataset_file=dataset_file, archive_file=archive_file,
+                log_file=log_file, result_file=result_file,
+                table_file=table_file, result_dir=result_dir,
+                log_dir=log_dir)
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--num_samples", type=int,
-                         default=2, help="Number of samples to test")
-    parser.add_argument("-p", "--provider", type=str,
-                        default="gemini", help="Provider (openai/gemini)")
-    parser.add_argument("-m", "--model_name", type=str,
-                        default="gemini-1.5-pro", help="Model name")
-    # parser.add_argument("-H",  "--human_version", action="store_true",
-    #                      default=True, help="Human-written version")
-    parser.add_argument("-d", "--dataset", type=str,
-                        default="1D_heat_transfer", help="Domain of the dataset")
-    choices = ["cfl", "n_space", "dx", "relax", "t_init", "error_threshold"]
-    parser.add_argument("-t", "--task", type=str, choices=choices,
-                    default="cfl", help="Task of problem to solve")
-    parser.add_argument("-z", "--zero_shot", action="store_true",
-                    help="Enable zero-shot mode")
+    parser.add_argument("-n", "--num_samples", type=int, default=2,
+                        help="How many samples to test (ignored for burgers_1d)")
+    parser.add_argument("-p", "--provider", default="gemini")
+    parser.add_argument("-m", "--model_name", default="gemini-1.5-pro")
+    parser.add_argument("-d", "--dataset", default="1D_heat_transfer",
+                        help="Dataset domain")
+    parser.add_argument("-t", "--task",
+                        choices=["cfl", "n_space", "dx", "relax", "t_init",
+                                 "error_threshold", "k", "w"],
+                        default="cfl")
+    parser.add_argument("-z", "--zero_shot", action="store_true")
+    parser.add_argument("-c", "--case", default=None,
+                        help="Case name for burgers_1d (blast, sin, …)")
     args = parser.parse_args()
 
-    # Force zero_shot to True for specific tasks
     zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
     flag = "zero_shot" if zero_shot else "iterative"
 
-    result_dir = f"results_model_attempt/{args.dataset}/{args.task}"
-    os.makedirs(result_dir, exist_ok=True)
-    log_dir = f"log_model_tool_call/{args.dataset}/{args.task}"
-    os.makedirs(log_dir, exist_ok=True)
+    paths = build_paths(args.dataset, args.task, flag,
+                        args.model_name, case=args.case)
 
-    dataset_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_dataset.json"
-    log_file = f"{log_dir}/{flag}_{args.model_name}.log"
-    archive_file = f"data/{args.dataset}/human_write/{args.task}_{flag}_agent.json"
-    result_file = f"{result_dir}/{flag}_{args.model_name}.json"
-    table_file = f"{result_dir}/{flag}_tool_call_{args.model_name}.xlsx"
+    ensure_file(paths["dataset_file"],  default_content=[])
+    ensure_file(paths["archive_file"],  default_content=[])
 
-    ensure_file(dataset_file, default_content=[])
-    ensure_file(archive_file, default_content=[])
-
-    with open(dataset_file, "r") as f:
+    with open(paths["dataset_file"], "r") as f:
         dataset = json.load(f)
-    with open(archive_file, "r") as f:
+    with open(paths["archive_file"], "r") as f:
         agents = json.load(f)
-        
-    # use the latest agent
-    agent = agents[-1]
-    logger = setup_logging(log_file)
+    if not agents:
+        raise RuntimeError("No agent found, please run dataset-generation first!")
 
-    test_dataset = dataset[:args.num_samples]
-    # test_dataset = dataset[4:5]
+    agent   = agents[-1]
+    logger  = setup_logging(paths["log_file"])
 
-    results, tool_call_df = parallel_inference(test_dataset, agent["code"], logger, args.provider, args.model_name)
-    tool_call_df.to_excel(table_file, index=False)
+    # --------- burgers_1d → 跑完整 case，否则按 -n ----------
+    if args.dataset == "burgers_1d":
+        test_dataset = dataset
+        logger.info(f"burgers_1d detected — evaluating ALL {len(dataset)} samples.")
+    else:
+        test_dataset = dataset[:args.num_samples]
+        logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")
 
-    logger.info(f"Saving results to {result_file}")
-    save_result(results, result_file)
+    results, tool_df = parallel_inference(
+        test_dataset, agent["code"], logger,
+        args.provider, args.model_name)
 
-    question_path = f"data/{args.dataset}/{args.task}/{flag}_question.json"
-    with open(question_path, "r") as f:
-        dummy_question = json.load(f)
-    dummy_question = dummy_question[:args.num_samples]
+    tool_df.to_excel(paths["table_file"], index=False)
+    logger.info(f"Saving results to {paths['result_file']}")
+    save_result(results, paths["result_file"])
 
 if __name__ == "__main__":
     main()

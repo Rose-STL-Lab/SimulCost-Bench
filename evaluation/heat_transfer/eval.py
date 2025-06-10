@@ -90,7 +90,7 @@ def evaluate(
             optimal_val = dummy["optimal_initial_temperature"]
             ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
         else:
-            ref_iter = dummy["param_history"][-2]
+            ref_iter = dummy["param_history"][-1]
 
         # -------- 成功判定 --------
         if dataset == "1D_heat_transfer":
