@@ -155,6 +155,13 @@ Cases: blast, double_shock, rarefaction, sin, sod
 - c: case
 - -z: zero-shot 
 
+## 🗂️ Tabulate Evaluation Results
+```bash
+python evaluation/tabulate.py -d 1D_heat_transfer
+python evaluation/tabulate.py -d 2D_heat_transfer
+python evaluation/tabulate.py -d burgers_1d
+```
+
 ## 🤖 Models
 1. anthropic.claude-3-5-haiku-20241022-v1:0
 2. anthropic.claude-3-5-sonnet-20240620-v1:0

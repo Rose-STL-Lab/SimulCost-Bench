@@ -8,7 +8,7 @@ import argparse
 
 dx_zero_shot_HUMAN_WORKFLOW = """
 The grid resolution determines the spatial discretization accuracy. 
-A finer grid (smaller dx) provides more accurate solutions but increases computational cost.
+A finer grid provides more accurate solutions but increases computational cost.
 The convergence metric is the temperature distribution at the middle (vertical) line.
 You have only one opportunity to choose an optimal value for dx, to find an optimal grid resolution.
 No trial-and-error or iterative optimization is permitted.
@@ -25,7 +25,7 @@ Step 3: Respond using the final response format and make no further function cal
 
 dx_iterative_HUMAN_WORKFLOW = """
 The grid resolution determines the spatial discretization accuracy. 
-A finer grid (smaller dx) provides more accurate solutions but increases computational cost.
+A finer grid provides more accurate solutions but increases computational cost.
 The convergence metric is the temperature distribution at the middle (vertical) line.
 Choose a reasonable value for dx, to find an optimal grid resolution.
 The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
