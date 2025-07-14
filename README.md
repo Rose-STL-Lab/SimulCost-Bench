@@ -1,5 +1,3 @@
-# Heat Transfer Problem System
-
 ## 📦 Environment Setup
 
 ```bash
@@ -13,56 +11,6 @@ conda activate casebench
 # Install dependencies with Poetry
 poetry install
 ```
-
-<!-- ## 🚀 Meta Agent Usage
-### Generate Questions
-```bash
-python qs_gen/heat_transfer.py -n 10
-```
-#### Parameters:
-- n: int, number of example 
-#### Outpts:
-- output_file: data/heat_transfer/question.json
-
-### Create Solving Agents using validation dataset
-```bash
-python agent_gen/heat_transfer/search.py -v 3 -p gemini -m gemini-1.5-pro -g 2
-```
-#### Parameters
-- v: int, validation dataset number
-- p: str, provider
-- m: str, model name
-- g: int, agent generation times
-
-#### Outputs
-- output files: 
-    - data/heat_transfer/agent.json: The agent will include the code and workflow 
-    - data/heat_transfer/dataset.json: The dataset will use the latest workflow in agent.json for the prompt
-
-### Evaluate Meta Agent using test dataset
-```bash
-python inference/langchain_LLM.py -s 3 -p gemini -m gemini-1.5-pro -d heat_transfer
-```
-#### Parameters
-- s: int, start idx
-- p: str, provider
-- m: str, model name
-- d: str, dataset name
-
-### Generate Evaluation Report 
-```bash
-python evaluation/create_md.py -m gemini-1.5-pro -d heat_transfer -v -g 1
-```
-
-#### Parameters
-- m: str, model name
-- d: str, dataset name
-- v: bool, using the result from validation dataset
-- t: bool, using the result from test dataset
-- g: int, the version of generated agent
-
-#### Outputs
-- Output file: evaluation/heat_transfer/validation/gemini-1.5-pro_g1.md -->
 
 ## 📋 Tasks and Zero-Shot
 
@@ -115,10 +63,39 @@ python dataset_gen/oneD_burgers.py -t cfl -z
 - t: problem task
 - -z: zero-shot 
 
+## 📄 Configure `.env` File for Model Providers
+
+To use the various model providers (OpenAI, Google, AWS, or custom models), you need to configure your `.env` file accordingly. Below is a guide on how to set up the `.env` file for each provider.
+
+### 📜 General `.env` Configuration
+In the root of your project, create or edit the `.env` file to include the following key configurations:
+
+```ini
+# .env file template
+
+# OpenAI API key
+OPENAI_API_KEY="your_openai_api_key"
+
+# Google API key for Gemini
+GOOGLE_API_KEY="your_google_api_key"
+
+# AWS API credentials for Bedrock
+AWS_ACCESS_KEY_ID="your_aws_access_key"
+AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+AWS_REGION_NAME="your_aws_region_name"
+
+# Custom Model (when using your own model)
+custom_code="/path/to/custom_inference.py"   # Path to your custom inference Python code
+model_path="/path/to/your/custom_model"     # Path to your custom model
+custom_class="CustomModel"                  # The class name within custom_code that will handle inference
+```
+For detailed implementation guide and examples of using your own model, see [Custom Model Integration Guide](custom_model/README.md).
+
 ## 🧠 Run Inference
 ```bash
 # 1D Heat Transfer
 python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
 
 # 2D Steady Heat Transfer
 python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z

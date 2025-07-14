@@ -13,9 +13,6 @@ The convergence metric is the temperature distribution at the middle (vertical) 
 You have only one opportunity to choose an optimal value for dx, to find an optimal grid resolution.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-Please strike a balance between being too conservative and too aggressive:
-- If dx is too large, the process may fail to converge.
-- If it's too small, the cost may increase dramatically.
 The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
 THE ONLY CHANGABLE PARAMETER IS dx!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
@@ -42,9 +39,6 @@ The convergence metric is the temperature distribution at the middle (vertical) 
 You have only one opportunity to choose an optimal value for the error_threshold.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-Please strike a balance between being too conservative and too aggressive:
-- If the error_threshold is too large, the process may fail to converge.
-- If it's too small, the cost may increase dramatically.
 The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!
 THE ONLY CHANGABLE PARAMETER IS error_threshold!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
@@ -65,14 +59,11 @@ Step 4: You have at most 10 total opportunities to refine your resolution. **Aft
 Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
 
 relax_zero_shot_HUMAN_WORKFLOW = """
-The relaxation factor affects convergence speed of the SOR method. Optimal values typically lie between 0.05 and 1.95.
+The relaxation factor affects convergence speed of the SOR method.
 Note for relax ratio (SOR), a bad choice may lead to NAN/INFITY solution or unable to converge after max number of iterations.
 You have only one opportunity to choose an optimal value for relax.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-Please strike a balance between being too conservative and too aggressive:
-- If relax is too large, the process may fail to converge.
-- If it's too small, the cost may increase dramatically.
 The value of dx is 0.005, T_init is 0.25, error_threshold is 1e-7. You must not change them!
 THE ONLY CHANGABLE PARAMETER IS relax!
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
