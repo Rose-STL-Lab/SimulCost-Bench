@@ -310,7 +310,7 @@ def write_excel(
 # ------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Parse CoastBench evaluation logs to CSV & Excel"
+        description="Parse evaluation logs to CSV & Excel"
     )
     parser.add_argument(
         "-d", "--dataset", required=True, help="problem type (e.g. 1D_heat_transfer)"
