@@ -65,7 +65,7 @@ Add the following to your `.env` file:
 
 ```ini
 # Custom Model Configuration
-custom_code="/path/to/coastbench/custom_model/custom_inference.py"   # Path to your custom inference Python code
+custom_code="/path/to/custom_inference.py"   # Path to your custom inference Python code
 model_path="/path/to/your/custom_model"     # Path to your custom model
 custom_class="CustomModel"                  # The class name within custom_code that will handle inference
 ```
@@ -155,6 +155,7 @@ class Qwen3:
         return response
 ```
 
+<!-- ```python
 <!-- ## Testing Your Implementation
 
 Before using your custom model, test it locally:
@@ -173,5 +174,5 @@ test_messages = [
 
 # Get response
 response = model.invoke(test_messages)
-print(response) -->
-```
+print(response)
+``` -->
