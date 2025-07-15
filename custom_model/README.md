@@ -65,7 +65,7 @@ Add the following to your `.env` file:
 
 ```ini
 # Custom Model Configuration
-custom_code="/path/to/custom_inference.py"   # Path to your custom inference Python code
+custom_code="/path/to/coastbench/custom_model/custom_inference.py"   # Path to your custom inference Python code
 model_path="/path/to/your/custom_model"     # Path to your custom model
 custom_class="CustomModel"                  # The class name within custom_code that will handle inference
 ```
@@ -86,56 +86,76 @@ python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_t
 Here's a complete example of `custom_inference.py`:
 
 ```python
-import json
-import os
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-class CustomModel:
+class Qwen3:
     def __init__(self, model_path: str):
+        """
+        Initialize your custom model.
+        
+        Args:
+            model_path (str): Path to your model files/weights
+        """
         self.model_path = model_path
-        print(f"Loading custom model from: {model_path}")
         
-        # Example: Load your model weights/configuration
-        # self.model = your_model_loading_function(model_path)
-        # self.tokenizer = your_tokenizer_loading_function(model_path)
-        
-        # For demonstration purposes
-        self.model_loaded = True
+        # Load the tokenizer and the model
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype="auto",
+            device_map="auto"
+        )
     
     def invoke(self, messages: list[dict]) -> str:
         """
-        Process messages and return model response.
+        Perform inference on the given messages.
+        
+        Args:
+            messages (list[dict]): List of message dictionaries
+                Each message should have the format:
+                {"role": "system|user|assistant", "content": "message content"}
+        
+        Returns:
+            str: JSON-formatted string containing the model's response
         """
-        if not self.model_loaded:
-            raise RuntimeError("Model not properly loaded")
+        print("================================================")
+        print("Messages:", messages)
+        print("================================================")
+
+        # Prepare the model input        
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False  # Switches between thinking and non-thinking modes. Default is True.
+        )
         
-        # Extract the latest user message
-        user_message = ""
-        for message in messages:
-            if message.get("role") == "user":
-                user_message = message.get("content", "")
+        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+
+        # Conduct text completion
+        generated_ids = self.model.generate(
+            **model_inputs,
+            max_new_tokens=32768
+        )
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
         
-        # Your custom inference logic here
-        # Example preprocessing:
-        # inputs = self.tokenizer.encode(user_message)
-        # outputs = self.model.generate(inputs)
-        # response = self.tokenizer.decode(outputs)
+        # Parsing thinking content
+        try:
+            # rindex finding 151668 (</think>)
+            index = len(output_ids) - output_ids[::-1].index(151668)
+        except ValueError:
+            index = 0
         
-        # Mock response for demonstration
-        response = f"Custom model response to: {user_message}"
+        # thinking_content = self.tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+        response = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+
+        # print("thinking content:", thinking_content)
+        print("Qwen3 Response:", response)
         
-        # Return as JSON string (required format)
-        result = {
-            "output": response,
-            "model_info": {
-                "model_path": self.model_path,
-                "status": "success"
-            }
-        }
-        
-        return json.dumps(result)
+        return response
 ```
 
-## Testing Your Implementation
+<!-- ## Testing Your Implementation
 
 Before using your custom model, test it locally:
 
@@ -153,5 +173,5 @@ test_messages = [
 
 # Get response
 response = model.invoke(test_messages)
-print(response)
+print(response) -->
 ```
