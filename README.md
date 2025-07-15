@@ -1,13 +1,27 @@
 ## 📦 Environment Setup
 
-```bash
-# Clone repository
-git clone https://github.com/Rose-STL-Lab/SimulCost-Bench.git
+### Clone repository
 
+To clone the repository and initialize the submodule, use the following commands:
+
+```bash
+# Clone repository with submodule initialization
+git clone --recursive https://github.com/Rose-STL-Lab/SimulCost-Bench.git
+
+# If you've already cloned the repository without --recursive, run the following to initialize the submodule:
+cd SimulCost-Bench
+git submodule update --init --recursive
+```
+
+### Create Conda environment
+```bash
 # Create Conda environment
 conda env create -f environment.yml
 conda activate simulcost
+```
 
+### Install dependencies with Poetry
+```bash
 # Install dependencies with Poetry
 poetry install
 ```
