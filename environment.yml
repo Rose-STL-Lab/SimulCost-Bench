@@ -1,4 +1,4 @@
-name: casebench
+name: simulcost
 channels:
   - conda-forge
   - nvidia

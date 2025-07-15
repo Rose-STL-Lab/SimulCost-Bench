@@ -13,7 +13,6 @@ LLaMA-Factory
 data
 result
 results
-Howard881010
 training_results
 # In your .gitignore file
 **/__pycache__/

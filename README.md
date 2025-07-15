@@ -2,11 +2,11 @@
 
 ```bash
 # Clone repository
-git clone git@github.com:Rose-STL-Lab/coastbench.git
+git clone https://github.com/Rose-STL-Lab/SimulCost-Bench.git
 
 # Create Conda environment
-conda env create -n casebench --file environment.yml
-conda activate casebench
+conda env create -f environment.yml
+conda activate simulcost
 
 # Install dependencies with Poetry
 poetry install
