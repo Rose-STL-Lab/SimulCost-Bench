@@ -15,6 +15,7 @@ from evaluation.heat_transfer.eval import evaluate
 from dotenv import load_dotenv
 load_dotenv()
 from tqdm import tqdm
+import importlib.util
 
 FORMAT_INST = lambda request_keys: f"Reply EXACTLY with the JSON format that contains the following keys: {str(request_keys)}\nDO NOT MISS ANY REQUEST FIELDS and ensure that your response is a well-formed JSON object!\n"
 
@@ -31,12 +32,16 @@ class LLMAgentBase():
                 temperature=0,
                 openai_api_key=os.getenv("OPENAI_API_KEY")
             )
+            self.llm.bind(response_format={"type": "json_object"})
+
         elif provider_global == "gemini":
             self.llm = ChatGoogleGenerativeAI(
                 model=model_name_global,
                 temperature=0,
                 google_api_key=os.getenv("GOOGLE_API_KEY")
             )
+            self.llm.bind(response_format={"type": "json_object"})
+
         elif provider_global == "bedrock":
             self.llm = ChatBedrock(
                 model_id="us." + model_name_global,
@@ -46,9 +51,30 @@ class LLMAgentBase():
                 aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
                 region_name=os.getenv("AWS_REGION_NAME")
             )
+            self.llm.bind(response_format={"type": "json_object"})
+
+        elif provider_global == "custom_model":
+            # Load custom model parameters from .env
+            custom_code = os.getenv("custom_code")
+            model_path = os.getenv("model_path")
+            custom_class = os.getenv("custom_class")
+
+            if not all([custom_code, model_path, custom_class]):
+                raise ValueError("Missing one or more of custom_code, model_path, or custom_class in .env")
+
+            # Dynamically load user-defined code
+            spec = importlib.util.spec_from_file_location("custom_inference", custom_code)
+            custom_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_module)
+
+            # Get the user-specified custom model class
+            CustomModelClass = getattr(custom_module, custom_class)
+
+            # Instantiate the custom model class
+            self.llm = CustomModelClass(model_path=model_path)
+            
         else:
             raise ValueError(f"Unsupported provider: {provider_global}")
-        self.llm.bind(response_format={"type": "json_object"})
         
     def generate_output_instruction(self, instruction):
         request_keys = ",".join(self.output_field)
@@ -56,7 +82,11 @@ class LLMAgentBase():
 
     def query(self, messages: list[dict], instruction: str) -> list:
         messages[-1]["content"] += "\n" + self.generate_output_instruction(instruction)
-        json_response = self.llm.invoke(messages).content.strip()
+        
+        if provider_global == "custom_model":
+            json_response = self.llm.invoke(messages).strip()
+        else:
+            json_response = self.llm.invoke(messages).content.strip()
         json_dict = find_json(json_response)
 
         output_infos = []

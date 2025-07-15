@@ -22,23 +22,6 @@ def burgers_1d(
     linf_tolerance: float,
     rmse_tolerance: float,
 ):
-    """
-    …（前略）…
-    返回
-    ----
-    dict
-        {
-          "Linf_Norm": float,
-          "RMSE": float,
-          "is_converged": bool,
-          "accumulated_cost": int,
-          "The cost of the solver simulating the environment": int,
-          "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int,
-          "metrics1": dict,   # 新增
-          "metrics2": dict    # 新增
-        }
-    """
-    # -------------------- 原代码保持 --------------------
     print(f"\nRunning simulation with CFL = {current_cfl}")
     refine_cfl = current_cfl / 2
 
@@ -59,7 +42,6 @@ def burgers_1d(
         linf_tolerance=linf_tolerance, rmse_tolerance=rmse_tolerance
     )
 
-    # -------------------- 汇总返回 --------------------
     return {
         "Linf_Norm": round(linf_norm, 6),
         "RMSE": round(rmse, 6),

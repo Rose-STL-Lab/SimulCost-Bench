@@ -10,9 +10,6 @@ n_space_zero_shot_HUMAN_WORKFLOW = """
 You have only one opportunity to choose a reasonable value for n_space the number of spatial segments to solve a given PDE problem.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-Please strike a balance between being too conservative and too aggressive:
-- If n_space is too small, the process may fail to converge.
-- If it's too large, the cost may increase dramatically.
 The value of cfl is 1.0; You don't need to change it.
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
@@ -32,9 +29,6 @@ cfl_zero_shot_HUMAN_WORKFLOW = """
 You have only one opportunity to choose a reasonable value for cfl, the number of Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.
 No trial-and-error or iterative optimization is permitted.
 Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-Please strike a balance between being too conservative and too aggressive:
-- If cfl is too large, the process may fail to converge.
-- If it's too small, the cost may increase dramatically.
 The value of n_space is 100; You don't need to change it.
 Step 1: You must make your best one-shot guess based solely on your domain knowledge.
 Step 2: Call the Convergence Test Function; check if the solution has converged.
