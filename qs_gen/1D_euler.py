@@ -135,22 +135,61 @@ class OneDEulerQuestionGenerator:
                 cost_history[-2] if zero_shot else sum(cost_history[:-1])
             )
 
-            dataset.append(
-                {
-                    "QID": qid_case,           # ★ per-case local ID ★
-                    "profile": profile_name,
-                    "case": case_name,
-                    "zero_shot": zero_shot,
-                    "is_converged": is_converged,
-                    "dummy_cost": dummy_cost,
-                    "cost_history": cost_history,
-                    param_tag: best_param,
-                    "param_history": param_history,
-                    "question": self._build_question_text(
-                        dummy_cost, params, task
-                    ),
-                }
-            )
+            if task == "cfl":
+                dataset.append(
+                    {
+                        "QID": qid_case,           # ★ per-case local ID ★
+                        "profile": profile_name,
+                        "case": case_name,
+                        "zero_shot": zero_shot,
+                        "is_converged": is_converged,
+                        "dummy_cost": dummy_cost,
+                        "cost_history": cost_history,
+                        param_tag: best_param,
+                        "param_history": param_history,
+                        "question": self._build_question_text(
+                            dummy_cost, params, task
+                        ),
+                    }
+                )
+            elif task == "beta":
+                dataset.append(
+                    {
+                        "QID": qid_case,
+                        "profile": profile_name,
+                        "case": case_name,
+                        "zero_shot": zero_shot,
+                        "optimal_is_converged": is_converged,
+                        "dummy_cost": dummy_cost,
+                        "optimal_cost_history": cost_history,
+                        "best_beta": best_param[0],
+                        "best_cfl": best_param[1],
+                        "param_history": param_history,
+                        "question": self._build_question_text(
+                            dummy_cost, params, task
+                        ),
+                    }
+                )
+            elif task == "k":
+                dataset.append(
+                    {
+                        "QID": qid_case,
+                        "profile": profile_name,
+                        "case": case_name,
+                        "zero_shot": zero_shot,
+                        "optimal_is_converged": is_converged,
+                        "dummy_cost": dummy_cost,
+                        "optimal_cost_history": cost_history,
+                        "best_k": best_param[0],
+                        "best_cfl": best_param[1],
+                        "param_history": param_history,
+                        "question": self._build_question_text(
+                            dummy_cost, params, task
+                        ),
+                    }
+                )
+            else:
+                raise ValueError(f"Unknown task: {task}")
 
             qid_case += 1  # ★ increment local ID ★
 

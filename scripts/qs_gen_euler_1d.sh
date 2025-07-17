@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义一个日志文件，用来记录已执行的命令
-LOG_FILE="euler_1d_execution_log.txt"
+LOG_FILE="scripts/euler_1d_execution_log.txt"
 
 # 定义要执行的命令数组
 commands=(
