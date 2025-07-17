@@ -23,7 +23,7 @@ conda activate simulcost
 ### Install dependencies with Poetry
 ```bash
 # Install dependencies with Poetry
-poetry install
+poetry install --no-root
 ```
 
 ## 📋 Tasks and Zero-Shot
@@ -39,8 +39,11 @@ The table below summarizes the available tasks for each problem type and indicat
 | 2D Steady Heat Transfer  | `relax`          | ❌ Only Zero-Shot   |
 | 2D Steady Heat Transfer  | `t_init`         | ❌ Only Zero-Shot   |
 | 1D Burgers               | `cfl`            | ✅ Supported        |
-| 1D Burgers               | `k`              | ✅ Supported (Mix)  |
-| 1D Burgers               | `w`              | ✅ Supported (Mix)  |
+| 1D Burgers               | `k`              | ✅ Supported (Compositional)  |
+| 1D Burgers               | `w`              | ✅ Supported (Compositional)  |
+| 1D Euler                 | `cfl`            | ✅ Supported        |
+| 1D Euler                 | `beta`           | ✅ Supported (Compositional)  |
+| 1D Euler                 | `k`              | ✅ Supported (Compositional)  |
 
 
 <!-- ## 🧐 Human Written Version -->
@@ -54,7 +57,11 @@ python qs_gen/2D_heat_transfer.py -n 10 -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python qs_gen/1D_burgers.py -t cfl -z
+
+# Euler 1D Equations with 2nd Order MUSCL-Roe Method
+python qs_gen/1D_euler.py -t cfl -z
 ```
+
 ### Parameters:
 - n: int, number of example 
 - t: problem task
@@ -72,7 +79,11 @@ python dataset_gen/twoD_heat_transfer.py -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python dataset_gen/oneD_burgers.py -t cfl -z
+
+# Euler 1D Equations with 2nd Order MUSCL-Roe Method
+python dataset_gen/oneD_euler.py -t cfl -z
 ```
+
 ### Parameters:
 - t: problem task
 - -z: zero-shot 
