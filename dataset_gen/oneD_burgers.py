@@ -161,7 +161,7 @@ def build_cfl_workflow(zero_shot: bool, k0: float, w0: float) -> str:
     return header + body
 
 def build_k_workflow(zero_shot: bool, w0: float) -> str:
-    """k-任务: 0-shot 选 k, 随后只调 cfl; w 固定。"""
+    """k-task: 0-shot select k, then only call cfl; w is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **k** (diffusion coefficient) *once* and must never "
@@ -186,7 +186,7 @@ def build_k_workflow(zero_shot: bool, w0: float) -> str:
 
 
 def build_w_workflow(zero_shot: bool, k0: float) -> str:
-    """w-任务: 0-shot 选 w, 随后只调 cfl; k 固定。"""
+    """w-task: 0-shot select w, then only call cfl; k is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **w** (slope-limiter parameter) *once* and must never "
@@ -238,10 +238,10 @@ def main():
     flag  = "zero_shot" if zflag else "iterative"
 
     task_dir = f"data/burgers_1d/{task}"
-    # -------- 所有任务都尝试列出子目录；没有再回退 --------
+    # -------- All tasks try to list subdirectories; if not, use "" --------
     cases = list_cases(task_dir)
-    if not cases:      # task 目录下没有子文件夹
-        cases = [""]   # 使用 "" 表示“无 case 子目录”
+    if not cases:      # task directory has no subdirectories
+        cases = [""]   # Use "" to represent "no case subdirectory"
 
     out_dir = "data/burgers_1d/human_write"
     os.makedirs(out_dir, exist_ok=True)
@@ -260,7 +260,7 @@ def main():
         dataset_entries = []
 
         for idx, q in enumerate(questions):
-            # ---------- 根据任务类型生成 workflow ----------
+            # ---------- Generate workflow based on task type ----------
             if task == "cfl":
                 k0 = q["param_history"][0]["k"]
                 w0 = q["param_history"][0]["w"]
@@ -272,15 +272,14 @@ def main():
                 k0 = q["param_history"][0][0]["k"]
                 wf = build_w_workflow(zflag, k0)
 
-            # ---------- 生成单条数据 ----------
+            # ---------- Generate single data ----------
             single_ds = generator.generate_dataset(wf, [q], zflag)[0]
             single_ds["profile"]   = q.get("profile")
             single_ds["zero_shot"] = q.get("zero_shot")
-            single_ds["case"]      = q.get("case")  # 所有任务都保留 case 字段
+            single_ds["case"]      = q.get("case")  # Save case field for all tasks
 
             dataset_entries.append(single_ds)
 
-            # 写一次 agent.json
             if idx == 0:
                 human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
                 agent = {"workflow": wf, "code": human_code}
