@@ -110,7 +110,7 @@ AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 AWS_REGION_NAME="your_aws_region_name"
 
 # Custom Model (when using your own model)
-custom_code="/path/to/custom_inference.py"   # Path to your custom inference Python code
+custom_code="/path/to/custom_model/custom_inference.py"   # Path to your custom inference Python code
 model_path="/path/to/your/custom_model"     # Path to your custom model
 custom_class="CustomModel"                  # The class name within custom_code that will handle inference
 ```
@@ -124,10 +124,17 @@ python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_t
 
 # 2D Steady Heat Transfer
 python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 2D_heat_transfer -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
+python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d burgers_1d -t cfl -c blast -z
 Cases: blast, double_shock, rarefaction, sin, sod
+
+# Euler 1D Equations with 2nd Order MUSCL-Roe Method
+python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
+python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d euler_1d -t cfl -c sod -z
+Cases: sod
 ```
 ### Parameters
 - n: int, number of samples to test
@@ -149,6 +156,10 @@ PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-
 # Burgers 1D Equation with 2nd Order Roe Method
 PYTHONPATH=$(pwd) python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
 Cases: blast, double_shock, rarefaction, sin, sod
+
+# Euler 1D Equations with 2nd Order MUSCL-Roe Method
+PYTHONPATH=$(pwd) python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
+Cases: sod
 ```
 ### Parameters
 - m: str, model name
@@ -162,9 +173,107 @@ Cases: blast, double_shock, rarefaction, sin, sod
 python evaluation/tabulate.py -d 1D_heat_transfer
 python evaluation/tabulate.py -d 2D_heat_transfer
 python evaluation/tabulate.py -d burgers_1d
+python evaluation/tabulate.py -d euler_1d
 ```
 
 ## 🤖 Models
 1. anthropic.claude-3-5-haiku-20241022-v1:0
 2. anthropic.claude-3-5-sonnet-20240620-v1:0
 3. anthropic.claude-3-7-sonnet-20250219-v1:0
+4. qwen3_8b
+
+## 🛠️ Script Usage Guide
+
+The `scripts/` directory contains automated scripts for streamlined execution of common workflows:
+
+### 📁 Directory Structure
+```
+scripts/
+├── ds_gen/          # Dataset generation scripts
+│   └── ds_gen_all.sh
+├── inference_eval/  # Model inference and evaluation scripts
+│   ├── inference_eval_all.sh
+│   ├── inference_eval_burgers_1d.sh
+│   ├── inference_eval_euler_1d.sh
+│   ├── inference_eval_heat_1d.sh
+│   └── inference_eval_heat_2d.sh
+└── qs_gen/          # Question generation scripts
+    ├── qs_gen_burgers_1d.sh
+    ├── qs_gen_euler_1d.sh
+    ├── qs_gen_heat_1d.sh
+    └── qs_gen_heat_2d.sh
+```
+
+### 🔧 Quick Start
+
+#### 1. Generate Questions for Specific Tasks
+```bash
+# Generate questions for specific tasks
+bash scripts/qs_gen/qs_gen_heat_1d.sh
+```
+
+#### 2. Generate All Datasets
+```bash
+# Generate datasets for all tasks and modes
+bash scripts/ds_gen/ds_gen_all.sh
+```
+
+#### 2. Run Complete Inference + Evaluation Pipeline
+```bash
+# Execute all inference and evaluation tasks
+bash scripts/inference_eval/inference_eval_all.sh
+
+# Or run individual problem types
+bash scripts/inference_eval/inference_eval_heat_1d.sh
+```
+
+### ⚙️ Modifying Provider Parameter (-p)
+
+The `-p` parameter specifies the model provider. Currently supported providers:
+
+- **`bedrock`**: AWS Bedrock (Claude models)
+- **`openai`**: OpenAI API (GPT models)
+- **`gemini`**: Google Gemini API
+- **`custom_model`**: Your custom model implementation
+
+#### To Change Provider:
+1. **Edit script files** in `scripts/inference_eval/`
+2. **Modify the `-p` parameter** in commands like:
+   ```bash
+   # Current (Bedrock)
+   python inference/langchain_LLM.py -p bedrock -m $model -d burgers_1d -t $task -c $case $mode
+   
+   # Change to OpenAI
+   python inference/langchain_LLM.py -p openai -m $model -d burgers_1d -t $task -c $case $mode
+   ```
+
+### 🤖 Adding More Models
+
+#### Method: Edit Script Arrays
+In `scripts/inference_eval/inference_eval_*.sh`, modify the `models` array:
+
+```bash
+# Current models array
+models=(
+  "anthropic.claude-3-5-haiku-20241022-v1:0"
+)
+
+# Add new models
+models=(
+  "gpt-4o"                                    # OpenAI model
+)
+```
+
+### 🔄 Resume Functionality
+
+Scripts include automatic resume capability:
+- **Execution logs** track completed commands
+- **Failed runs** can be resumed from the last successful command
+- **Progress tracking** prevents duplicate executions
+
+### 📊 Script Features
+
+- **Error handling**: Scripts stop on first error
+- **Logging**: Track execution progress and resume capability
+- **Batch processing**: Run multiple tasks, models, and cases systematically
+- **Flexible parameters**: Easy modification of models, providers, and tasks

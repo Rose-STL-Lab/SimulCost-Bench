@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# 定义一个日志文件，用来记录已执行的命令
-LOG_FILE="scripts/euler_1d_execution_log.txt"
+# Define log file to track executed commands
+LOG_FILE="scripts/qs_gen/euler_1d_execution_log.txt"
 
-# 定义要执行的命令数组
+# Define array of commands to execute
 commands=(
     "python qs_gen/1D_euler.py -t cfl -z"
     "python qs_gen/1D_euler.py -t cfl"
@@ -13,38 +13,38 @@ commands=(
     "python qs_gen/1D_euler.py -t k"
 )
 
-# 检查是否有日志文件，并获取最后执行的命令索引
+# Check for existing log file and get index of last executed command
 if [ -f "$LOG_FILE" ]; then
     last_command=$(tail -n 1 "$LOG_FILE")
-    # 查找命令数组中最后执行的命令索引
+    # Find index of last executed command in commands array
     for i in "${!commands[@]}"; do
         if [ "${commands[$i]}" == "$last_command" ]; then
             last_command_index=$i
             break
         fi
     done
-    # 从下一个命令开始执行
+    # Start execution from next command
     start_index=$((last_command_index + 1))
 else
-    # 如果没有日志文件，则从第一个命令开始执行
+    # If no log file exists, start from first command
     start_index=0
 fi
 
-# 遍历命令并执行
+# Iterate through commands and execute
 for ((i = start_index; i < ${#commands[@]}; i++)); do
     echo "Executing: ${commands[$i]}"
     
-    # 执行命令
+    # Execute command
     ${commands[$i]}
     
-    # 检查命令是否成功执行，如果失败则退出脚本
+    # Check if command executed successfully, exit script if failed
     if [ $? -ne 0 ]; then
         echo "Error occurred during execution of: ${commands[$i]}"
         echo "Stopping the execution."
         exit 1
     fi
     
-    # 记录已执行的命令到日志文件
+    # Log executed command to file
     echo "${commands[$i]}" >> "$LOG_FILE"
 done
 

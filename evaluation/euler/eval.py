@@ -2,7 +2,7 @@ import sys, os, json, logging
 from typing import List, Dict, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
-from costsci_tools.wrappers.burgers_1d import compare_res_burgers_1d
+from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
 
 def _fetch_param(dic: Dict, *keys):
@@ -54,8 +54,8 @@ def evaluate(
     success_cnt = converged_cnt = evaluated = 0
     total_linf = total_rmse = 0.0
 
-    linf_tol  = 5e-2   # L_infinity tolerance for burgers_1d
-    rmse_tol  = 5e-3   # L2 / RMSE tolerance
+    linf_tol = 0.2     # L_infinity tolerance for euler_1d
+    rmse_tol = 0.02    # L2 / RMSE tolerance for euler_1d
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -79,23 +79,23 @@ def evaluate(
             # param_history is list[list[dict]]
             ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["k"] == best_k)
             ref_iter = ref_seq[-1]          # Last iteration under this k
-        elif task == "w":
-            best_w = dummy["best_w"]
-            ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["w"] == best_w)
-            ref_iter = ref_seq[-1]
+        elif task == "beta":
+            best_beta = dummy["best_beta"]
+            # param_history is list[list[dict]]
+            ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["beta"] == best_beta)
+            ref_iter = ref_seq[-1]          # Last iteration under this beta
         else:
             raise ValueError(f"Unsupported task: {task}")
 
-
-        success, _, _, linf_norm, rmse = compare_res_burgers_1d(
+        success, _, _, linf_norm, rmse = compare_res_euler_1d(
             profile1=dummy["profile"],
             cfl1=_fetch_param(last_iter, "cfl", "current_cfl"),
             k1=_fetch_param(last_iter, "k"),
-            w1=_fetch_param(last_iter, "w"),
+            beta1=_fetch_param(last_iter, "beta"),
             profile2=dummy["profile"],
             cfl2=_fetch_param(ref_iter, "cfl"),
             k2=_fetch_param(ref_iter, "k"),
-            w2=_fetch_param(ref_iter, "w"),
+            beta2=_fetch_param(ref_iter, "beta"),
             linf_tolerance=linf_tol,
             rmse_tolerance=rmse_tol,
         )
@@ -148,11 +148,11 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", default="burgers_1d",
-                        help="Dataset name, e.g. burgers_1d")
+    parser.add_argument("-d", "--dataset", default="euler_1d",
+                        help="Dataset name, e.g. euler_1d")
     parser.add_argument("-t", "--task",    default="cfl",
-                        help="Task: cfl / k / w")
-    parser.add_argument("-c", "--case",    default="blast",
+                        help="Task: cfl / k / beta")
+    parser.add_argument("-c", "--case",    default="sod",
                         help="Initial-condition case sub-folder")
     parser.add_argument("-m", "--model",
                         default="anthropic.claude-3-5-haiku-20241022-v1:0")

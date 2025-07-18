@@ -10,7 +10,7 @@ from costsci_tools.wrappers.heat_steady_2d import compare_res_heat_steady_2d
 from inference.utils import setup_logging, NumpyEncoder
 
 def _fetch_param(dic: Dict, *keys):
-    """返回字典里第一个存在的键的值（用于 dx / current_dx 兼容）"""
+    """Return the value of the first existing key in the dictionary (for dx/current_dx compatibility)"""
     for k in keys:
         if k in dic:
             return dic[k]
@@ -24,18 +24,18 @@ def evaluate(
     zero_shot: bool = False,
 ) -> Dict:
     """
-    读取模型尝试结果和 dummy 解，计算成功率 / 成本效率等指标，
-    并把日志写入 eval_results/{dataset}/{task}/...
+    Load model attempt results and dummy solutions, calculate success rate / cost efficiency metrics,
+    and write logs to eval_results/{dataset}/{task}/...
 
     Returns
     -------
     metrics : Dict
-        字段与旧版一致: success_rate, converged_rate, model_cost_efficiency,
+        Fields consistent with previous version: success_rate, converged_rate, model_cost_efficiency,
         dummy_cost_efficiency, relative_cost_efficiency
     """
     flag = "zero_shot" if zero_shot or task in {"relax", "t_init"} else "iterative"
 
-    # ---------- 路径 ----------
+    # ---------- File paths ----------
     result_path = f"results_model_attempt/{dataset}/{task}/{flag}_{model_name}.json"
     dummy_path  = f"data/{dataset}/{task}/{flag}_question.json"
     log_dir     = f"eval_results/{dataset}/{task}"
@@ -46,7 +46,7 @@ def evaluate(
     logger.info(f"✅ Loading model results from {result_path}")
     logger.info(f"✅ Loading dummy solutions from {dummy_path}")
 
-    # ---------- 读文件 ----------
+    # ---------- Load files ----------
     try:
         with open(result_path, "r") as f:
             result_dataset: List[Dict] = json.load(f)
@@ -63,7 +63,7 @@ def evaluate(
 
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
 
-    # ---------- 评估 ----------
+    # ---------- Evaluation ----------
     total_model_cost = total_dummy_cost = 0.0
     success_cnt = 0
     converged_valid = converged_cnt = evaluated = 0
@@ -82,7 +82,7 @@ def evaluate(
         converged = res.get("is_converged", res.get("converged", False))
         last_iter = res["param_sequence"][-1]
 
-        # 参考解——和旧代码保持一致
+        # Reference solution - consistent with legacy code
         if task == "relax":
             optimal_val = dummy["optimal_relaxation_factor"]
             ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
@@ -92,7 +92,7 @@ def evaluate(
         else:
             ref_iter = dummy["param_history"][-1]
 
-        # -------- 成功判定 --------
+        # -------- Success determination --------
         if dataset == "1D_heat_transfer":
             tolerance = 1e-4
             success, error = compare_res_heat_1d(
@@ -124,7 +124,7 @@ def evaluate(
         else:
             raise ValueError(f"Unsupported dataset type: {dataset}")
 
-        # -------- 累积指标 --------
+        # -------- Accumulate metrics --------
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt += int(success)
@@ -145,7 +145,7 @@ def evaluate(
             f"------------------------------"
         )
 
-    # ---------- 汇总 ----------
+    # ---------- Summary ----------
     success_rate = success_cnt / evaluated if evaluated else 0.0
     converged_rate = converged_cnt / converged_valid if converged_valid else 0.0
     model_cost_eff = success_cnt / total_model_cost if total_model_cost else 0.0

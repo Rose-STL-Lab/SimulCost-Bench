@@ -30,9 +30,9 @@ class Qwen3:
         Returns:
             str: JSON-formatted string containing the model's response
         """
-        print("================================================")
-        print("Messages:", messages)
-        print("================================================")
+        # print("================================================")
+        # print("Messages:", messages)
+        # print("================================================")
 
         # Prepare the model input        
         text = self.tokenizer.apply_chat_template(
@@ -62,6 +62,6 @@ class Qwen3:
         response = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
 
         # print("thinking content:", thinking_content)
-        print("Qwen3 Response:", response)
+        # print("Qwen3 Response:", response)
         
         return response

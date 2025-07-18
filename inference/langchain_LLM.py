@@ -104,6 +104,16 @@ class LLMAgentBase():
 class AgentSystem():
     def __init__(self, logger) -> None:
         self.logger = logger
+        self.experiment_agent = None
+        
+    def get_experiment_agent(self, output_fields=None):
+        if output_fields is None:
+            output_fields = ["tool_reason", "tool_name", "tool_args"]
+        
+        if self.experiment_agent is None or self.experiment_agent.output_field != output_fields:
+            self.experiment_agent = LLMAgentBase(output_fields, "Experiment Agent")
+        
+        return self.experiment_agent
 
 def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str) -> tuple[List[Dict], pd.DataFrame]:
     global provider_global, model_name_global
@@ -152,11 +162,11 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
 
     参数
     ----
-    dataset : "1D_heat_transfer" / "burgers_1d" / ...
+    dataset : "1D_heat_transfer" / "burgers_1d" / "euler_1d" / ...
     task    : 如 "cfl"
     flag    : "zero_shot" or "iterative"
     model_name : 用于日志/结果文件
-    case    : burgers_1d 专用；其余数据集传 None
+    case    : burgers_1d/euler_1d 专用；其余数据集传 None
 
     返回
     ----
@@ -193,18 +203,18 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--num_samples", type=int, default=2,
-                        help="How many samples to test (ignored for burgers_1d)")
+                        help="How many samples to test (ignored for burgers_1d and euler_1d)")
     parser.add_argument("-p", "--provider", default="gemini")
     parser.add_argument("-m", "--model_name", default="gemini-1.5-pro")
     parser.add_argument("-d", "--dataset", default="1D_heat_transfer",
                         help="Dataset domain")
     parser.add_argument("-t", "--task",
                         choices=["cfl", "n_space", "dx", "relax", "t_init",
-                                 "error_threshold", "k", "w"],
+                                 "error_threshold", "k", "w", "beta"],
                         default="cfl")
     parser.add_argument("-z", "--zero_shot", action="store_true")
     parser.add_argument("-c", "--case", default=None,
-                        help="Case name for burgers_1d (blast, sin, …)")
+                        help="Case name for burgers_1d (blast, …) or euler_1d (sod, …)")
     args = parser.parse_args()
 
     zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
@@ -226,10 +236,10 @@ def main():
     agent   = agents[-1]
     logger  = setup_logging(paths["log_file"])
 
-    # --------- burgers_1d → 跑完整 case，否则按 -n ----------
-    if args.dataset == "burgers_1d":
+    # --------- 跑完整 case，否则按 -n ----------
+    if args.dataset in ["burgers_1d", "euler_1d"]:
         test_dataset = dataset
-        logger.info(f"burgers_1d detected — evaluating ALL {len(dataset)} samples.")
+        logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
     else:
         test_dataset = dataset[:args.num_samples]
         logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")

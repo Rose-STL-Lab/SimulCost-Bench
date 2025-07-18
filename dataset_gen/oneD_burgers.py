@@ -25,7 +25,7 @@ def forward(self, data: dict):
 
     # Set up experiment agent
     experiment_instruction = "Given the problem, you should use the tool call to run the experiment."
-    experiment_agent = LLMAgentBase(["tool_reason", "tool_name", "tool_args"], "Experiment Agent")
+    experiment_agent = self.get_experiment_agent()
     
     # Zero-Shot
     tool_reason, tool_name, tool_args = experiment_agent.query(messages, experiment_instruction)

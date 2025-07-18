@@ -109,7 +109,7 @@ class ToolCallManager:
             )
 
             func = globals()[tool_name]
-            if "burgers_1d" in tool_name:
+            if "burgers_1d" in tool_name or "euler_1d" in tool_name:
                 profile = f"{profile}"
             else:
                 profile = f"p{profile}"
@@ -141,6 +141,16 @@ class ToolCallManager:
                     w=tool_args["w"],
                     linf_tolerance=5e-2,
                     rmse_tolerance=5e-3,
+                )
+            elif tool_name in ["euler_1d"]:
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    current_cfl=tool_args["current_cfl"],
+                    beta=tool_args["beta"],
+                    k=tool_args["k"],
+                    linf_tolerance=0.2,
+                    rmse_tolerance=0.02,
                 )
 
             prev_cost = self.accumulated_cost

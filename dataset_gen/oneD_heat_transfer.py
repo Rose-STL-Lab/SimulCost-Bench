@@ -61,10 +61,7 @@ def forward(self, data: dict):
     experiment_instruction = (
         'Given the problem, you should use the tool call to run the experiment.'
     )
-    experiment_agent = LLMAgentBase(
-        ['tool_reason', 'tool_name', 'tool_args'],
-        'Experiment Agent'
-    )
+    experiment_agent = self.get_experiment_agent()
     
     # Zero-Shot
     tool_reason, tool_name, tool_args = experiment_agent.query(
@@ -121,10 +118,7 @@ def forward(self, data: dict):
         'When you think the experiment can be stopped, set should_stop to true, '
         'otherwise set it to false.'
     )
-    experiment_agent = LLMAgentBase(
-        ['tool_reason', 'tool_name', 'tool_args', 'should_stop'],
-        'Experiment Agent'
-    )
+    experiment_agent = self.get_experiment_agent(['tool_reason', 'tool_name', 'tool_args', 'should_stop'])
     
     # Main interaction loop
     for attempt in range(10):
