@@ -180,7 +180,7 @@ python evaluation/tabulate.py -d euler_1d
 1. anthropic.claude-3-5-haiku-20241022-v1:0
 2. anthropic.claude-3-5-sonnet-20240620-v1:0
 3. anthropic.claude-3-7-sonnet-20250219-v1:0
-4. qwen3_8b
+4. qwen3_8b, qwen3_32b
 
 ## 🛠️ Script Usage Guide
 

@@ -209,6 +209,10 @@ def write_excel(
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    # Replace NaN or INF values with the string 'nan'
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: 'nan' if pd.isna(x) or (isinstance(x, float) and (x == float('inf') or x == -float('inf'))) else x)
+
     outfile.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(outfile, engine="xlsxwriter") as writer:
         wb = writer.book
@@ -254,7 +258,10 @@ def write_excel(
                 # Other metric columns
                 for m in ordered_metrics:
                     val = row[m]
-                    ws.write(excel_row, col_idx[m], val)
+                    if val == 'nan':
+                        ws.write(excel_row, col_idx[m], 'nan')  # Write 'nan' as string
+                    else:
+                        ws.write(excel_row, col_idx[m], val)
 
                 # Bold / green bold formatting logic (only when value is non-zero)
                 is_top_success = (
