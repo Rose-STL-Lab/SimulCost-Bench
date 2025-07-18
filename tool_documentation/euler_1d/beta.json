@@ -1,0 +1,20 @@
+{
+  "run_oneD_euler_PDE_exp": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "euler_1d",
+        "description": "Conduct a 1D Euler PDE simulation and evaluate its CFL convergence. It returns {\"Linf_Norm\": float, \"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"metrics1\": object, \"metrics2\": object}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "current_cfl": { "type": "float", "description": "Current CFL number" },
+            "beta":        { "type": "float", "description": "Limiter parameter for generalized superbee" },
+            "k":           { "type": "float", "description": "Diffusion coefficient k" }
+          },
+          "required": ["current_cfl", "beta", "k"]
+        }
+      }
+    }
+  }
+}

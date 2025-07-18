@@ -1,6 +1,6 @@
 from costsci_tools.wrappers.burgers_1d import run_sim_burgers_1d, compare_res_burgers_1d
-
 import numpy as np
+
 def _to_jsonable(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()             # → list
