@@ -35,14 +35,10 @@ class CustomModel:
             messages (list[dict]): List of message dictionaries
                 Each message should have the format:
                 {"role": "system|user|assistant", "content": "message content"}
-        
-        Returns:
-            str: JSON-formatted string containing the model's response
         """
         # Your inference logic here
         # Process the messages and generate a response
         
-        # Return response
         return response
 ```
 
@@ -109,9 +105,6 @@ class Qwen3:
             messages (list[dict]): List of message dictionaries
                 Each message should have the format:
                 {"role": "system|user|assistant", "content": "message content"}
-        
-        Returns:
-            str: JSON-formatted string containing the model's response
         """
         print("================================================")
         print("Messages:", messages)
@@ -183,3 +176,7 @@ test_messages = [
 response = model.invoke(test_messages)
 print(response)
 ``` -->
+
+## 💬 Code is cheap, show me your prompt
+
+Don't want to implement everything from scratch? Check out our [prompt template](prompt.md) that you can simply copy into MCP tools (like Cursor, Claude Code) or language models to easily generate your `custom_inference` code. Just describe your model and let AI do the heavy lifting!

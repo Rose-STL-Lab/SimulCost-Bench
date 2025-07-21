@@ -25,9 +25,9 @@ run_cmd () {
 # ========= Parameter lists =========
 tasks=("cfl" "k" "w")
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  "qwen3_8b"
+  # "qwen3_32b"
+  # "qwen3_235b_a22b"
 )
 cases=("blast" "double_shock" "rarefaction" "sin" "sod")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
