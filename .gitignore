@@ -21,7 +21,6 @@ training_results
 *.egg-info/
 tool_result/
 *.xlsx
-*.md
 !**/README.md
 **/*.yaml
 **/sim_res/*
