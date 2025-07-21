@@ -65,9 +65,9 @@ Add the following to your `.env` file:
 
 ```ini
 # Custom Model Configuration
-custom_code="/path/to/custom_inference.py"   # Path to your custom inference Python code
+custom_code="/path/to/custom_model/custom_inference.py"   # Path to your custom inference Python code
 model_path="/path/to/your/custom_model"     # Path to your custom model
-custom_class="CustomModel"                  # The class name within custom_code that will handle inference
+custom_class="CustomModel"                  # The class name within custom_inference.py that will handle inference
 ```
 
 ### Configuration Parameters
@@ -75,11 +75,6 @@ custom_class="CustomModel"                  # The class name within custom_code 
 - **`custom_code`**: Absolute or relative path to your Python file containing the model class
 - **`model_path`**: Path to your model files, weights, or configuration directory
 - **`custom_class`**: Exact name of the class in your Python file that implements the interface
-
-## 🧠 Run Inference
-```bash
-python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
-```
 
 ## Example Implementation
 
@@ -153,6 +148,18 @@ class Qwen3:
         print("Qwen3 Response:", response)
         
         return response
+```
+
+📜 `.env` Configuration
+```ini
+custom_code = "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py"
+model_path = "/data/leo_work/hf/models/Qwen3-0.6B"
+custom_class = "Qwen3"
+```
+
+### 🧠 Run Inference
+```bash
+python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
 ```
 
 <!-- ```python

@@ -112,7 +112,7 @@ AWS_REGION_NAME="your_aws_region_name"
 # Custom Model (when using your own model)
 custom_code="/path/to/custom_model/custom_inference.py"   # Path to your custom inference Python code
 model_path="/path/to/your/custom_model"     # Path to your custom model
-custom_class="CustomModel"                  # The class name within custom_code that will handle inference
+custom_class="CustomModel"                  # The class name within custom_inference.py that will handle inference
 ```
 For detailed implementation guide and examples of using your own model, see [Custom Model Integration Guide](custom_model/README.md).
 

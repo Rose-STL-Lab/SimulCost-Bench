@@ -25,7 +25,7 @@ run_cmd () {
 # ========= Parameter lists =========
 tasks=("cfl" "beta" "k")
 models=(
-  "qwen3_235b_a22b"
+  "qwen3_0_6b"
 )
 cases=("sod")  # 1D Euler only has sod test case
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
