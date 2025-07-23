@@ -148,17 +148,17 @@ Cases: sod
 ## 📊 Evaluate Models' Performance
 ```bash
 # 1D Heat Transfer
-PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
 
 # 2D Steady Heat Transfer
-PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
-PYTHONPATH=$(pwd) python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
+python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
 Cases: blast, double_shock, rarefaction, sin, sod
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
-PYTHONPATH=$(pwd) python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
+python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
 Cases: sod
 ```
 ### Parameters

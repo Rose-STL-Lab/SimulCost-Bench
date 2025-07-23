@@ -93,10 +93,9 @@ class oneD_HeatTransferQuestionGenerator():
             f"- Recording interval: {params['record_dt']:.4f} s",
             "",
             "Convergence criteria:",
-            f"{error_type} L2 error: the T gradient at the left tip between the adjacent parameters",
+            f"- {error_type} L2 error: the T gradient at the left tip between the adjacent parameters",
             "The criteria must be satisfied for convergence.",
-            "",
-            # f"Dummy Solution Cost: {cost}",
+            "- L2 ≤ 1e-4",
         ]
 
         return "\n".join(question_lines)

@@ -6,83 +6,98 @@ import json
 from inference import save_result
 import argparse
 
-dx_zero_shot_HUMAN_WORKFLOW = """
-The grid resolution determines the spatial discretization accuracy. 
-A finer grid provides more accurate solutions but increases computational cost.
-The convergence metric is the temperature distribution at the middle (vertical) line.
-You have only one opportunity to choose an optimal value for dx, to find an optimal grid resolution.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS dx!
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
+def build_dx_workflow(zero_shot: bool) -> str:
+    """Build the workflow for dx task"""
+    header = (
+        "The grid resolution determines the spatial discretization accuracy.\n"
+        "A finer grid provides more accurate solutions but increases computational cost.\n"
+        "The convergence metric is the temperature distribution at the middle (vertical) line.\n"
+        "The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!\n"
+        "THE ONLY CHANGABLE PARAMETER IS dx!\n"
+    )
+    if zero_shot:
+        body = (
+            "You have only one opportunity to choose an optimal value for dx, to find an optimal grid resolution.\n"
+            "No trial-and-error or iterative optimization is permitted.\n"
+            "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+            "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+            "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+            "Step 3: Respond using the final response format and make no further function calls."
+        )
+    else:
+        body = (
+            "Choose a reasonable value for dx, to find an optimal grid resolution.\n"
+            "Step 1: Estimate an initial fairly coarse choice of dx, as you will gradually refine the solution and check convergence.\n"
+            "Step 2: Call the Convergence Test Function; check if converged.\n"
+            "Step 3: If not converged, refine dx based on the trajectory of previous errors, and the distance to the convergence threshold.\n"
+            "Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.\n"
+            "Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
+        )
+    return header + body
 
-dx_iterative_HUMAN_WORKFLOW = """
-The grid resolution determines the spatial discretization accuracy. 
-A finer grid provides more accurate solutions but increases computational cost.
-The convergence metric is the temperature distribution at the middle (vertical) line.
-Choose a reasonable value for dx, to find an optimal grid resolution.
-The value of relax is 1.0, T_init is 0.25, error_threshold is 1e-7. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS dx!
-Step 1: Estimate an initial fairly coarse choice of dx, as you will gradually refine the solution and check convergence.
-Step 2: Call the Convergence Test Function; check if converged.
-Step 3: If not converged, refine dx based on the trajectory of previous errors, and the distance to the convergence threshold.
-Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
+def build_error_threshold_workflow(zero_shot: bool) -> str:
+    """Build the workflow for error_threshold task"""
+    header = (
+        "The error threshold determines when to stop the Jacobi iteration process.\n"
+        "The convergence metric is the temperature distribution at the middle (vertical) line.\n"
+        "The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!\n"
+        "THE ONLY CHANGABLE PARAMETER IS error_threshold!\n"
+    )
+    if zero_shot:
+        body = (
+            "You have only one opportunity to choose an optimal value for the error_threshold.\n"
+            "No trial-and-error or iterative optimization is permitted.\n"
+            "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+            "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+            "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+            "Step 3: Respond using the final response format and make no further function calls."
+        )
+    else:
+        body = (
+            "Choose a reasonable value for error_threshold which is likely to converge, while also keeping the cost from becoming too high.\n"
+            "Step 1: Estimate an initial fairly coarse choice of error_threshold, as you will gradually refine the solution and check convergence.\n"
+            "Step 2: Call the Convergence Test Function; check if converged.\n"
+            "Step 3: If not converged, refine error_threshold based on the trajectory of previous errors, and the distance to the convergence threshold.\n"
+            "Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.\n"
+            "Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
+        )
+    return header + body
 
-error_threshold_zero_shot_HUMAN_WORKFLOW = """
-The error threshold determines when to stop the Jacobi iteration process. 
-The convergence metric is the temperature distribution at the middle (vertical) line.
-You have only one opportunity to choose an optimal value for the error_threshold.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS error_threshold!
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
+def build_relax_workflow(zero_shot: bool) -> str:
+    """Build the workflow for relax task (zero_shot only)"""
+    header = (
+        "The relaxation factor affects convergence speed of the SOR method.\n"
+        "Note for relax ratio (SOR), a bad choice may lead to NAN/INFITY solution or unable to converge after max number of iterations.\n"
+        "The value of dx is 0.005, T_init is 0.25, error_threshold is 1e-7. You must not change them!\n"
+        "THE ONLY CHANGABLE PARAMETER IS relax!\n"
+    )
+    body = (
+        "You have only one opportunity to choose an optimal value for relax.\n"
+        "No trial-and-error or iterative optimization is permitted.\n"
+        "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+        "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+        "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+        "Step 3: Respond using the final response format and make no further function calls."
+    )
+    return header + body
 
-error_threshold_iterative_HUMAN_WORKFLOW = """
-The error threshold determines when to stop the Jacobi iteration process. 
-The convergence metric is the temperature distribution at the middle (vertical) line.
-Choose a reasonable value for error_threshold which is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, relax is 1.0, T_init is 0.25. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS error_threshold!
-Step 1: Estimate an initial fairly coarse choice of error_threshold, as you will gradually refine the solution and check convergence.
-Step 2: Call the Convergence Test Function; check if converged.
-Step 3: If not converged, refine error_threshold based on the trajectory of previous errors, and the distance to the convergence threshold.
-Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
-
-relax_zero_shot_HUMAN_WORKFLOW = """
-The relaxation factor affects convergence speed of the SOR method.
-Note for relax ratio (SOR), a bad choice may lead to NAN/INFITY solution or unable to converge after max number of iterations.
-You have only one opportunity to choose an optimal value for relax.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, T_init is 0.25, error_threshold is 1e-7. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS relax!
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
-
-t_init_zero_shot_HUMAN_WORKFLOW = """
-The initial temperature field can affect convergence speed.
-Note for t_init, a bad choice may lead to NAN/INFITY solution or unable to converge after max number of iterations.
-You have only one opportunity to choose an optimal value for t_init.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of dx is 0.005, relax is 1.0, error_threshold is 1e-7. You must not change them!
-THE ONLY CHANGABLE PARAMETER IS t_init!
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
+def build_t_init_workflow(zero_shot: bool) -> str:
+    """Build the workflow for t_init task (zero_shot only)"""
+    header = (
+        "The initial temperature field can affect convergence speed.\n"
+        "Note for t_init, a bad choice may lead to NAN/INFITY solution or unable to converge after max number of iterations.\n"
+        "The value of dx is 0.005, relax is 1.0, error_threshold is 1e-7. You must not change them!\n"
+        "THE ONLY CHANGABLE PARAMETER IS t_init!\n"
+    )
+    body = (
+        "You have only one opportunity to choose an optimal value for t_init.\n"
+        "No trial-and-error or iterative optimization is permitted.\n"
+        "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+        "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+        "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+        "Step 3: Respond using the final response format and make no further function calls."
+    )
+    return header + body
 
 zero_shot_HUMAN_CODE = r'''def forward(self, data: dict):
     # Extract input data
@@ -252,13 +267,13 @@ def main():
     archive_file = f"data/2D_heat_transfer/human_write/{task}_{flag}_agent.json"
 
     if task == "dx":
-        workflow =  dx_zero_shot_HUMAN_WORKFLOW if zero_shot else dx_iterative_HUMAN_WORKFLOW
+        workflow = build_dx_workflow(zero_shot)
     elif task == "relax":
-        workflow = relax_zero_shot_HUMAN_WORKFLOW
+        workflow = build_relax_workflow(zero_shot)
     elif task == "t_init":
-        workflow = t_init_zero_shot_HUMAN_WORKFLOW
+        workflow = build_t_init_workflow(zero_shot)
     elif task == "error_threshold":
-        workflow = error_threshold_zero_shot_HUMAN_WORKFLOW if zero_shot else error_threshold_iterative_HUMAN_WORKFLOW
+        workflow = build_error_threshold_workflow(zero_shot)
 
     human_code = zero_shot_HUMAN_CODE if zero_shot else iterative_HUMAN_CODE
 

@@ -6,43 +6,55 @@ import json
 from inference import save_result
 import argparse
 
-n_space_zero_shot_HUMAN_WORKFLOW = """
-You have only one opportunity to choose a reasonable value for n_space the number of spatial segments to solve a given PDE problem.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of cfl is 1.0; You don't need to change it.
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
+def build_n_space_workflow(zero_shot: bool) -> str:
+    """Build the workflow for n_space task"""
+    header = (
+        "You need to choose a reasonable value for n_space the number of spatial segments to solve a given PDE problem.\n"
+        "The value of cfl is 1.0; You don't need to change it.\n"
+    )
+    if zero_shot:
+        body = (
+            "You have only one opportunity to choose a reasonable value for n_space.\n"
+            "No trial-and-error or iterative optimization is permitted.\n"
+            "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+            "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+            "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+            "Step 3: Respond using the final response format and make no further function calls."
+        )
+    else:
+        body = (
+            "Step 1: Estimate an initial fairly coarse choice of n_space (the number of segments in length), as you will gradually refine the solution and check convergence.\n"
+            "Step 2: Call the Convergence Test Function; check if converged.\n"
+            "Step 3: If not converged, refine n_space based on the trajectory of previous errors, and the distance to the convergence threshold.\n"
+            "Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.\n"
+            "Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
+        )
+    return header + body
 
-n_space_iterative_HUMAN_WORKFLOW = """
-Choose a reasonable value for n_space the number of spatial segments to solve a given PDE problem.
-The value of cfl is 1.0; You don't need to change it.
-Step 1: Estimate an initial fairly coarse choice of n_space (the number of segments in length), as you will gradually refine the solution and check convergence.
-Step 2: Call the Convergence Test Function; check if converged.
-Step 3: If not converged, refine n_space based on the trajectory of previous errors, and the distance to the convergence threshold.
-Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
-
-cfl_zero_shot_HUMAN_WORKFLOW = """
-You have only one opportunity to choose a reasonable value for cfl, the number of Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.
-No trial-and-error or iterative optimization is permitted.
-Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.
-The value of n_space is 100; You don't need to change it.
-Step 1: You must make your best one-shot guess based solely on your domain knowledge.
-Step 2: Call the Convergence Test Function; check if the solution has converged.
-Step 3: Respond using the final response format and make no further function calls.
-"""
-
-cfl_iterative_HUMAN_WORKFLOW = """
-Choose a reasonable value for cfl, the number of Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.
-The value of n_space is 100; You don't need to change it.
-Step 1: Estimate an initial fairly coarse choice of cfl, as you will gradually refine the solution and check convergence.
-Step 2: Call the Convergence Test Function; check if converged.
-Step 3: If not converged, refine cfl based on the trajectory of previous errors, and the distance to the convergence threshold.
-Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.
-Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."""
+def build_cfl_workflow(zero_shot: bool) -> str:
+    """Build the workflow for cfl task"""
+    header = (
+        "You need to choose a reasonable value for cfl, the Courant-Friedrichs-Lewy condition which establishes a relationship between temporal and spatial discretization, to solve a given PDE problem.\n"
+        "The value of n_space is 100; You don't need to change it.\n"
+    )
+    if zero_shot:
+        body = (
+            "You have only one opportunity to choose a reasonable value for cfl.\n"
+            "No trial-and-error or iterative optimization is permitted.\n"
+            "Your goal is to select a value that is likely to converge, while also keeping the cost from becoming too high.\n"
+            "Step 1: You must make your best one-shot guess based solely on your domain knowledge.\n"
+            "Step 2: Call the Convergence Test Function; check if the solution has converged.\n"
+            "Step 3: Respond using the final response format and make no further function calls."
+        )
+    else:
+        body = (
+            "Step 1: Estimate an initial fairly coarse choice of cfl, as you will gradually refine the solution and check convergence.\n"
+            "Step 2: Call the Convergence Test Function; check if converged.\n"
+            "Step 3: If not converged, refine cfl based on the trajectory of previous errors, and the distance to the convergence threshold.\n"
+            "Step 4: You have at most 10 total opportunities to refine your resolution. **After every single refinement**, you must call the Convergence Test Function to check if the solution has converged.\n"
+            "Step 5: If you think the experiment can be stopped before the 10th refinement, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
+        )
+    return header + body
 
 zero_shot_HUMAN_CODE = r"""
 def forward(self, data: dict):
@@ -205,9 +217,9 @@ def main():
     archive_file = f"data/1D_heat_transfer/human_write/{task}_{flag}_agent.json"
 
     if task == "n_space":
-        workflow = n_space_zero_shot_HUMAN_WORKFLOW if zero_shot else n_space_iterative_HUMAN_WORKFLOW
+        workflow = build_n_space_workflow(zero_shot)
     else:
-        workflow = cfl_zero_shot_HUMAN_WORKFLOW if zero_shot else cfl_iterative_HUMAN_WORKFLOW
+        workflow = build_cfl_workflow(zero_shot)
 
     human_code = zero_shot_HUMAN_CODE if zero_shot else iterative_HUMAN_CODE
 

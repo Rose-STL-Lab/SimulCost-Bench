@@ -32,9 +32,10 @@ QID_REGEX = re.compile(r"QID:\s*(\d+)")
 PRIORITY_METRICS = [
     "converged_rate (converge does not guarantee success)",
     "success_rate",
-    "model_cost_efficiency",
-    "dummy_cost_efficiency",
-    "relative_cost_efficiency",
+    # "model_cost_efficiency",
+    # "dummy_cost_efficiency",
+    # "relative_cost_efficiency",
+    "mean_efficiency",
 ]
 
 # ------------------------------------------------------------
@@ -205,7 +206,7 @@ def write_excel(
     df = pd.DataFrame(rows)[ordered_cols]
 
     # Convert to numeric for easier comparison
-    for col in ("success_rate", "relative_cost_efficiency"):
+    for col in ("mean_efficiency",):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -222,7 +223,6 @@ def write_excel(
         # Formatting styles
         header_fmt = wb.add_format({"bold": True})
         bold_fmt = wb.add_format({"bold": True})
-        green_bold_fmt = wb.add_format({"bold": True, "font_color": "green"})
 
         # Write header row
         ws.write_row(0, 0, ordered_cols, header_fmt)
@@ -235,13 +235,10 @@ def write_excel(
             df.sort_values(["Task", "Inference Mode"])
             .groupby(["Task", "Inference Mode"], sort=False)
         ):
-            # Maximum values within group (may be empty)
-            max_success = (
-                subdf["success_rate"].max() if "success_rate" in subdf else None
-            )
-            max_rel_eff = (
-                subdf["relative_cost_efficiency"].max()
-                if "relative_cost_efficiency" in subdf
+            # Maximum efficiency within group (may be empty)
+            max_efficiency = (
+                subdf["mean_efficiency"].max()
+                if "mean_efficiency" in subdf
                 else None
             )
 
@@ -263,38 +260,22 @@ def write_excel(
                     else:
                         ws.write(excel_row, col_idx[m], val)
 
-                # Bold / green bold formatting logic (only when value is non-zero)
-                is_top_success = (
-                    max_success is not None
-                    and row.get("success_rate", 0) == max_success
-                    and row.get("success_rate", 0) != 0
-                )
-                is_top_rel_eff = (
-                    max_rel_eff is not None
-                    and row.get("relative_cost_efficiency", 0) == max_rel_eff
-                    and row.get("relative_cost_efficiency", 0) != 0
+                # Bold formatting logic for highest efficiency (only when value is non-zero)
+                is_top_efficiency = (
+                    max_efficiency is not None
+                    and row.get("mean_efficiency", 0) == max_efficiency
+                    and row.get("mean_efficiency", 0) != 0
                 )
 
-                if is_top_success:
+                if is_top_efficiency:
+                    # Highlight the efficiency value in bold
                     ws.write(
                         excel_row,
-                        col_idx["success_rate"],
-                        row["success_rate"],
+                        col_idx["mean_efficiency"],
+                        row["mean_efficiency"],
                         bold_fmt,
                     )
-                if is_top_rel_eff:
-                    ws.write(
-                        excel_row,
-                        col_idx["relative_cost_efficiency"],
-                        row["relative_cost_efficiency"],
-                        bold_fmt,
-                    )
-
-                if is_top_success and is_top_rel_eff:
-                    # Both metrics are highest and non-zero → Model in green bold
-                    ws.write(excel_row, col_idx["Model"], row["Model"], green_bold_fmt)
-                elif is_top_success or is_top_rel_eff:
-                    # Only one metric is highest and non-zero → Model in black bold
+                    # Also highlight the model name in bold
                     ws.write(excel_row, col_idx["Model"], row["Model"], bold_fmt)
 
                 excel_row += 1

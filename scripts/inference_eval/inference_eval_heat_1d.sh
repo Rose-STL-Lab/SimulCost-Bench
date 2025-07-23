@@ -37,7 +37,7 @@ for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       # 1D Heat Transfer has no case concept, run tasks directly
       run_cmd "python inference/langchain_LLM.py -p bedrock -m $model -d 1D_heat_transfer -t $task $mode"
-      run_cmd "PYTHONPATH=$(pwd) python evaluation/heat_transfer/eval.py -m $model -d 1D_heat_transfer -t $task $mode"
+      run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 1D_heat_transfer -t $task $mode"
     done
   done
 done

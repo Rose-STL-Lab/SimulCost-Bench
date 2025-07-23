@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 import json
 import logging
@@ -30,8 +30,8 @@ def evaluate(
     Returns
     -------
     metrics : Dict
-        Fields consistent with previous version: success_rate, converged_rate, model_cost_efficiency,
-        dummy_cost_efficiency, relative_cost_efficiency
+        Fields consistent with previous version: success_rate, converged_rate, mean_efficiency
+        # model_cost_efficiency, dummy_cost_efficiency, relative_cost_efficiency
     """
     flag = "zero_shot" if zero_shot or task in {"relax", "t_init"} else "iterative"
 
@@ -68,6 +68,7 @@ def evaluate(
     success_cnt = 0
     converged_valid = converged_cnt = evaluated = 0
     total_error = 0.0
+    total_efficiency = 0.0
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -125,12 +126,16 @@ def evaluate(
             raise ValueError(f"Unsupported dataset type: {dataset}")
 
         # -------- Accumulate metrics --------
+        # Calculate efficiency: success * (dummy_cost / model_cost)
+        efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt += int(success)
         converged_valid += 1
         converged_cnt += int(converged)
         total_error += error
+        total_efficiency += efficiency
 
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
@@ -139,6 +144,7 @@ def evaluate(
             f"🎯 Success: {success}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
+            f"⚡ Efficiency: {efficiency:.3f}\n"
             f"📉 Error (model vs. dummy): {error}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
             f"📌 Dummy Parameters:\n{json.dumps(ref_iter, indent=2, cls=NumpyEncoder)}\n"
@@ -148,24 +154,26 @@ def evaluate(
     # ---------- Summary ----------
     success_rate = success_cnt / evaluated if evaluated else 0.0
     converged_rate = converged_cnt / converged_valid if converged_valid else 0.0
-    model_cost_eff = success_cnt / total_model_cost if total_model_cost else 0.0
-    dummy_cost_eff = evaluated / total_dummy_cost if total_dummy_cost else 0.0
-    relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
+    # model_cost_eff = success_cnt / total_model_cost if total_model_cost else 0.0
+    # dummy_cost_eff = evaluated / total_dummy_cost if total_dummy_cost else 0.0
+    # relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
+    mean_efficiency = total_efficiency / evaluated if evaluated else 0.0
     mean_error = total_error / evaluated if evaluated else 0.0
 
     metrics = {
         "converged_rate (converge does not guarantee success)": converged_rate,
         "success_rate": success_rate,
-        "model_cost_efficiency": model_cost_eff,
-        "dummy_cost_efficiency": dummy_cost_eff,
-        "relative_cost_efficiency": f"{relative_eff:.3f}",
+        # "model_cost_efficiency": model_cost_eff,
+        # "dummy_cost_efficiency": dummy_cost_eff,
+        # "relative_cost_efficiency": f"{relative_eff:.3f}",
+        "mean_efficiency": f"{mean_efficiency:.3f}",
         "mean_error (model vs. dummy)": f"{mean_error:.2e}",
         "tolerance": f"{tolerance:.2e}",
     }
 
-    for k in ["model_cost_efficiency", "dummy_cost_efficiency"]:
-        if k in metrics:
-            metrics[k] = f"{metrics[k]:.2e}"
+    # for k in ["model_cost_efficiency", "dummy_cost_efficiency"]:
+    #     if k in metrics:
+    #         metrics[k] = f"{metrics[k]:.2e}"
 
     logger.info("🧾 Evaluation summary:\n" + json.dumps(metrics, indent=2))
 

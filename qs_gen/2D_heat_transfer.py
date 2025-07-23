@@ -130,7 +130,6 @@ class twoD_HeatTransferQuestionGenerator():
         return dataset
 
     def generate_question(self, cost: int, params: Dict[str, Any], task: str) -> str:
-        # error_type = ""
         question_lines = [
             "Problem: Steady State Heat Transfer in 2D",
             "",
@@ -139,11 +138,9 @@ class twoD_HeatTransferQuestionGenerator():
             f"- T_bottom: {params['T_bottom']}",
             f"- T_left: {params['T_left']}",
             f"- T_right: {params['T_right']}",
-            # "",
-            # "Convergence Criteria:",
-            # f"- {error_type}:",
-            # "- The criteria must be satisfied for convergence.",
-            # f"Dummy Solution Cost: {cost}",
+            "",
+            "Convergence criteria:",
+            "- L2 ≤ 1e-3",
         ]
 
         return "\n".join(question_lines)

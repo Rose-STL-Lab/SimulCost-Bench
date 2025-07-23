@@ -38,7 +38,7 @@ for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       for case in "${cases[@]}"; do
         run_cmd "python inference/langchain_LLM.py -p bedrock -m $model -d burgers_1d -t $task -c $case $mode"
-        run_cmd "PYTHONPATH=$(pwd) python evaluation/burgers/eval.py -m $model -d burgers_1d -t $task -c $case $mode"
+        run_cmd "python evaluation/burgers/eval.py -m $model -d burgers_1d -t $task -c $case $mode"
       done
     done
   done

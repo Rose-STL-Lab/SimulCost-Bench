@@ -36,7 +36,7 @@ for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       for case in "${cases[@]}"; do
         run_cmd "python inference/langchain_LLM.py -p custom_model -m $model -d euler_1d -t $task -c $case $mode"
-        run_cmd "PYTHONPATH=$(pwd) python evaluation/euler/eval.py -m $model -d euler_1d -t $task -c $case $mode"
+        run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -c $case $mode"
       done
     done
   done

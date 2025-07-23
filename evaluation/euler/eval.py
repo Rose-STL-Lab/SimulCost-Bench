@@ -1,7 +1,7 @@
 import sys, os, json, logging
 from typing import List, Dict, Tuple
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
 
@@ -53,6 +53,7 @@ def evaluate(
     total_model_cost = total_dummy_cost = 0.0
     success_cnt = converged_cnt = evaluated = 0
     total_linf = total_rmse = 0.0
+    total_efficiency = 0.0
 
     linf_tol = 0.2     # L_infinity tolerance for euler_1d
     rmse_tol = 0.02    # L2 / RMSE tolerance for euler_1d
@@ -100,12 +101,16 @@ def evaluate(
             rmse_tolerance=rmse_tol,
         )
 
+        # Calculate efficiency: success * (dummy_cost / model_cost)
+        efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt      += int(success)
         converged_cnt    += int(converged)
         total_linf       += linf_norm
         total_rmse       += rmse
+        total_efficiency += efficiency
 
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
@@ -114,6 +119,7 @@ def evaluate(
             f"🎯 Success (within tolerance): {success}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
+            f"⚡ Efficiency: {efficiency:.3f}\n"
             f"📉 Linf  (model vs. dummy): {linf_norm:.3e}\n"
             f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
@@ -123,18 +129,20 @@ def evaluate(
 
     success_rate      = success_cnt   / evaluated        if evaluated else 0.0
     converged_rate    = converged_cnt / evaluated        if evaluated else 0.0
-    model_cost_eff    = success_cnt   / total_model_cost if total_model_cost else 0.0
-    dummy_cost_eff    = evaluated     / total_dummy_cost if total_dummy_cost else 0.0
-    relative_eff      = model_cost_eff / dummy_cost_eff  if dummy_cost_eff else 0.0
+    # model_cost_eff    = success_cnt   / total_model_cost if total_model_cost else 0.0
+    # dummy_cost_eff    = evaluated     / total_dummy_cost if total_dummy_cost else 0.0
+    # relative_eff      = model_cost_eff / dummy_cost_eff  if dummy_cost_eff else 0.0
+    mean_efficiency   = total_efficiency / evaluated if evaluated else 0.0
     mean_linf         = total_linf / evaluated if evaluated else 0.0
     mean_rmse         = total_rmse / evaluated if evaluated else 0.0
 
     metrics = {
         "converged_rate (converge does not guarantee success)": converged_rate,
         "success_rate": success_rate,
-        "model_cost_efficiency": f"{model_cost_eff:.2e}",
-        "dummy_cost_efficiency": f"{dummy_cost_eff:.2e}",
-        "relative_cost_efficiency": f"{relative_eff:.3f}",
+        # "model_cost_efficiency": f"{model_cost_eff:.2e}",
+        # "dummy_cost_efficiency": f"{dummy_cost_eff:.2e}",
+        # "relative_cost_efficiency": f"{relative_eff:.3f}",
+        "mean_efficiency": f"{mean_efficiency:.3f}",
         "mean_Linf": f"{mean_linf:.2e}",
         "mean_RMSE": f"{mean_rmse:.2e}",
         "tolerances": f"Linf ≤ {linf_tol:.2e}, RMSE ≤ {rmse_tol:.2e}",
