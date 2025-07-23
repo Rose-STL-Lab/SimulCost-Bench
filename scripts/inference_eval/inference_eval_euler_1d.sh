@@ -24,18 +24,20 @@ run_cmd () {
 
 # ========= Parameter lists =========
 tasks=("cfl" "beta" "k")
-models=(
-  "qwen3_235b_a22b"
-)
 cases=("sod")  # 1D Euler only has sod test case
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+model_provider="custom_model"
+models=(
+  "qwen3_8b"
+)
 
 # ========= Main loop =========
 for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
       for case in "${cases[@]}"; do
-        run_cmd "python inference/langchain_LLM.py -p custom_model -m $model -d euler_1d -t $task -c $case $mode"
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -c $case $mode"
         run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -c $case $mode"
       done
     done

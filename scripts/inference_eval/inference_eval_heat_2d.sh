@@ -30,10 +30,9 @@ task_modes["error_threshold"]="-z "  # error_threshold supports zero-shot and it
 task_modes["relax"]="-z"         # relax only supports zero-shot
 task_modes["t_init"]="-z"        # t_init only supports zero-shot
 
+model_provider="custom_model"
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  "qwen3_8b"
 )
 
 # ========= Main loop =========
@@ -51,7 +50,7 @@ for task in "${!task_modes[@]}"; do
   for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       # 2D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -p bedrock -m $model -d 2D_heat_transfer -t $task $mode"
+      run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d 2D_heat_transfer -t $task $mode"
       run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 2D_heat_transfer -t $task $mode"
     done
   done

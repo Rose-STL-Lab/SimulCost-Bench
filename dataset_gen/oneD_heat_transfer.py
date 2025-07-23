@@ -232,9 +232,15 @@ def main():
     with open(question_file, "r") as f:
         questions = json.load(f)
     # Generate the dataset
-    generator = oneD_HeatTransferDatasetGenerator(f"tool_documentation/oneD_heat_transfer/{task}.json")
-    dataset = generator.generate_dataset(workflow, questions, zero_shot)
-    save_result(dataset, dataset_file)
+    try:
+        generator = oneD_HeatTransferDatasetGenerator(f"tool_documentation/oneD_heat_transfer/{task}.json")
+        dataset = generator.generate_dataset(workflow, questions, zero_shot)
+        save_result(dataset, dataset_file)
+        print(f"[✓] Dataset generation completed successfully -> {dataset_file}")
+        print(f"[✓] Agent configuration saved to -> {archive_file}")
+    except Exception as e:
+        print(f"[✗] Dataset generation failed: {e}")
+        raise
 
 if __name__ == "__main__":
     main()
