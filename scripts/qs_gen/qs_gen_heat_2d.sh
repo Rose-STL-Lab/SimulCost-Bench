@@ -5,12 +5,12 @@ LOG_FILE="scripts/qs_gen/heat_transfer_2d_execution_log.txt"
 
 # Define array of commands to execute
 commands=(
-    "python qs_gen/2D_heat_transfer.py -n 10 -t dx -z"
-    "python qs_gen/2D_heat_transfer.py -n 10 -t dx"
-    "python qs_gen/2D_heat_transfer.py -n 10 -t error_threshold -z"
-    "python qs_gen/2D_heat_transfer.py -n 10 -t error_threshold"
-    "python qs_gen/2D_heat_transfer.py -n 10 -t relax"
-    "python qs_gen/2D_heat_transfer.py -n 10 -t t_init"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t dx -z"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t dx"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t error_threshold -z"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t error_threshold"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t relax"
+    "python qs_gen/2D_heat_transfer.py -n 100 -t t_init"
 )
 
 # Check for existing log file and get index of last executed command

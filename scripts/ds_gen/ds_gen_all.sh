@@ -25,18 +25,18 @@ commands=(
     "python dataset_gen/oneD_euler.py -t k"
     
     # 1D Heat Transfer tasks
-    "python dataset_gen/oneD_heat_transfer.py -n 100 -t cfl -z"
-    "python dataset_gen/oneD_heat_transfer.py -n 100 -t cfl"
-    "python dataset_gen/oneD_heat_transfer.py -n 100 -t n_space -z"
-    "python dataset_gen/oneD_heat_transfer.py -n 100 -t n_space"
+    "python dataset_gen/oneD_heat_transfer.py -t cfl -z"
+    "python dataset_gen/oneD_heat_transfer.py -t cfl"
+    "python dataset_gen/oneD_heat_transfer.py -t n_space -z"
+    "python dataset_gen/oneD_heat_transfer.py -t n_space"
     
     # 2D Heat Transfer tasks
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t dx -z"
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t dx"
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t error_threshold -z"
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t error_threshold"
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t relax"
-    "python dataset_gen/twoD_heat_transfer.py -n 100 -t t_init"
+    "python dataset_gen/twoD_heat_transfer.py -t dx -z"
+    "python dataset_gen/twoD_heat_transfer.py -t dx"
+    "python dataset_gen/twoD_heat_transfer.py -t error_threshold -z"
+    "python dataset_gen/twoD_heat_transfer.py -t error_threshold"
+    "python dataset_gen/twoD_heat_transfer.py -t relax"
+    "python dataset_gen/twoD_heat_transfer.py -t t_init"
 )
 
 # Check for existing log file and get index of last executed command

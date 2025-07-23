@@ -5,10 +5,10 @@ LOG_FILE="scripts/qs_gen/heat_transfer_1d_execution_log.txt"
 
 # Define array of commands to execute
 commands=(
-    "python qs_gen/1D_heat_transfer.py -n 10 -t cfl -z"
-    "python qs_gen/1D_heat_transfer.py -n 10 -t cfl"
-    "python qs_gen/1D_heat_transfer.py -n 10 -t n_space -z"
-    "python qs_gen/1D_heat_transfer.py -n 10 -t n_space"
+    "python qs_gen/1D_heat_transfer.py -n 100 -t cfl -z"
+    "python qs_gen/1D_heat_transfer.py -n 100 -t cfl"
+    "python qs_gen/1D_heat_transfer.py -n 100 -t n_space -z"
+    "python qs_gen/1D_heat_transfer.py -n 100 -t n_space"
 )
 
 # Check for existing log file and get index of last executed command
