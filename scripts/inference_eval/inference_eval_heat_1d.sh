@@ -28,7 +28,7 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 model_provider="custom_model"
 models=(
-  "qwen3_8b"
+  "qwen3_32b"
 )
 
 # ========= Main loop =========
@@ -36,7 +36,7 @@ for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
       # 1D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d 1D_heat_transfer -t $task $mode"
+      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 1D_heat_transfer -t $task $mode"
       run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 1D_heat_transfer -t $task $mode"
     done
   done
