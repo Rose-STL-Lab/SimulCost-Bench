@@ -26,9 +26,11 @@ run_cmd () {
 tasks=("cfl" "n_space")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
-model_provider="custom_model"
+model_provider="bedrock"
 models=(
-  "qwen3_32b"
+  "anthropic.claude-3-5-haiku-20241022-v1:0"
+  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  "anthropic.claude-3-7-sonnet-20250219-v1:0"
 )
 
 # ========= Main loop =========
@@ -36,7 +38,7 @@ for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
       # 1D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 1D_heat_transfer -t $task $mode"
+      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 1D_heat_transfer -t $task $mode --resume"
       run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 1D_heat_transfer -t $task $mode"
     done
   done

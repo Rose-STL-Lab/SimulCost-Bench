@@ -43,6 +43,7 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "bedrock":
+            # print(model_name_global)
             self.llm = ChatBedrock(
                 model_id="us." + model_name_global,
                 temperature=0,
@@ -115,7 +116,7 @@ class AgentSystem():
         
         return self.experiment_agent
 
-def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str) -> tuple[List[Dict], pd.DataFrame]:
+def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str, progress_file: str = None, resume: bool = False) -> tuple[List[Dict], pd.DataFrame]:
     global provider_global, model_name_global
     provider_global = provider
     model_name_global = model_name
@@ -133,15 +134,53 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     agent = AgentSystem(logger)
     all_results = []
     all_tool_dfs = []
+    start_idx = 0
 
-    for data in tqdm(dataset, desc="Running inference"):
-        result, tool_df = agent.forward(data)
-        all_results.append(result)
-        all_tool_dfs.append(tool_df)
-        print("all_results: ", all_results)
-        print("all_tool_dfs: ", all_tool_dfs)
+    # Load progress if resuming
+    if resume and progress_file and os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                progress_data = json.load(f)
+            all_results = progress_data.get('results', [])
+            all_tool_dfs_data = progress_data.get('tool_dfs', [])
+            # Reconstruct DataFrames from saved data
+            all_tool_dfs = [pd.DataFrame(df_data) if df_data else pd.DataFrame() for df_data in all_tool_dfs_data]
+            start_idx = len(all_results)
+            logger.info(f"Resuming from sample {start_idx}/{len(dataset)}")
+        except Exception as e:
+            logger.warning(f"Failed to load progress file: {e}. Starting from beginning.")
+            start_idx = 0
+
+    # Process remaining samples
+    for i, data in enumerate(tqdm(dataset[start_idx:], desc="Running inference", initial=start_idx, total=len(dataset))):
+        try:
+            result, tool_df = agent.forward(data)
+            all_results.append(result)
+            all_tool_dfs.append(tool_df)
+            
+            # Save progress after each sample
+            if progress_file:
+                progress_data = {
+                    'results': all_results,
+                    'tool_dfs': [df.to_dict('records') if not df.empty else [] for df in all_tool_dfs],
+                    'completed_samples': len(all_results),
+                    'total_samples': len(dataset)
+                }
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump(progress_data, f, ensure_ascii=False, indent=2)
+                    
+        except Exception as e:
+            logger.error(f"Error processing sample {start_idx + i}: {e}")
+            if progress_file:
+                logger.info(f"Progress saved. You can resume with --resume flag.")
+            raise
 
     final_tool_df = pd.concat(all_tool_dfs, ignore_index=True) if all_tool_dfs else pd.DataFrame()
+    
+    # Clean up progress file if all samples completed successfully
+    if progress_file and os.path.exists(progress_file) and len(all_results) == len(dataset):
+        os.remove(progress_file)
+        logger.info("All samples completed successfully. Progress file removed.")
 
     return all_results, final_tool_df
 
@@ -215,6 +254,8 @@ def main():
     parser.add_argument("-z", "--zero_shot", action="store_true")
     parser.add_argument("-c", "--case", default=None,
                         help="Case name for burgers_1d (blast, …) or euler_1d (sod, …)")
+    parser.add_argument("--resume", action="store_true",
+                        help="Resume from previous progress file")
     args = parser.parse_args()
 
     zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
@@ -244,9 +285,12 @@ def main():
         test_dataset = dataset[:args.num_samples]
         logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")
 
+    # Create progress file path
+    progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
+    
     results, tool_df = parallel_inference(
         test_dataset, agent["code"], logger,
-        args.provider, args.model_name)
+        args.provider, args.model_name, progress_file, args.resume)
 
     tool_df.to_excel(paths["table_file"], index=False)
     logger.info(f"Saving results to {paths['result_file']}")

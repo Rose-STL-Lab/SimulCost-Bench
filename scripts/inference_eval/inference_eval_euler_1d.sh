@@ -27,9 +27,11 @@ tasks=("cfl" "beta" "k")
 cases=("sod")  # 1D Euler only has sod test case
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
-model_provider="custom_model"
+model_provider="bedrock"
 models=(
-  "qwen3_8b"
+  "anthropic.claude-3-5-haiku-20241022-v1:0"
+  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  "anthropic.claude-3-7-sonnet-20250219-v1:0"
 )
 
 # ========= Main loop =========
@@ -37,7 +39,7 @@ for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
       for case in "${cases[@]}"; do
-        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -c $case $mode"
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -c $case $mode --resume"
         run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -c $case $mode"
       done
     done
