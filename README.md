@@ -251,19 +251,24 @@ python evaluation/tabulate.py -d euler_1d
 
 ## 🤖 Evaluated Models
 
-### Commercial Models (API-based)
-- **Anthropic Claude**: 
+### Commercial Models
+- **Anthropic**: 
   - `anthropic.claude-3-5-haiku-20241022-v1:0`
   - `anthropic.claude-3-5-sonnet-20240620-v1:0` 
   - `anthropic.claude-3-7-sonnet-20250219-v1:0`
-- **DeepSeek**: `deepseek.r1-v1:0`
+- **OpenAI**: `gpt-4o`
+- **Google**: `gemini-2.5-pro`
 - **Mistral**: `mistral.mistral-large-2402-v1:0`
-- **Llama**: `meta.llama3-70b-instruct-v1:0`
-- **OpenAI**: GPT-4
-- **Google**: Gemini models
+- **Meta**: `meta.llama3-70b-instruct-v1:0`
+- **Amazon**: `amazon.nova-premier-v1:0`
+<!-- - **DeepSeek**: `deepseek.r1-v1:0` -->
+<!-- - **AI21**: `ai21.jamba-1-5-large-v1:0` -->
 
 ### Open-Source Models
-- **Qwen Models**: `qwen3_0_6b`, `qwen3_8b`, `qwen3_32b`, `qwen3_235b_a22b`
+- **Alibaba**:
+  - `qwen3_8b`
+  - `qwen3_32b`
+  - `qwen3_235b_a22b`
 
 ## 🛠️ Script Usage Guide
 

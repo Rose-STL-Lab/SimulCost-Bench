@@ -82,11 +82,10 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "bedrock":
-            if "mistral" in model_name_global or "llama" in model_name_global:
+            if any(keyword in model_name_global for keyword in ["mistral", "llama", "jamba"]):
                 model_id = model_name_global
             else:
                 model_id = "us." + model_name_global
-
             print(model_id)
 
             self.llm = ChatBedrock(
