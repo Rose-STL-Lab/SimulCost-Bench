@@ -70,10 +70,10 @@ The table below summarizes the available tasks for each problem type and indicat
 Generate question templates for different physics domains and task types.
 ```bash
 # 1D Heat Transfer
-python qs_gen/1D_heat_transfer.py -n 10 -t cfl -z
+python qs_gen/1D_heat_transfer.py -n 100 -t cfl -z
 
 # 2D Steady Heat Transfer
-python qs_gen/2D_heat_transfer.py -n 10 -t dx -z
+python qs_gen/2D_heat_transfer.py -n 100 -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python qs_gen/1D_burgers.py -t cfl -z
@@ -87,7 +87,7 @@ python qs_gen/1D_euler.py -t cfl -z
 - `-t`: Problem task type (cfl, n_space, dx, etc.)
 - `-z`: Enable zero-shot mode
 
-**Output:** Generated questions are saved to `data/{domain}/question.json`
+**Output:** Generated questions are saved to `data/{simulation}/{task}/question.json`
 
 ## 🚀 Generate Benchmark Datasets
 
@@ -110,7 +110,7 @@ python dataset_gen/oneD_euler.py -t cfl -z
 - `-t`: Problem task type
 - `-z`: Enable zero-shot mode
 
-**Output:** Datasets are saved to `data/{domain}/human_write/` directory 
+**Output:** Datasets are saved to `data/{simulation}/{task}/human_write/` directory 
 
 ## 📄 Configure `.env` File for Model Providers
 
@@ -145,12 +145,12 @@ For detailed implementation guide and examples of using your own model, see [Cus
 Execute LLM inference on benchmark datasets to generate predictions.
 ```bash
 # 1D Heat Transfer
-python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
-python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
 
 # 2D Steady Heat Transfer
-python inference/langchain_LLM.py -n 10 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
-python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 2D_heat_transfer -t dx -z
+python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 2D_heat_transfer -t dx -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
@@ -232,7 +232,7 @@ Cases: sod
 - `-c`: Case name (for burgers_1d and euler_1d)
 - `-z`: Enable zero-shot mode
 
-**Output:** Evaluation results are saved to `evaluation_results/{dataset}/{task}/` 
+**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/` 
 
 ## 🗂️ Tabulate Evaluation Results
 
@@ -249,7 +249,7 @@ python evaluation/tabulate.py -d euler_1d
 
 **Output:** Summary tables are generated in Excel/CSV format
 
-## 🤖 Supported Models
+## 🤖 Evaluated Models
 
 ### Commercial Models (API-based)
 - **Anthropic Claude**: 
@@ -258,14 +258,12 @@ python evaluation/tabulate.py -d euler_1d
   - `anthropic.claude-3-7-sonnet-20250219-v1:0`
 - **DeepSeek**: `deepseek.r1-v1:0`
 - **Mistral**: `mistral.mistral-large-2402-v1:0`
-- **OpenAI**: GPT-4, GPT-3.5-turbo (configure via provider)
-- **Google**: Gemini models (configure via provider)
+- **Llama**: `meta.llama3-70b-instruct-v1:0`
+- **OpenAI**: GPT-4
+- **Google**: Gemini models
 
-### Open Source Models (Custom Integration)
+### Open-Source Models
 - **Qwen Models**: `qwen3_0_6b`, `qwen3_8b`, `qwen3_32b`, `qwen3_235b_a22b`
-- **Custom Models**: Any model with custom inference implementation
-
-For custom model integration, see the [Custom Model Guide](custom_model/README.md).
 
 ## 🛠️ Script Usage Guide
 

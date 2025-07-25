@@ -17,7 +17,46 @@ load_dotenv()
 from tqdm import tqdm
 import importlib.util
 
-FORMAT_INST = lambda request_keys: f"Reply EXACTLY with the JSON format that contains the following keys: {str(request_keys)}\nDO NOT MISS ANY REQUEST FIELDS and ensure that your response is a well-formed JSON object!\n"
+def FORMAT_INST(request_keys):
+    fields_list = request_keys.split(',') if isinstance(request_keys, str) else request_keys
+    
+    # Build field-specific requirements
+    field_requirements = []
+    field_requirements.append("- tool_reason MUST explain your choice (non-empty string)")
+    field_requirements.append("- tool_name MUST be the exact function name from documentation (non-empty string)")
+    field_requirements.append("- tool_args MUST be a dictionary with required parameters (non-empty dict)")
+    
+    if 'should_stop' in fields_list:
+        field_requirements.append("- should_stop MUST be true or false (boolean)")
+    
+    # Build example based on fields
+    example_fields = [
+        '"tool_reason": "Your detailed reasoning here"',
+        '"tool_name": "check_converge_cfl"',
+        '"tool_args": {"n_space": 100, "cfl": 0.4}'
+    ]
+    
+    if 'should_stop' in fields_list:
+        example_fields.append('"should_stop": false')
+    
+    field_requirements_text = '\n'.join(field_requirements)
+    example_text = ',\n  '.join(example_fields)
+    
+    return f"""CRITICAL OUTPUT FORMAT REQUIREMENT:
+You MUST reply with a valid JSON object containing ALL of these required keys: {str(request_keys)}
+
+MANDATORY REQUIREMENTS:
+- Each key MUST have a meaningful, non-empty value
+- NO empty strings ("") are allowed for ANY field
+{field_requirements_text}
+
+EXAMPLE FORMAT:
+{{
+  {example_text}
+}}
+
+DO NOT MISS ANY FIELDS. DO NOT USE EMPTY VALUES. Your response must be ONLY the JSON object, nothing else.
+"""
 
 
 class LLMAgentBase():
@@ -43,9 +82,15 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "bedrock":
-            # print(model_name_global)
+            if "mistral" in model_name_global or "llama" in model_name_global:
+                model_id = model_name_global
+            else:
+                model_id = "us." + model_name_global
+
+            print(model_id)
+
             self.llm = ChatBedrock(
-                model_id="us." + model_name_global,
+                model_id=model_id,
                 temperature=0,
                 max_tokens=2048,
                 aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -84,16 +129,61 @@ class LLMAgentBase():
     def query(self, messages: list[dict], instruction: str) -> list:
         messages[-1]["content"] += "\n" + self.generate_output_instruction(instruction)
         
-        if provider_global == "custom_model":
-            json_response = self.llm.invoke(messages).strip()
-        else:
-            json_response = self.llm.invoke(messages).content.strip()
-        json_dict = find_json(json_response)
+        max_retries = 3
+        for attempt in range(max_retries):
+            if provider_global == "custom_model":
+                json_response = self.llm.invoke(messages).strip()
+            else:
+                json_response = self.llm.invoke(messages).content.strip()
+            json_dict = find_json(json_response)
 
+            # Check if all required fields are present and non-empty
+            missing_fields = []
+            for field in self.output_field:
+                value = json_dict.get(field, "")
+                if field == 'should_stop':
+                    # should_stop can be boolean false, so check if it exists and is boolean
+                    if field not in json_dict or not isinstance(value, bool):
+                        missing_fields.append(field)
+                else:
+                    # For other fields, check if empty or whitespace
+                    if not value or (isinstance(value, str) and value.strip() == ""):
+                        missing_fields.append(field)
+            
+            if not missing_fields:
+                # All fields are present and non-empty
+                output_infos = []
+                for field in self.output_field:
+                    output_infos.append(json_dict.get(field, ""))
+                return output_infos
+            
+            # If we have missing fields, prepare retry message
+            if attempt < max_retries - 1:  # Don't add retry message on last attempt
+                field_hints = []
+                for field in missing_fields:
+                    if field == 'tool_reason':
+                        field_hints.append("- tool_reason: Provide detailed reasoning (non-empty string)")
+                    elif field == 'tool_name':
+                        field_hints.append("- tool_name: Use exact function name from documentation (non-empty string)")
+                    elif field == 'tool_args':
+                        field_hints.append("- tool_args: Provide parameter dictionary (non-empty dict)")
+                    elif field == 'should_stop':
+                        field_hints.append("- should_stop: Use true or false (boolean, not string)")
+                
+                field_hints_text = '\n'.join(field_hints)
+                retry_message = f"\n\nCRITICAL ERROR: Your response failed validation. Problems found:\n- Missing or empty fields: {missing_fields}\n\nFIELD REQUIREMENTS:\n{field_hints_text}\n\nYou MUST provide ALL required fields: {self.output_field}\nNO empty strings (\"\") are allowed.\nRespond with ONLY a valid JSON object containing all required fields."
+                
+                # Create new messages for retry (don't modify original)
+                retry_messages = messages.copy()
+                retry_messages[-1] = retry_messages[-1].copy()
+                retry_messages[-1]["content"] += retry_message
+                messages = retry_messages
+
+        # If all retries failed, return empty strings for missing fields but log the issue
+        print(f"WARNING: Failed to get complete response after {max_retries} attempts. Missing fields: {missing_fields}")
         output_infos = []
-        for value in json_dict.values():
-            output_infos.append(value)
-
+        for field in self.output_field:
+            output_infos.append(json_dict.get(field, ""))
         return output_infos
 
     def execute_tool(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], tool_manager: ToolCallManager, profile: int) -> dict:
@@ -275,7 +365,7 @@ def main():
         raise RuntimeError("No agent found, please run dataset-generation first!")
 
     agent   = agents[-1]
-    logger  = setup_logging(paths["log_file"])
+    logger  = setup_logging(paths["log_file"], resume=args.resume)
 
     # --------- 跑完整 case，否则按 -n ----------
     if args.dataset in ["burgers_1d", "euler_1d"]:

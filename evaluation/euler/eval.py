@@ -70,6 +70,11 @@ def evaluate(
         cost       = res["accumulated_cost"]
         converged  = res.get("is_converged", res.get("converged", False))
         last_iter  = res["param_sequence"][-1]
+        
+        # Skip entries with empty parameter dictionaries
+        if not last_iter:
+            logger.warning(f"⚠️ Skip QID {qid}: empty parameter dictionary in last iteration")
+            continue
 
         # --------- Select reference parameter set ---------
         if task == "cfl":

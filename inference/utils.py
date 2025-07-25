@@ -18,10 +18,10 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
-def setup_logging(filename: str = None) -> logging.Logger:
+def setup_logging(filename: str = None, resume: bool = False) -> logging.Logger:
     """Setup logging configuration with filtered handlers"""
-    # Clear previous log file's contents
-    if filename:
+    # Clear previous log file's contents only if not resuming
+    if filename and not resume:
         open(filename, 'w').close()
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -108,6 +108,14 @@ class ToolCallManager:
                 )
             )
 
+            # Check for empty or invalid tool name first
+            if not tool_name or not tool_name.strip():
+                raise ValueError("Tool name is empty or missing")
+            
+            # Check for empty or invalid tool_args
+            if not tool_args or not isinstance(tool_args, dict):
+                raise ValueError("Tool args is empty, missing, or not a dictionary")
+
             func = globals()[tool_name]
             if "burgers_1d" in tool_name or "euler_1d" in tool_name:
                 profile = f"{profile}"
@@ -169,6 +177,11 @@ class ToolCallManager:
         except Exception as e:
             error_msg = f"Error executing tool call (QID={self.qid}): {str(e)}"
             self.logger.error(error_msg)
+            # For failed tool calls, still record an empty attempt to avoid param_sequence being empty
+            # This ensures param_sequence is never completely empty, preventing IndexError in evaluation
+            if not self.param_sequence:  # Only add if param_sequence is completely empty
+                self.param_sequence.append({})
+                self.cost_sequence.append(0)
             # Return a dict with an 'error' key, so the caller can detect failure
             return {"error": error_msg}, self.accumulated_cost
 

@@ -28,9 +28,12 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 model_provider="bedrock"
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  # "anthropic.claude-3-5-haiku-20241022-v1:0"
+  # "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  # "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  "mistral.mistral-large-2402-v1:0"
+  "meta.llama3-70b-instruct-v1:0"
+  "deepseek.r1-v1:0"
 )
 
 # ========= Main loop =========
@@ -44,4 +47,4 @@ for mode in "${modes[@]}"; do
   done
 done
 
-echo "✅ All 1D Heat Transfer inference tasks completed successfully!"
+echo "✅ All 1D Heat Transfer inference tasks completed successfully!"dan'wo'qu
