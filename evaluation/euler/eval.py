@@ -5,11 +5,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
 
-def _fetch_param(dic: Dict, *keys):
+def _fetch_param(dic: Dict, *keys, default=None):
     """Return the value of the first existing key in the dictionary (compatible with current_xx/xx naming)"""
     for k in keys:
         if k in dic:
             return dic[k]
+    if default is not None:
+        return default
     raise KeyError(f"None of {keys} found in {dic}")
 
 def evaluate(
@@ -71,40 +73,53 @@ def evaluate(
         converged  = res.get("is_converged", res.get("converged", False))
         last_iter  = res["param_sequence"][-1]
         
-        # Skip entries with empty parameter dictionaries
+        # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
-            logger.warning(f"⚠️ Skip QID {qid}: empty parameter dictionary in last iteration")
-            continue
-
-        # --------- Select reference parameter set ---------
-        if task == "cfl":
-            # 1D list, take the last iteration directly
-            ref_iter = dummy["param_history"][-1]
-        elif task == "k":
-            best_k = dummy["best_k"]
-            # param_history is list[list[dict]]
-            ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["k"] == best_k)
-            ref_iter = ref_seq[-1]          # Last iteration under this k
-        elif task == "beta":
-            best_beta = dummy["best_beta"]
-            # param_history is list[list[dict]]
-            ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["beta"] == best_beta)
-            ref_iter = ref_seq[-1]          # Last iteration under this beta
+            logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
+            success = False
+            linf_norm = float('inf')
+            rmse = float('inf')
         else:
-            raise ValueError(f"Unsupported task: {task}")
+            # --------- Select reference parameter set ---------
+            if task == "cfl":
+                # 1D list, take the last iteration directly
+                ref_iter = dummy["param_history"][-1]
+            elif task == "k":
+                best_k = dummy["best_k"]
+                # param_history is list[list[dict]]
+                ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["k"] == best_k)
+                ref_iter = ref_seq[-1]          # Last iteration under this k
+            elif task == "beta":
+                best_beta = dummy["best_beta"]
+                # param_history is list[list[dict]]
+                ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["beta"] == best_beta)
+                ref_iter = ref_seq[-1]          # Last iteration under this beta
+            else:
+                raise ValueError(f"Unsupported task: {task}")
 
-        success, _, _, linf_norm, rmse = compare_res_euler_1d(
-            profile1=dummy["profile"],
-            cfl1=_fetch_param(last_iter, "cfl", "current_cfl"),
-            k1=_fetch_param(last_iter, "k"),
-            beta1=_fetch_param(last_iter, "beta"),
-            profile2=dummy["profile"],
-            cfl2=_fetch_param(ref_iter, "cfl"),
-            k2=_fetch_param(ref_iter, "k"),
-            beta2=_fetch_param(ref_iter, "beta"),
-            linf_tolerance=linf_tol,
-            rmse_tolerance=rmse_tol,
-        )
+            try:
+                # Use safe parameter fetching with reasonable defaults
+                default_cfl = _fetch_param(ref_iter, "cfl", "current_cfl", default=0.5)
+                default_k = _fetch_param(ref_iter, "k", default=0)
+                default_beta = _fetch_param(ref_iter, "beta", default=1.0)
+                
+                success, _, _, linf_norm, rmse = compare_res_euler_1d(
+                    profile1=dummy["profile"],
+                    cfl1=_fetch_param(last_iter, "cfl", "current_cfl", default=default_cfl),
+                    k1=_fetch_param(last_iter, "k", default=default_k),
+                    beta1=_fetch_param(last_iter, "beta", default=default_beta),
+                    profile2=dummy["profile"],
+                    cfl2=_fetch_param(ref_iter, "cfl", default=default_cfl),
+                    k2=_fetch_param(ref_iter, "k", default=default_k),
+                    beta2=_fetch_param(ref_iter, "beta", default=default_beta),
+                    linf_tolerance=linf_tol,
+                    rmse_tolerance=rmse_tol,
+                )
+            except Exception as e:
+                logger.warning(f"⚠️ QID {qid}: Error in success determination: {e}, marking as failed")
+                success = False
+                linf_norm = float('inf')
+                rmse = float('inf')
 
         # Calculate efficiency: success * (dummy_cost / model_cost)
         efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0

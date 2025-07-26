@@ -133,6 +133,9 @@ def forward(self, data: dict):
     experiment_agent = self.get_experiment_agent(['tool_reason', 'tool_name', 'tool_args', 'should_stop'])
     
     # Main interaction loop
+    last_valid_tool_result = None  # Track the last successful tool result
+    tool_result = None  # Initialize to avoid undefined variable
+    
     for attempt in range(10):
         # Query agent for next action and inject query
         tool_reason, tool_name, tool_args, should_stop = experiment_agent.query(
@@ -163,13 +166,28 @@ def forward(self, data: dict):
         tool_result, acc_cost = experiment_agent.execute_tool(
             tool_reason, tool_name, tool_args, experiment_manager, qid
         )
+        
+        # Track the last valid tool result (not containing error)
+        if 'error' not in tool_result:
+            last_valid_tool_result = tool_result
+            
         messages.append({'role': 'user', 'content': json.dumps(tool_result)})
     
     param_seq = experiment_manager.get_param_sequence()
     cost_seq  = experiment_manager.get_cost_sequence()
+    
+    # Use the last valid tool result if available, otherwise use a default empty result
+    if last_valid_tool_result is not None:
+        final_tool_result = last_valid_tool_result
+    elif tool_result is not None:
+        final_tool_result = tool_result
+    else:
+        # If no tool was ever executed (immediate should_stop=True), create a default result
+        final_tool_result = {'is_converged': False, 'error': 'No tool execution - immediate stop'}
+    
     summary_data = {
         'QID': qid,
-        'is_converged': tool_result['is_converged'],
+        'is_converged': final_tool_result.get('is_converged', False),
         'times': len(param_seq),
         'param_sequence': param_seq,
         'accumulated_cost': experiment_manager.accumulated_cost,

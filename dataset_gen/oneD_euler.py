@@ -83,6 +83,9 @@ def forward(self, data: dict):
         'Experiment Agent'
     )
 
+    last_valid_tool_result = None  # Track the last successful tool result
+    tool_result = None  # Initialize to avoid undefined variable
+    
     for attempt in range(10):
         tool_reason, tool_name, tool_args, should_stop = agent.query(messages, exp_instr)
         messages.append({
@@ -113,13 +116,28 @@ def forward(self, data: dict):
             tool_manager=experiment_manager,
             profile=data['profile']
         )
+        
+        # Track the last valid tool result (not containing error)
+        if 'error' not in tool_result:
+            last_valid_tool_result = tool_result
+            
         messages.append({'role': 'user', 'content': json.dumps(tool_result)})
 
     param_seq  = experiment_manager.get_param_sequence()
     cost_seq   = experiment_manager.get_cost_sequence()
+    
+    # Use the last valid tool result if available, otherwise use a default empty result
+    if last_valid_tool_result is not None:
+        final_tool_result = last_valid_tool_result
+    elif tool_result is not None:
+        final_tool_result = tool_result
+    else:
+        # If no tool was ever executed (immediate should_stop=True), create a default result
+        final_tool_result = {'is_converged': False, 'error': 'No tool execution - immediate stop'}
+    
     summary = {
         'QID': qid,
-        'is_converged': tool_result['is_converged'],
+        'is_converged': final_tool_result.get('is_converged', False),
         'times': len(param_seq),
         'param_sequence': param_seq,
         'accumulated_cost': experiment_manager.accumulated_cost,

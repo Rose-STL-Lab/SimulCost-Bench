@@ -9,11 +9,13 @@ from costsci_tools.wrappers.heat_1d import compare_res_heat_1d
 from costsci_tools.wrappers.heat_steady_2d import compare_res_heat_steady_2d
 from inference.utils import setup_logging, NumpyEncoder
 
-def _fetch_param(dic: Dict, *keys):
+def _fetch_param(dic: Dict, *keys, default=None):
     """Return the value of the first existing key in the dictionary (for dx/current_dx compatibility)"""
     for k in keys:
         if k in dic:
             return dic[k]
+    if default is not None:
+        return default
     raise KeyError(f"None of {keys} found in {dic}")
 
 
@@ -83,52 +85,68 @@ def evaluate(
         converged = res.get("is_converged", res.get("converged", False))
         last_iter = res["param_sequence"][-1]
         
-        # Skip entries with empty parameter dictionaries
+        # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
-            logger.warning(f"⚠️ Skip QID {qid}: empty parameter dictionary in last iteration")
-            continue
-
-        # Reference solution - consistent with legacy code
-        if task == "relax":
-            optimal_val = dummy["optimal_relaxation_factor"]
-            ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
-        elif task == "t_init":
-            optimal_val = dummy["optimal_initial_temperature"]
-            ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
+            logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
+            success = False
+            error = float('inf')  # Maximum error for failed attempts
         else:
-            ref_iter = dummy["param_history"][-1]
+            # Reference solution - consistent with legacy code
+            if task == "relax":
+                optimal_val = dummy["optimal_relaxation_factor"]
+                ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
+            elif task == "t_init":
+                optimal_val = dummy["optimal_initial_temperature"]
+                ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
+            else:
+                ref_iter = dummy["param_history"][-1]
 
-        # -------- Success determination --------
-        if dataset == "1D_heat_transfer":
-            tolerance = 1e-4
-            success, error = compare_res_heat_1d(
-                profile1=dummy["profile"],
-                cfl1=_fetch_param(last_iter, "cfl", "current_cfl"),
-                n_space1=_fetch_param(last_iter, "n_space", "current_n_space"),
-                profile2=dummy["profile"],
-                cfl2=ref_iter["cfl"],
-                n_space2=ref_iter["n_space"],
-                tolerance=tolerance,
-            )
-        elif dataset == "2D_heat_transfer":
-            tolerance = 1e-3
-            success, error = compare_res_heat_steady_2d(
-                profile1=dummy["profile"],
-                dx1=_fetch_param(last_iter, "dx", "current_dx"),
-                relax1=_fetch_param(last_iter, "relax", "current_relax"),
-                error_threshold1=_fetch_param(
-                    last_iter, "error_threshold", "current_error_threshold"
-                ),
-                t_init1=_fetch_param(last_iter, "t_init", "current_t_init"),
-                profile2=dummy["profile"],
-                dx2=ref_iter["dx"],
-                relax2=ref_iter["relax"],
-                error_threshold2=ref_iter["error_threshold"],
-                t_init2=ref_iter.get("t_init", ref_iter.get("T_init")),
-                tolerance=tolerance,
-            )
-        else:
-            raise ValueError(f"Unsupported dataset type: {dataset}")
+            # -------- Success determination --------
+            try:
+                if dataset == "1D_heat_transfer":
+                    tolerance = 1e-4
+                    # Use safe parameter fetching with reasonable defaults
+                    default_cfl = ref_iter["cfl"]  # Use reference value as fallback
+                    default_n_space = ref_iter["n_space"]
+                    
+                    success, error = compare_res_heat_1d(
+                        profile1=dummy["profile"],
+                        cfl1=_fetch_param(last_iter, "cfl", "current_cfl", default=default_cfl),
+                        n_space1=_fetch_param(last_iter, "n_space", "current_n_space", default=default_n_space),
+                        profile2=dummy["profile"],
+                        cfl2=ref_iter["cfl"],
+                        n_space2=ref_iter["n_space"],
+                        tolerance=tolerance,
+                    )
+                elif dataset == "2D_heat_transfer":
+                    tolerance = 1e-3
+                    # Use safe parameter fetching with reasonable defaults
+                    default_dx = ref_iter["dx"]
+                    default_relax = ref_iter["relax"]
+                    default_error_threshold = ref_iter["error_threshold"]
+                    default_t_init = ref_iter.get("t_init", ref_iter.get("T_init"))
+                    
+                    success, error = compare_res_heat_steady_2d(
+                        profile1=dummy["profile"],
+                        dx1=_fetch_param(last_iter, "dx", "current_dx", default=default_dx),
+                        relax1=_fetch_param(last_iter, "relax", "current_relax", default=default_relax),
+                        error_threshold1=_fetch_param(
+                            last_iter, "error_threshold", "current_error_threshold", default=default_error_threshold
+                        ),
+                        t_init1=_fetch_param(last_iter, "t_init", "current_t_init", default=default_t_init),
+                        profile2=dummy["profile"],
+                        dx2=ref_iter["dx"],
+                        relax2=ref_iter["relax"],
+                        error_threshold2=ref_iter["error_threshold"],
+                        t_init2=ref_iter.get("t_init", ref_iter.get("T_init")),
+                        tolerance=tolerance,
+                    )
+                else:
+                    raise ValueError(f"Unsupported dataset type: {dataset}")
+            except Exception as e:
+                logger.warning(f"⚠️ QID {qid}: Error in success determination: {e}, marking as failed")
+                success = False
+                error = float('inf')
 
         # -------- Accumulate metrics --------
         # Calculate efficiency: success * (dummy_cost / model_cost)

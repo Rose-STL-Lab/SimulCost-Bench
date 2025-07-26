@@ -182,8 +182,12 @@ class ToolCallManager:
             if not self.param_sequence:  # Only add if param_sequence is completely empty
                 self.param_sequence.append({})
                 self.cost_sequence.append(0)
-            # Return a dict with an 'error' key, so the caller can detect failure
-            return {"error": error_msg}, self.accumulated_cost
+            # Return a dict with all required fields to prevent KeyError in downstream processing
+            return {
+                "error": error_msg,
+                "is_converged": False,
+                "accumulated_cost": self.accumulated_cost
+            }, self.accumulated_cost
 
     def _record_tool_call(self, tool_name: str, tool_args: Dict[str, Any], tool_reason: str, result: Dict[str, Any]) -> None:
         """Record tool call details in the DataFrame."""
