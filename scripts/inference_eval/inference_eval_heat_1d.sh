@@ -48,4 +48,4 @@ for mode in "${modes[@]}"; do
   done
 done
 
-echo "✅ All 1D Heat Transfer inference tasks completed successfully!"dan'wo'qu
+echo "✅ All 1D Heat Transfer inference tasks completed successfully!"

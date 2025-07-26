@@ -35,6 +35,9 @@ models=(
   "anthropic.claude-3-5-haiku-20241022-v1:0"
   "anthropic.claude-3-5-sonnet-20240620-v1:0"
   "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  "mistral.mistral-large-2402-v1:0"
+  "meta.llama3-70b-instruct-v1:0"
+  "amazon.nova-premier-v1:0"
 )
 # ========= Main loop =========
 for task in "${!task_modes[@]}"; do

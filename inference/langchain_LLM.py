@@ -29,18 +29,7 @@ def FORMAT_INST(request_keys):
     if 'should_stop' in fields_list:
         field_requirements.append("- should_stop MUST be true or false (boolean)")
     
-    # Build example based on fields
-    example_fields = [
-        '"tool_reason": "Your detailed reasoning here"',
-        '"tool_name": "check_converge_cfl"',
-        '"tool_args": {"n_space": 100, "cfl": 0.4}'
-    ]
-    
-    if 'should_stop' in fields_list:
-        example_fields.append('"should_stop": false')
-    
     field_requirements_text = '\n'.join(field_requirements)
-    example_text = ',\n  '.join(example_fields)
     
     return f"""CRITICAL OUTPUT FORMAT REQUIREMENT:
 You MUST reply with a valid JSON object containing ALL of these required keys: {str(request_keys)}
@@ -49,11 +38,6 @@ MANDATORY REQUIREMENTS:
 - Each key MUST have a meaningful, non-empty value
 - NO empty strings ("") are allowed for ANY field
 {field_requirements_text}
-
-EXAMPLE FORMAT:
-{{
-  {example_text}
-}}
 
 DO NOT MISS ANY FIELDS. DO NOT USE EMPTY VALUES. Your response must be ONLY the JSON object, nothing else.
 """
