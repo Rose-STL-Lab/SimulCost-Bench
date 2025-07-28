@@ -62,6 +62,14 @@ The table below summarizes the available tasks for each problem type and indicat
 | 1D Euler                 | `cfl`            | ✅ Supported        |
 | 1D Euler                 | `beta`           | ✅ Supported (Compositional)  |
 | 1D Euler                 | `k`              | ✅ Supported (Compositional)  |
+| 2D Navier-Stokes Channel| `mesh_x`         | ✅ Supported        |
+| 2D Navier-Stokes Channel| `mesh_y`         | ✅ Supported        |
+| 2D Navier-Stokes Channel| `omega_u`        | ✅ Supported        |
+| 2D Navier-Stokes Channel| `omega_v`        | ✅ Supported        |
+| 2D Navier-Stokes Channel| `omega_p`        | ✅ Supported        |
+| 2D Navier-Stokes Channel| `diff_u_threshold` | ✅ Supported      |
+| 2D Navier-Stokes Channel| `diff_v_threshold` | ✅ Supported      |
+| 2D Navier-Stokes Channel| `res_iter_v_threshold` | ✅ Supported  |
 
 
 <!-- ## 🧐 Human Written Version -->
@@ -80,11 +88,15 @@ python qs_gen/1D_burgers.py -t cfl -z
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
 python qs_gen/1D_euler.py -t cfl -z
+
+# 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
+python qs_gen/2D_ns.py -n 5 -t mesh_x -z
 ```
 
 **Parameters:**
 - `-n`: Number of examples to generate
-- `-t`: Problem task type (cfl, n_space, dx, etc.)
+  - **Note for 2D Navier-Stokes**: This creates N profiles for EACH boundary condition (total: 1 + 4×N profiles)
+- `-t`: Problem task type (cfl, n_space, dx, mesh_x, omega_u, etc.)
 - `-z`: Enable zero-shot mode
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/question.json`
