@@ -4,10 +4,40 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 
 import json
 import logging
+import numpy as np
 from typing import List, Dict, Tuple
 from costsci_tools.wrappers.heat_1d import compare_res_heat_1d
 from costsci_tools.wrappers.heat_steady_2d import compare_res_heat_steady_2d
 from inference.utils import setup_logging, NumpyEncoder
+
+def soft_success(d, epsilon):
+    """计算单个 (d, epsilon) 对的 Soft Success 值"""
+    r = d / epsilon
+    
+    if r <= 1:
+        return 1.0
+    
+    # 参数
+    alpha = 0.7
+    beta = 0.05
+    gamma = 1.5
+    omega = 0.3
+    delta = 2.2
+    
+    # 双组分衰减函数
+    exp_component = np.exp(-beta * (r - 1)**gamma)
+    logistic_component = 1 / (1 + omega * (r - 1)**delta)
+    
+    return alpha * exp_component + (1 - alpha) * logistic_component
+
+def soft_success_multi(d_list, epsilon_list):
+    """计算多个 (d, epsilon) 对的平均 Soft Success 值"""
+    ss_values = []
+    for d, eps in zip(d_list, epsilon_list):
+        ss = soft_success(d, eps)
+        ss_values.append(ss)
+    
+    return np.mean(ss_values)  # 算术平均
 
 def _fetch_param(dic: Dict, *keys, default=None):
     """Return the value of the first existing key in the dictionary (for dx/current_dx compatibility)"""
@@ -71,6 +101,7 @@ def evaluate(
     converged_valid = converged_cnt = evaluated = 0
     total_error = 0.0
     total_efficiency = 0.0
+    total_soft_success = 0.0
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -149,8 +180,10 @@ def evaluate(
                 error = float('inf')
 
         # -------- Accumulate metrics --------
-        # Calculate efficiency: success * (dummy_cost / model_cost)
-        efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
+        # Use error metric for soft success calculation
+        soft_success_value = soft_success(error, tolerance)
+        efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
         
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
@@ -159,6 +192,7 @@ def evaluate(
         converged_cnt += int(converged)
         total_error += error
         total_efficiency += efficiency
+        total_soft_success += soft_success_value
 
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
@@ -182,6 +216,7 @@ def evaluate(
     # relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
     mean_efficiency = total_efficiency / evaluated if evaluated else 0.0
     mean_error = total_error / evaluated if evaluated else 0.0
+    mean_ss = total_soft_success / evaluated if evaluated else 0.0
 
     metrics = {
         "converged_rate (converge does not guarantee success)": converged_rate,
@@ -190,6 +225,7 @@ def evaluate(
         # "dummy_cost_efficiency": dummy_cost_eff,
         # "relative_cost_efficiency": f"{relative_eff:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
+        "mean_ss": f"{mean_ss:.3f}",
         "mean_error (model vs. dummy)": f"{mean_error:.2e}",
         "tolerance": f"{tolerance:.2e}",
     }

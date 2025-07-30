@@ -1,0 +1,168 @@
+#!/bin/bash
+# eval_all.sh
+# Function: Execute evaluation commands for specified dataset
+# Usage: ./eval_all.sh -d <dataset>
+
+set -eE -o pipefail
+
+# Default values
+DATASET=""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Model list (modify this list as needed)
+models=(
+  "anthropic.claude-3-5-haiku-20241022-v1:0"
+  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  "mistral.mistral-large-2402-v1:0"
+  "meta.llama3-70b-instruct-v1:0"
+  "amazon.nova-premier-v1:0"
+  "qwen3_8b"
+  "qwen3_32b"
+  "qwen3_235b_a22b"
+)
+
+# Help function
+show_help() {
+    echo "Usage: $0 -d <dataset>"
+    echo ""
+    echo "Required options:"
+    echo "  -d, --dataset    Dataset name (burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer)"
+    echo ""
+    echo "  -h, --help       Show this help message"
+    echo ""
+    echo "Available datasets and their tasks:"
+    echo "  burgers_1d: cfl, k, w (with cases: blast, double_shock, rarefaction, sin, sod)"
+    echo "  euler_1d: cfl, beta, k (with case: sod)"
+    echo "  1D_heat_transfer: cfl, n_space"
+    echo "  2D_heat_transfer: dx, error_threshold (both modes), relax, t_init (zero-shot only)"
+    echo ""
+    echo "Models to be evaluated:"
+    for model in "${models[@]}"; do
+        echo "  - $model"
+    done
+    echo ""
+    echo "Examples:"
+    echo "  $0 -d burgers_1d"
+    echo "  $0 -d 1D_heat_transfer"
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# Validate required parameters
+if [[ -z "$DATASET" ]]; then
+    echo "Error: Dataset (-d) is required"
+    show_help
+    exit 1
+fi
+
+echo "🚀 Starting evaluation for ${#models[@]} model(s) on dataset: $DATASET"
+
+# Loop through each model
+for MODEL in "${models[@]}"; do
+    echo ""
+    echo "🔄 Processing model: $MODEL"
+    
+    # Execute based on dataset type
+    case "$DATASET" in
+        "burgers_1d")
+            echo "📋 Running Burgers 1D evaluation..."
+            tasks=("cfl" "k" "w")
+            cases=("blast" "double_shock" "rarefaction" "sin" "sod")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for case in "${cases[@]}"; do
+                        echo "▶ Executing: python evaluation/burgers/eval.py -m $MODEL -d burgers_1d -t $task -c $case $mode"
+                        python evaluation/burgers/eval.py -m $MODEL -d burgers_1d -t $task -c $case $mode
+                    done
+                done
+            done
+            ;;
+            
+        "euler_1d")
+            echo "📋 Running Euler 1D evaluation..."
+            tasks=("cfl" "beta" "k")
+            cases=("sod")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for case in "${cases[@]}"; do
+                        echo "▶ Executing: python evaluation/euler/eval.py -m $MODEL -d euler_1d -t $task -c $case $mode"
+                        python evaluation/euler/eval.py -m $MODEL -d euler_1d -t $task -c $case $mode
+                    done
+                done
+            done
+            ;;
+            
+        "1D_heat_transfer")
+            echo "📋 Running 1D Heat Transfer evaluation..."
+            tasks=("cfl" "n_space")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    echo "▶ Executing: python evaluation/heat_transfer/eval.py -m $MODEL -d 1D_heat_transfer -t $task $mode"
+                    python evaluation/heat_transfer/eval.py -m $MODEL -d 1D_heat_transfer -t $task $mode
+                done
+            done
+            ;;
+            
+        "2D_heat_transfer")
+            echo "📋 Running 2D Heat Transfer evaluation..."
+            # Define tasks and their corresponding modes
+            declare -A task_modes
+            task_modes["dx"]="-z "           # dx supports zero-shot and iterative
+            task_modes["error_threshold"]="-z "  # error_threshold supports zero-shot and iterative  
+            task_modes["relax"]="-z"         # relax only supports zero-shot
+            task_modes["t_init"]="-z"        # t_init only supports zero-shot
+            
+            for task in "${!task_modes[@]}"; do
+                modes_str="${task_modes[$task]}"
+                
+                if [[ "$modes_str" == *" "* ]]; then
+                    # Contains space, supports both modes
+                    modes=("-z" "")
+                else
+                    # Only supports one mode
+                    modes=("$modes_str")
+                fi
+                
+                for mode in "${modes[@]}"; do
+                    echo "▶ Executing: python evaluation/heat_transfer/eval.py -m $MODEL -d 2D_heat_transfer -t $task $mode"
+                    python evaluation/heat_transfer/eval.py -m $MODEL -d 2D_heat_transfer -t $task $mode
+                done
+            done
+            ;;
+            
+        *)
+            echo "❌ Unsupported dataset: $DATASET"
+            echo "Supported datasets: burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer"
+            exit 1
+            ;;
+    esac
+    
+    echo "✅ Completed evaluation for model: $MODEL"
+done
+
+echo ""
+echo "🎉 All evaluation tasks completed successfully for all models on $DATASET!"

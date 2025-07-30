@@ -35,6 +35,7 @@ PRIORITY_METRICS = [
     # "model_cost_efficiency",
     # "dummy_cost_efficiency",
     # "relative_cost_efficiency",
+    "mean_ss",
     "mean_efficiency",
 ]
 
@@ -237,8 +238,8 @@ def write_excel(
         ):
             # Maximum efficiency within group (may be empty)
             max_efficiency = (
-                subdf["mean_efficiency"].max()
-                if "mean_efficiency" in subdf
+                subdf["mean_efficiency"][subdf["mean_efficiency"] != 'nan'].max()
+                if "mean_efficiency" in subdf and len(subdf["mean_efficiency"][subdf["mean_efficiency"] != 'nan']) > 0
                 else None
             )
 

@@ -1,9 +1,39 @@
 import sys, os, json, logging
+import numpy as np
 from typing import List, Dict, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
+
+def soft_success(d, epsilon):
+    """计算单个 (d, epsilon) 对的 Soft Success 值"""
+    r = d / epsilon
+    
+    if r <= 1:
+        return 1.0
+    
+    # 参数
+    alpha = 0.7
+    beta = 0.05
+    gamma = 1.5
+    omega = 0.3
+    delta = 2.2
+    
+    # 双组分衰减函数
+    exp_component = np.exp(-beta * (r - 1)**gamma)
+    logistic_component = 1 / (1 + omega * (r - 1)**delta)
+    
+    return alpha * exp_component + (1 - alpha) * logistic_component
+
+def soft_success_multi(d_list, epsilon_list):
+    """计算多个 (d, epsilon) 对的平均 Soft Success 值"""
+    ss_values = []
+    for d, eps in zip(d_list, epsilon_list):
+        ss = soft_success(d, eps)
+        ss_values.append(ss)
+    
+    return np.mean(ss_values)  # 算术平均
 
 def _fetch_param(dic: Dict, *keys, default=None):
     """Return the value of the first existing key in the dictionary (compatible with current_xx/xx naming)"""
@@ -56,6 +86,7 @@ def evaluate(
     success_cnt = converged_cnt = evaluated = 0
     total_linf = total_rmse = 0.0
     total_efficiency = 0.0
+    total_soft_success = 0.0
 
     linf_tol = 0.2     # L_infinity tolerance for euler_1d
     rmse_tol = 0.02    # L2 / RMSE tolerance for euler_1d
@@ -121,8 +152,10 @@ def evaluate(
                 linf_norm = float('inf')
                 rmse = float('inf')
 
-        # Calculate efficiency: success * (dummy_cost / model_cost)
-        efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
+        # Use both linf and rmse metrics for soft success calculation
+        soft_success_value = soft_success_multi([linf_norm, rmse], [linf_tol, rmse_tol])
+        efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
         
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
@@ -131,6 +164,7 @@ def evaluate(
         total_linf       += linf_norm
         total_rmse       += rmse
         total_efficiency += efficiency
+        total_soft_success += soft_success_value
 
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
@@ -155,6 +189,7 @@ def evaluate(
     mean_efficiency   = total_efficiency / evaluated if evaluated else 0.0
     mean_linf         = total_linf / evaluated if evaluated else 0.0
     mean_rmse         = total_rmse / evaluated if evaluated else 0.0
+    mean_ss           = total_soft_success / evaluated if evaluated else 0.0
 
     metrics = {
         "converged_rate (converge does not guarantee success)": converged_rate,
@@ -163,6 +198,7 @@ def evaluate(
         # "dummy_cost_efficiency": f"{dummy_cost_eff:.2e}",
         # "relative_cost_efficiency": f"{relative_eff:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
+        "mean_ss": f"{mean_ss:.3f}",
         "mean_Linf": f"{mean_linf:.2e}",
         "mean_RMSE": f"{mean_rmse:.2e}",
         "tolerances": f"Linf ≤ {linf_tol:.2e}, RMSE ≤ {rmse_tol:.2e}",
