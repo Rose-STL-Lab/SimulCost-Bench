@@ -29,3 +29,5 @@ eval_results
 log_model_tool_call
 results_model_attempt
 *.txt
+
+evaluation/soft_success.md
