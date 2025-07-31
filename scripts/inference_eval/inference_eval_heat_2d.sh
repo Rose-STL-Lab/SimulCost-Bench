@@ -54,7 +54,7 @@ for task in "${!task_modes[@]}"; do
   for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       # 2D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -n 100-p $model_provider -m $model -d 2D_heat_transfer -t $task $mode --resume"
+      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 2D_heat_transfer -t $task $mode --resume"
       run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 2D_heat_transfer -t $task $mode"
     done
   done

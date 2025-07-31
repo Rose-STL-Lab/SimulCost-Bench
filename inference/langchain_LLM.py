@@ -350,13 +350,29 @@ def main():
     agent   = agents[-1]
     logger  = setup_logging(paths["log_file"], resume=args.resume)
 
+    # Display dataset information
+    logger.info(f"Dataset: {args.dataset}, Task: {args.task}, Mode: {'zero_shot' if zero_shot else 'iterative'}")
+    logger.info(f"Dataset file: {paths['dataset_file']}")
+    logger.info(f"Total samples available in dataset: {len(dataset)}")
+    logger.info(f"Requested samples (-n): {args.num_samples}")
+
     # --------- 跑完整 case，否则按 -n ----------
     if args.dataset in ["burgers_1d", "euler_1d"]:
         test_dataset = dataset
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
     else:
-        test_dataset = dataset[:args.num_samples]
-        logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")
+        # Check if requested samples exceed available samples
+        available_samples = len(dataset)
+        requested_samples = args.num_samples
+        
+        if requested_samples > available_samples:
+            logger.warning(f"Requested {requested_samples} samples, but dataset only contains {available_samples} samples.")
+            logger.warning(f"Using all available {available_samples} samples instead.")
+            test_dataset = dataset
+            logger.info(f"Evaluating ALL {len(test_dataset)} samples (limited by dataset size).")
+        else:
+            test_dataset = dataset[:args.num_samples]
+            logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")
 
     # Create progress file path
     progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"

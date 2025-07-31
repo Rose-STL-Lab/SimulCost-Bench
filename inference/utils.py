@@ -27,15 +27,17 @@ def setup_logging(filename: str = None, resume: bool = False) -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     formatter = logging.Formatter(
-        '[%(levelname)s %(asctime)s] QID=%(qid)s - %(message)s',
+        '[%(levelname)s %(asctime)s] %(qid_prefix)s%(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
     class QIDFilter(logging.Filter):
-        """给没有 qid 字段的 LogRecord 自动补 '-'，保证 formatter 不报错"""
+        """给没有 qid 字段的 LogRecord 自动补充 qid_prefix 格式"""
         def filter(self, record):
-            if not hasattr(record, 'qid'):
-                record.qid = '-'
+            if not hasattr(record, 'qid') or record.qid == '-':
+                record.qid_prefix = ''
+            else:
+                record.qid_prefix = f'QID={record.qid} - '
             return True
 
     # Create filters

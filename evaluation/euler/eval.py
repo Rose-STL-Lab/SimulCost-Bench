@@ -5,6 +5,7 @@ from typing import List, Dict, Tuple
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
+from evaluation.validation_utils import setup_robust_evaluation, print_usage_help
 
 def soft_success(d, epsilon):
     """计算单个 (d, epsilon) 对的 Soft Success 值"""
@@ -14,8 +15,8 @@ def soft_success(d, epsilon):
         return 1.0
     
     # 参数
-    alpha = 0.7
-    beta = 0.05
+    alpha = 0.6
+    beta = 0.43
     gamma = 1.5
     omega = 0.3
     delta = 2.2
@@ -53,32 +54,34 @@ def evaluate(
 ) -> Dict:
     case_prefix = f"{case}/" if case else ""
     flag = "zero_shot" if zero_shot else "iterative"
-
-    result_path = (
-        f"results_model_attempt/{dataset}/{task}/{case_prefix}{flag}_{model_name}.json"
-    )
-    dummy_path = f"data/{dataset}/{task}/{case_prefix}{flag}_questions.json"
+    
     log_dir = f"eval_results/{dataset}/{task}/{case or 'default'}"
     os.makedirs(log_dir, exist_ok=True)
     log_file = f"{log_dir}/{flag}_{model_name}.log"
-
     logger = setup_logging(log_file)
-    logger.info(f"✅ Loading model results from {result_path}")
-    logger.info(f"✅ Loading dummy solutions from {dummy_path}")
-
-    try:
-        with open(result_path, "r") as f:
-            result_dataset: List[Dict] = json.load(f)
-    except FileNotFoundError:
-        logger.error(f"❌ Result file not found: {result_path}")
-        raise
-
-    try:
-        with open(dummy_path, "r") as f:
-            dummy_dataset: List[Dict] = json.load(f)
-    except FileNotFoundError:
-        logger.error(f"❌ Dummy file not found: {dummy_path}")
-        raise
+    
+    # Robust validation and file loading
+    success, info = setup_robust_evaluation(dataset, task, model_name, case, zero_shot, logger)
+    if not success:
+        error_msg = info["error"]
+        logger.error(f"❌ Evaluation setup failed: {error_msg}")
+        
+        # Print helpful information to console
+        print(f"\n❌ Evaluation failed: {error_msg}\n")
+        if info.get("error_type") == "invalid_configuration":
+            print_usage_help()
+        elif info.get("error_type") == "missing_model_results":
+            print_usage_help(dataset, task)
+        
+        raise RuntimeError(f"Evaluation setup failed: {error_msg}")
+    
+    result_path = info["result_path"]
+    dummy_path = info["dummy_path"]
+    result_dataset = info["result_data"]
+    dummy_dataset = info["dummy_data"]
+    
+    logger.info(f"✅ Loaded model results from {result_path} ({len(result_dataset)} entries)")
+    logger.info(f"✅ Loaded dummy solutions from {dummy_path} ({len(dummy_dataset)} entries)")
 
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
 
