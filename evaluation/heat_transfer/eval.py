@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
+import pdb
 import json
 import logging
 import numpy as np
@@ -124,6 +125,15 @@ def evaluate(
             logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
             success = False
             error = float('inf')  # Maximum error for failed attempts
+            # Reference solution - consistent with legacy code
+            if task == "relax":
+                optimal_val = dummy["optimal_relaxation_factor"]
+                ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
+            elif task == "t_init":
+                optimal_val = dummy["optimal_initial_temperature"]
+                ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
+            else:
+                ref_iter = dummy["param_history"][-1]
         else:
             # Reference solution - consistent with legacy code
             if task == "relax":
