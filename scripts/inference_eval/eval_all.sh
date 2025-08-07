@@ -1,12 +1,12 @@
 #!/bin/bash
 # eval_all.sh
-# Function: Execute evaluation commands for specified dataset
-# Usage: ./eval_all.sh -d <dataset>
+# Function: Execute evaluation commands for specified dataset(s)
+# Usage: ./eval_all.sh -d <dataset1> [-d <dataset2>] ...
 
 set -eE -o pipefail
 
 # Default values
-DATASET=""
+DATASETS=()
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Model list (modify this list as needed)
@@ -17,17 +17,18 @@ models=(
   "mistral.mistral-large-2402-v1:0"
   "meta.llama3-70b-instruct-v1:0"
   "amazon.nova-premier-v1:0"
-  "qwen3_8b"
-  "qwen3_32b"
-  "qwen3_235b_a22b"
+#   "qwen3_8b"
+#   "qwen3_32b"
+#   "qwen3_235b_a22b"
 )
 
 # Help function
 show_help() {
-    echo "Usage: $0 -d <dataset>"
+    echo "Usage: $0 -d <dataset1> [-d <dataset2>] ..."
     echo ""
     echo "Required options:"
-    echo "  -d, --dataset    Dataset name (burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer)"
+    echo "  -d, --dataset    Dataset name (can be specified multiple times)"
+    echo "                   Available: burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -44,14 +45,15 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 -d burgers_1d"
-    echo "  $0 -d 1D_heat_transfer"
+    echo "  $0 -d 1D_heat_transfer -d 2D_heat_transfer"
+    echo "  $0 -d burgers_1d -d euler_1d -d 1D_heat_transfer -d 2D_heat_transfer"
 }
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -d|--dataset)
-            DATASET="$2"
+            DATASETS+=("$2")
             shift 2
             ;;
         -h|--help)
@@ -67,21 +69,26 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required parameters
-if [[ -z "$DATASET" ]]; then
-    echo "Error: Dataset (-d) is required"
+if [[ ${#DATASETS[@]} -eq 0 ]]; then
+    echo "Error: At least one dataset (-d) is required"
     show_help
     exit 1
 fi
 
-echo "🚀 Starting evaluation for ${#models[@]} model(s) on dataset: $DATASET"
+echo "🚀 Starting evaluation for ${#models[@]} model(s) on dataset(s): ${DATASETS[*]}"
 
-# Loop through each model
-for MODEL in "${models[@]}"; do
+# Loop through each dataset
+for DATASET in "${DATASETS[@]}"; do
     echo ""
-    echo "🔄 Processing model: $MODEL"
+    echo "🎯 Processing dataset: $DATASET"
     
-    # Execute based on dataset type
-    case "$DATASET" in
+    # Loop through each model
+    for MODEL in "${models[@]}"; do
+        echo ""
+        echo "🔄 Processing model: $MODEL on dataset: $DATASET"
+        
+        # Execute based on dataset type
+        case "$DATASET" in
         "burgers_1d")
             echo "📋 Running Burgers 1D evaluation..."
             tasks=("cfl" "k" "w")
@@ -161,8 +168,11 @@ for MODEL in "${models[@]}"; do
             ;;
     esac
     
-    echo "✅ Completed evaluation for model: $MODEL"
+        echo "✅ Completed evaluation for model: $MODEL on dataset: $DATASET"
+    done
+    
+    echo "✅ Completed all models for dataset: $DATASET"
 done
 
 echo ""
-echo "🎉 All evaluation tasks completed successfully for all models on $DATASET!"
+echo "🎉 All evaluation tasks completed successfully for all models on all specified datasets!"

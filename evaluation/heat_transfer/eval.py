@@ -185,15 +185,29 @@ def evaluate(
         # -------- Accumulate metrics --------
         # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
         # Use error metric for soft success calculation
-        soft_success_value = soft_success(error, tolerance)
+        
+        # Handle NaN error values: if error is NaN or infinite, set soft success to 0
+        if np.isnan(error) or np.isinf(error):
+            soft_success_value = 0.0
+            logger.warning(f"⚠️ QID {qid}: Error value is NaN/inf ({error}), setting soft success to 0")
+        else:
+            soft_success_value = soft_success(error, tolerance)
+            
         efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
+        # Handle NaN values in efficiency calculation
+        if np.isnan(efficiency) or np.isinf(efficiency):
+            efficiency = 0.0
+            logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
         
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt += int(success)
         converged_valid += 1
         converged_cnt += int(converged)
+        # Always add error to total (including NaN/inf) for mean_error calculation
         total_error += error
+        # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
         total_efficiency += efficiency
         total_soft_success += soft_success_value
 

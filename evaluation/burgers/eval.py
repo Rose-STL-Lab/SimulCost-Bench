@@ -156,15 +156,29 @@ def evaluate(
 
         # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
         # Use both linf and rmse metrics for soft success calculation
-        soft_success_value = soft_success_multi([linf_norm, rmse], [linf_tol, rmse_tol])
+        
+        # Handle NaN values in linf_norm and rmse: if either is NaN or infinite, set soft success to 0
+        if np.isnan(linf_norm) or np.isinf(linf_norm) or np.isnan(rmse) or np.isinf(rmse):
+            soft_success_value = 0.0
+            logger.warning(f"⚠️ QID {qid}: Linf ({linf_norm}) or RMSE ({rmse}) is NaN/inf, setting soft success to 0")
+        else:
+            soft_success_value = soft_success_multi([linf_norm, rmse], [linf_tol, rmse_tol])
+            
         efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
+        # Handle NaN values in efficiency calculation
+        if np.isnan(efficiency) or np.isinf(efficiency):
+            efficiency = 0.0
+            logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
         
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt      += int(success)
         converged_cnt    += int(converged)
-        total_linf       += linf_norm
-        total_rmse       += rmse
+        # Always add error metrics to totals (including NaN/inf) for diagnostic purposes
+        total_linf += linf_norm
+        total_rmse += rmse
+        # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
         total_efficiency += efficiency
         total_soft_success += soft_success_value
 

@@ -42,20 +42,25 @@ PRIORITY_METRICS = [
 # ------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------
-def parse_log(path: Path) -> Tuple[int, Dict[str, str]]:
-    """Return (num_samples, metrics_dict) extracted from a single .log file."""
-    text = path.read_text(encoding="utf-8", errors="ignore")
+def parse_log(path: Path) -> Tuple[int, Dict[str, str]] | None:
+    """Return (num_samples, metrics_dict) extracted from a single .log file, or None if parsing fails."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
 
-    # 1) number of samples = highest QID
-    qids = [int(x) for x in QID_REGEX.findall(text)]
-    num_samples = max(qids) if qids else 0
+        # 1) number of samples = highest QID
+        qids = [int(x) for x in QID_REGEX.findall(text)]
+        num_samples = max(qids) if qids else 0
 
-    # 2) evaluation summary block
-    m = SUMMARY_REGEX.search(text)
-    if not m:
-        raise ValueError(f"No evaluation summary found in {path}")
-    metrics = json.loads(m.group(1))
-    return num_samples, metrics
+        # 2) evaluation summary block
+        m = SUMMARY_REGEX.search(text)
+        if not m:
+            print(f"Warning: No evaluation summary found in {path}, skipping...")
+            return None
+        metrics = json.loads(m.group(1))
+        return num_samples, metrics
+    except Exception as e:
+        print(f"Warning: Failed to parse {path}: {e}, skipping...")
+        return None
 
 
 def is_number(v: str) -> bool:
@@ -112,7 +117,10 @@ def collect_rows(dataset: str, tasks: List[str]) -> Tuple[List[Dict[str, str]], 
                     mode_key, model = match.groups()
                     mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
 
-                    num_samples, metrics = parse_log(log_path)
+                    result = parse_log(log_path)
+                    if result is None:
+                        continue
+                    num_samples, metrics = result
                     metric_names.update(metrics.keys())
 
                     key = (model, task, mode)
@@ -150,7 +158,10 @@ def collect_rows(dataset: str, tasks: List[str]) -> Tuple[List[Dict[str, str]], 
             mode_key, model = match.groups()
             mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
 
-            num_samples, metrics = parse_log(log_path)
+            result = parse_log(log_path)
+            if result is None:
+                continue
+            num_samples, metrics = result
 
             row = {
                 "Model": model,
