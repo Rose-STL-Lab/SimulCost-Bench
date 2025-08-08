@@ -124,6 +124,7 @@ def evaluate(
         if not last_iter:
             logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
             success = False
+            tolerance=1e-4
             error = float('inf')  # Maximum error for failed attempts
             # Reference solution - consistent with legacy code
             if task == "relax":

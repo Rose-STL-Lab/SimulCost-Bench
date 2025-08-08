@@ -52,7 +52,7 @@ class LLMAgentBase():
             self.llm = ChatOpenAI(
                 model_name=model_name_global,
                 seed=42,
-                temperature=0,
+                #temperature=0,
                 openai_api_key=os.getenv("OPENAI_API_KEY")
             )
             self.llm.bind(response_format={"type": "json_object"})

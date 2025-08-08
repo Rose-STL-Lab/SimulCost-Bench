@@ -72,9 +72,21 @@ class Llama3:
         
         return response
     
-class Llama3_lora(Llama3):
+class Llama3_lora_3B(Llama3):
     def __init__(self, model_path):
-        base_name = "meta-llama/Llama-3.2-3B-Instruct" if '3B' in model_path else "meta-llama/Llama-3.2-1B-Instruct"
+        base_name = "meta-llama/Llama-3.2-3B-Instruct"
+        self.tokenizer = AutoTokenizer.from_pretrained(base_name)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            base_name,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True
+        )
+        self.model = PeftModel.from_pretrained(self.model, model_path)
+        
+class Llama3_lora_1B(Llama3):
+    def __init__(self, model_path):
+        base_name = "meta-llama/Llama-3.2-1B-Instruct"
         self.tokenizer = AutoTokenizer.from_pretrained(base_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             base_name,

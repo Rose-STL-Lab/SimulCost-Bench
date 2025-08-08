@@ -10,6 +10,64 @@ import pandas as pd
 import numpy as np
 from logging import LoggerAdapter
 
+
+TOOL_NAME_KEYS = {
+    "check_converge_cfl": ["n_space", "cfl"],
+    "check_converge_n_space": ["n_space", "cfl"],
+    "check_converge_dx": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "check_converge_relax": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "check_converge_t_init": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "check_converge_error_threshold": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "burgers_1d": ["current_cfl", "k", "w"],
+    "euler_1d": ["current_cfl", "beta", "k"]
+}
+
+def extract_parameters_regex(response_text: str, required_keys: List[str]) -> Dict[str, Any]:
+    """
+    Extract parameters using rule-based regex methods from response text.
+    
+    Args:
+        response_text: The raw response text from the model
+        required_keys: List of parameter keys to extract
+    
+    Returns:
+        Dictionary with extracted parameters, or empty dict if extraction fails
+    """
+    import re
+    
+    params = {}
+    
+    # Try to extract parameters from the response text
+    for key in required_keys:
+        # Look for the key in various formats within the response
+        key_patterns = [
+            # Match "key": "value" or "key": value 
+            rf'["\']?{key}["\']?\s*:\s*["\']?([0-9.]+)["\']?',
+            # Match key: "value" or key: value
+            rf'{key}\s*:\s*["\']?([0-9.]+)["\']?',
+            # Match key = value
+            rf'{key}\s*=\s*["\']?([0-9.]+)["\']?',
+            # More flexible: key followed by any non-letter chars then number
+            rf'{key}[^a-zA-Z]*?([0-9.]+)'
+        ]
+        
+        for key_pattern in key_patterns:
+            key_matches = re.findall(key_pattern, response_text, re.IGNORECASE)
+            if key_matches:
+                try:
+                    # Use the first match found
+                    value = key_matches[0]
+                    if key == "n_space":
+                        params[key] = int(float(value))
+                    else:
+                        params[key] = float(value)
+                    break
+                except ValueError:
+                    continue
+    
+    return params
+
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (np.integer, np.floating, np.bool_)):
@@ -109,6 +167,9 @@ class ToolCallManager:
                     indent=2
                 )
             )
+
+            if tool_args and not isinstance(tool_args, dict):
+                tool_args = extract_parameters_regex(tool_args, TOOL_NAME_KEYS[tool_name])
 
             # Check for empty or invalid tool name first
             if not tool_name or not tool_name.strip():
