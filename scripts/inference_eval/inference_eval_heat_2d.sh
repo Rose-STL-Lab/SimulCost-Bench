@@ -30,14 +30,19 @@ task_modes["error_threshold"]="-z "  # error_threshold supports zero-shot and it
 task_modes["relax"]="-z"         # relax only supports zero-shot
 task_modes["t_init"]="-z"        # t_init only supports zero-shot
 
-model_provider="bedrock"
+#model_provider="bedrock"
+#models=(
+#  "anthropic.claude-3-5-haiku-20241022-v1:0"
+#  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+#  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+#  "mistral.mistral-large-2402-v1:0"
+#  "meta.llama3-70b-instruct-v1:0"
+#  "amazon.nova-premier-v1:0"
+#)
+
+model_provider="openai"
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-  "anthropic.claude-3-7-sonnet-20250219-v1:0"
-  "mistral.mistral-large-2402-v1:0"
-  "meta.llama3-70b-instruct-v1:0"
-  "amazon.nova-premier-v1:0"
+  "gpt-4o-mini"
 )
 # ========= Main loop =========
 for task in "${!task_modes[@]}"; do
