@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Tuple
 import pandas as pd
 import numpy as np
 from logging import LoggerAdapter
+from utils.param_compatibility import fetch_param
 
 
 TOOL_NAME_KEYS = {
@@ -189,27 +190,27 @@ class ToolCallManager:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_n_space=tool_args["n_space"],
-                    current_cfl=tool_args["cfl"],
+                    current_n_space=fetch_param(tool_args, "n_space", "current_n_space"),
+                    current_cfl=fetch_param(tool_args, "cfl", "current_cfl"),
                     tolerance=1e-4
                 )
             elif tool_name in ["check_converge_dx", "check_converge_relax", "check_converge_t_init", "check_converge_error_threshold"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_dx=tool_args["current_dx"],
-                    current_relax=tool_args["current_relax"],
-                    current_t_init=tool_args["current_t_init"],
-                    current_error_threshold=tool_args["current_error_threshold"],
+                    current_dx=fetch_param(tool_args, "current_dx", "dx"),
+                    current_relax=fetch_param(tool_args, "current_relax", "relax"),
+                    current_t_init=fetch_param(tool_args, "current_t_init", "t_init", "T_init"),
+                    current_error_threshold=fetch_param(tool_args, "current_error_threshold", "error_threshold"),
                     tolerance=1e-3
                 )
             elif tool_name in ["burgers_1d"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_cfl=tool_args["current_cfl"],
-                    k=tool_args["k"],
-                    w=tool_args["w"],
+                    current_cfl=fetch_param(tool_args, "current_cfl", "cfl"),
+                    k=fetch_param(tool_args, "k"),
+                    w=fetch_param(tool_args, "w"),
                     linf_tolerance=5e-2,
                     rmse_tolerance=5e-3,
                 )
@@ -217,9 +218,9 @@ class ToolCallManager:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_cfl=tool_args["current_cfl"],
-                    beta=tool_args["beta"],
-                    k=tool_args["k"],
+                    current_cfl=fetch_param(tool_args, "current_cfl", "cfl"),
+                    beta=fetch_param(tool_args, "beta"),
+                    k=fetch_param(tool_args, "k"),
                     linf_tolerance=0.2,
                     rmse_tolerance=0.02,
                 )

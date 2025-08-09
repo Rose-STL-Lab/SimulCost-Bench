@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from costsci_tools.wrappers.burgers_1d import compare_res_burgers_1d
 from inference.utils import setup_logging, NumpyEncoder
 from evaluation.validation_utils import setup_robust_evaluation, print_usage_help
+from utils.param_compatibility import fetch_param
 
 def soft_success(d, epsilon):
     """计算单个 (d, epsilon) 对的 Soft Success 值"""
@@ -36,14 +37,6 @@ def soft_success_multi(d_list, epsilon_list):
     
     return np.mean(ss_values)  # 算术平均
 
-def _fetch_param(dic: Dict, *keys, default=None):
-    """Return the value of the first existing key in the dictionary (compatible with current_xx/xx naming)"""
-    for k in keys:
-        if k in dic:
-            return dic[k]
-    if default is not None:
-        return default
-    raise KeyError(f"None of {keys} found in {dic}")
 
 def evaluate(
     dataset: str,
@@ -105,7 +98,13 @@ def evaluate(
 
         cost       = res["accumulated_cost"]
         converged  = res.get("is_converged", res.get("converged", False))
-        last_iter  = res["param_sequence"][-1]
+        
+        # Handle entries with empty param_sequence - mark as failed instead of skipping
+        if not res["param_sequence"]:
+            logger.warning(f"⚠️ QID {qid}: empty param_sequence, marking as failed")
+            last_iter = {}
+        else:
+            last_iter  = res["param_sequence"][-1]
         
         # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
@@ -132,19 +131,19 @@ def evaluate(
 
             try:
                 # Use safe parameter fetching with reasonable defaults
-                default_cfl = _fetch_param(ref_iter, "cfl", "current_cfl", default=0.5)
-                default_k = _fetch_param(ref_iter, "k", default=0)
-                default_w = _fetch_param(ref_iter, "w", default=1.0)
+                default_cfl = fetch_param(ref_iter, "cfl", "current_cfl", default=0.5)
+                default_k = fetch_param(ref_iter, "k", default=0)
+                default_w = fetch_param(ref_iter, "w", default=1.0)
                 
                 success, _, _, linf_norm, rmse = compare_res_burgers_1d(
                     profile1=dummy["profile"],
-                    cfl1=_fetch_param(last_iter, "cfl", "current_cfl", default=default_cfl),
-                    k1=_fetch_param(last_iter, "k", default=default_k),
-                    w1=_fetch_param(last_iter, "w", default=default_w),
+                    cfl1=fetch_param(last_iter, "cfl", "current_cfl", default=default_cfl),
+                    k1=fetch_param(last_iter, "k", default=default_k),
+                    w1=fetch_param(last_iter, "w", default=default_w),
                     profile2=dummy["profile"],
-                    cfl2=_fetch_param(ref_iter, "cfl", default=default_cfl),
-                    k2=_fetch_param(ref_iter, "k", default=default_k),
-                    w2=_fetch_param(ref_iter, "w", default=default_w),
+                    cfl2=fetch_param(ref_iter, "cfl", "current_cfl", default=default_cfl),
+                    k2=fetch_param(ref_iter, "k", default=default_k),
+                    w2=fetch_param(ref_iter, "w", default=default_w),
                     linf_tolerance=linf_tol,
                     rmse_tolerance=rmse_tol,
                 )
