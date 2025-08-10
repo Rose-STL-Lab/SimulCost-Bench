@@ -82,6 +82,7 @@ def evaluate(
     success_cnt = converged_cnt = evaluated = 0
     total_linf = total_rmse = 0.0
     total_efficiency = 0.0
+    total_hard_efficiency = 0.0
     total_soft_success = 0.0
 
     linf_tol = 0.2     # L_infinity tolerance for euler_1d
@@ -104,7 +105,27 @@ def evaluate(
             logger.warning(f"⚠️ QID {qid}: empty param_sequence, marking as failed")
             last_iter = {}
         else:
-            last_iter  = res["param_sequence"][-1]
+            # Find the last valid parameter set (working backwards from the end)
+            last_iter = {}
+            for i in range(len(res["param_sequence"]) - 1, -1, -1):
+                candidate = res["param_sequence"][i]
+                if candidate and isinstance(candidate, dict):
+                    # Check if this parameter set has the required keys for euler_1d
+                    has_cfl = any(k in candidate for k in ["cfl", "current_cfl"])
+                    has_beta = "beta" in candidate
+                    has_k = "k" in candidate
+                    has_valid_params = has_cfl and has_beta and has_k
+                    
+                    if has_valid_params:
+                        last_iter = candidate
+                        if i < len(res["param_sequence"]) - 1:
+                            logger.info(f"📋 QID {qid}: Using parameter set from iteration {i+1} (last valid), skipping {len(res['param_sequence']) - 1 - i} invalid final iterations")
+                        break
+            
+            # If no valid parameter set found, use the last one anyway (might be empty)
+            if not last_iter and res["param_sequence"]:
+                last_iter = res["param_sequence"][-1]
+                logger.warning(f"⚠️ QID {qid}: No fully valid parameter sets found, using last attempt")
         
         # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
@@ -171,6 +192,14 @@ def evaluate(
             efficiency = 0.0
             logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
         
+        # Calculate hard efficiency using binary success instead of soft success
+        hard_efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
+        # Handle NaN values in hard efficiency calculation
+        if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
+            hard_efficiency = 0.0
+            logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
+        
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt      += int(success)
@@ -180,6 +209,7 @@ def evaluate(
         total_rmse += rmse
         # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
         total_efficiency += efficiency
+        total_hard_efficiency += hard_efficiency
         total_soft_success += soft_success_value
 
         logger.info(
@@ -190,6 +220,7 @@ def evaluate(
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
             f"⚡ Efficiency: {efficiency:.3f}\n"
+            f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
             f"📉 Linf  (model vs. dummy): {linf_norm:.3e}\n"
             f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
@@ -203,6 +234,7 @@ def evaluate(
     # dummy_cost_eff    = evaluated     / total_dummy_cost if total_dummy_cost else 0.0
     # relative_eff      = model_cost_eff / dummy_cost_eff  if dummy_cost_eff else 0.0
     mean_efficiency   = total_efficiency / evaluated if evaluated else 0.0
+    mean_hard_efficiency = total_hard_efficiency / evaluated if evaluated else 0.0
     mean_linf         = total_linf / evaluated if evaluated else 0.0
     mean_rmse         = total_rmse / evaluated if evaluated else 0.0
     mean_ss           = total_soft_success / evaluated if evaluated else 0.0
@@ -214,6 +246,7 @@ def evaluate(
         # "dummy_cost_efficiency": f"{dummy_cost_eff:.2e}",
         # "relative_cost_efficiency": f"{relative_eff:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
+        "mean_hard_efficiency": f"{mean_hard_efficiency:.3f}",
         "mean_ss": f"{mean_ss:.3f}",
         "mean_Linf": f"{mean_linf:.2e}",
         "mean_RMSE": f"{mean_rmse:.2e}",

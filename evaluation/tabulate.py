@@ -37,6 +37,7 @@ PRIORITY_METRICS = [
     # "relative_cost_efficiency",
     "mean_ss",
     "mean_efficiency",
+    "mean_hard_efficiency",
 ]
 
 # ------------------------------------------------------------
@@ -218,7 +219,7 @@ def write_excel(
     df = pd.DataFrame(rows)[ordered_cols]
 
     # Convert to numeric for easier comparison
-    for col in ("mean_efficiency",):
+    for col in ("mean_efficiency", "mean_hard_efficiency"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 

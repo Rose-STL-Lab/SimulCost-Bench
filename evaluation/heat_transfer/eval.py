@@ -98,6 +98,7 @@ def evaluate(
     converged_valid = converged_cnt = evaluated = 0
     total_error = 0.0
     total_efficiency = 0.0
+    total_hard_efficiency = 0.0
     total_soft_success = 0.0
 
     for res in result_dataset:
@@ -117,7 +118,34 @@ def evaluate(
             logger.warning(f"⚠️ QID {qid}: empty param_sequence, marking as failed")
             last_iter = {}
         else:
-            last_iter = res["param_sequence"][-1]
+            # Find the last valid parameter set (working backwards from the end)
+            last_iter = {}
+            for i in range(len(res["param_sequence"]) - 1, -1, -1):
+                candidate = res["param_sequence"][i]
+                if candidate and isinstance(candidate, dict):
+                    # Check if this parameter set has the required keys for this dataset
+                    has_valid_params = True
+                    if dataset == "1D_heat_transfer":
+                        has_cfl = any(k in candidate for k in ["cfl", "current_cfl"])
+                        has_n_space = any(k in candidate for k in ["n_space", "current_n_space"]) 
+                        has_valid_params = has_cfl and has_n_space
+                    elif dataset == "2D_heat_transfer":
+                        has_dx = any(k in candidate for k in ["dx", "current_dx"])
+                        has_relax = any(k in candidate for k in ["relax", "current_relax"])
+                        has_error = any(k in candidate for k in ["error_threshold", "current_error_threshold"])
+                        has_t_init = any(k in candidate for k in ["t_init", "current_t_init", "T_init"])
+                        has_valid_params = has_dx and has_relax and has_error and has_t_init
+                    
+                    if has_valid_params:
+                        last_iter = candidate
+                        if i < len(res["param_sequence"]) - 1:
+                            logger.info(f"📋 QID {qid}: Using parameter set from iteration {i+1} (last valid), skipping {len(res['param_sequence']) - 1 - i} invalid final iterations")
+                        break
+            
+            # If no valid parameter set found, use the last one anyway (might be empty)
+            if not last_iter and res["param_sequence"]:
+                last_iter = res["param_sequence"][-1]
+                logger.warning(f"⚠️ QID {qid}: No fully valid parameter sets found, using last attempt")
         
         # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
@@ -155,8 +183,8 @@ def evaluate(
                     
                     success, error = compare_res_heat_1d(
                         profile1=dummy["profile"],
-                        cfl1=_fetch_param(last_iter, "cfl", "current_cfl", default=default_cfl),
-                        n_space1=_fetch_param(last_iter, "n_space", "current_n_space", default=default_n_space),
+                        cfl1=fetch_param(last_iter, "cfl", "current_cfl") if last_iter.get("cfl") or last_iter.get("current_cfl") else default_cfl,
+                        n_space1=fetch_param(last_iter, "n_space", "current_n_space") if last_iter.get("n_space") or last_iter.get("current_n_space") else default_n_space,
                         profile2=dummy["profile"],
                         cfl2=fetch_param(ref_iter, "cfl", "current_cfl"),
                         n_space2=fetch_param(ref_iter, "n_space", "current_n_space"),
@@ -172,12 +200,10 @@ def evaluate(
                     
                     success, error = compare_res_heat_steady_2d(
                         profile1=dummy["profile"],
-                        dx1=_fetch_param(last_iter, "dx", "current_dx", default=default_dx),
-                        relax1=_fetch_param(last_iter, "relax", "current_relax", default=default_relax),
-                        error_threshold1=_fetch_param(
-                            last_iter, "error_threshold", "current_error_threshold", default=default_error_threshold
-                        ),
-                        t_init1=_fetch_param(last_iter, "t_init", "current_t_init", default=default_t_init),
+                        dx1=fetch_param(last_iter, "dx", "current_dx") if last_iter.get("dx") or last_iter.get("current_dx") else default_dx,
+                        relax1=fetch_param(last_iter, "relax", "current_relax") if last_iter.get("relax") or last_iter.get("current_relax") else default_relax,
+                        error_threshold1=fetch_param(last_iter, "error_threshold", "current_error_threshold") if last_iter.get("error_threshold") or last_iter.get("current_error_threshold") else default_error_threshold,
+                        t_init1=fetch_param(last_iter, "t_init", "current_t_init") if last_iter.get("t_init") or last_iter.get("current_t_init") else default_t_init,
                         profile2=dummy["profile"],
                         dx2=fetch_param(ref_iter, "dx", "current_dx"),
                         relax2=fetch_param(ref_iter, "relax", "current_relax"),
@@ -210,6 +236,14 @@ def evaluate(
             efficiency = 0.0
             logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
         
+        # Calculate hard efficiency using binary success instead of soft success
+        hard_efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
+        
+        # Handle NaN values in hard efficiency calculation
+        if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
+            hard_efficiency = 0.0
+            logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
+        
         total_model_cost += cost
         total_dummy_cost += dummy["dummy_cost"]
         success_cnt += int(success)
@@ -219,6 +253,7 @@ def evaluate(
         total_error += error
         # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
         total_efficiency += efficiency
+        total_hard_efficiency += hard_efficiency
         total_soft_success += soft_success_value
 
         logger.info(
@@ -229,6 +264,7 @@ def evaluate(
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
             f"⚡ Efficiency: {efficiency:.3f}\n"
+            f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
             f"📉 Error (model vs. dummy): {error}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
             f"📌 Dummy Parameters:\n{json.dumps(ref_iter, indent=2, cls=NumpyEncoder)}\n"
@@ -242,6 +278,7 @@ def evaluate(
     # dummy_cost_eff = evaluated / total_dummy_cost if total_dummy_cost else 0.0
     # relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
     mean_efficiency = total_efficiency / evaluated if evaluated else 0.0
+    mean_hard_efficiency = total_hard_efficiency / evaluated if evaluated else 0.0
     mean_error = total_error / evaluated if evaluated else 0.0
     mean_ss = total_soft_success / evaluated if evaluated else 0.0
 
@@ -252,6 +289,7 @@ def evaluate(
         # "dummy_cost_efficiency": dummy_cost_eff,
         # "relative_cost_efficiency": f"{relative_eff:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
+        "mean_hard_efficiency": f"{mean_hard_efficiency:.3f}",
         "mean_ss": f"{mean_ss:.3f}",
         "mean_error (model vs. dummy)": f"{mean_error:.2e}",
         "tolerance": f"{tolerance:.2e}",
