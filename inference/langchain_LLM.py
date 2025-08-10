@@ -194,6 +194,7 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     provider_global = provider
     model_name_global = model_name
     namespace={}
+    import pdb
     exec(forward_func, globals(), namespace)
     names = list(namespace.keys())
     if len(names) != 1:

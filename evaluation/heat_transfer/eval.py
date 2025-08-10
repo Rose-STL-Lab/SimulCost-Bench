@@ -118,7 +118,10 @@ def evaluate(
 
         cost = res["accumulated_cost"]
         converged = res.get("is_converged", res.get("converged", False))
-        last_iter = res["param_sequence"][-1]
+        try:
+            last_iter = res["param_sequence"][-1]
+        except:
+            last_iter = {}
         
         # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:

@@ -113,6 +113,21 @@ def evaluate(
             success = False
             linf_norm = float('inf')
             rmse = float('inf')
+        # --------- Select reference parameter set ---------
+            if task == "cfl":
+                # 1D list, take the last iteration directly
+                ref_iter = dummy["param_history"][-1]
+            elif task == "k":
+                best_k = dummy["best_k"]
+                # param_history is list[list[dict]]
+                ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["k"] == best_k)
+                ref_iter = ref_seq[-1]          # Last iteration under this k
+            elif task == "w":
+                best_w = dummy["best_w"]
+                ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["w"] == best_w)
+                ref_iter = ref_seq[-1]
+            else:
+                raise ValueError(f"Unsupported task: {task}")
         else:
             # --------- Select reference parameter set ---------
             if task == "cfl":
