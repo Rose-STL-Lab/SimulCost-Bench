@@ -257,6 +257,6 @@ print(response)
 - Group related models by naming convention (e.g., `qwen3_8b`, `qwen3_32b`)
 - Test single models with `.env` before adding to JSON config
 
-## 💡 AI-Assisted Development
+## 💬 Code is cheap, show me your prompt
 
 Don't want to implement from scratch? Check out our [prompt template](prompt.md) for AI tools (Cursor, Claude Code) to auto-generate your `custom_inference` code!

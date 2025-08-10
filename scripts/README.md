@@ -44,25 +44,32 @@ bash scripts/inference_eval/inference_eval_all.sh
 bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
-## ⚙️ Modifying Provider Parameter (-p)
+## ⚙️ Switching Model Providers
 
-The `-p` parameter specifies the model provider. Currently supported providers:
+Scripts support multiple model providers. **Simply modify the `model_provider` variable** at the top of each script.
 
-- **`bedrock`**: AWS Bedrock (Claude models)
-- **`openai`**: OpenAI API (GPT models)
+### Supported Providers:
+- **`bedrock`**: AWS Bedrock (Claude, Llama, Mistral models)
+- **`openai`**: OpenAI API (GPT models)  
 - **`gemini`**: Google Gemini API
 - **`custom_model`**: Your custom model implementation
 
-### To Change Provider:
-1. **Edit script files** in `scripts/inference_eval/`
-2. **Modify the `-p` parameter** in commands like:
-   ```bash
-   # Current (Bedrock)
-   python inference/langchain_LLM.py -p bedrock -m $model -d burgers_1d -t $task -c $case $mode
-   
-   # Change to OpenAI
-   python inference/langchain_LLM.py -p openai -m $model -d burgers_1d -t $task -c $case $mode
-   ```
+### How to Switch Providers:
+**Edit the provider variable** in `scripts/inference_eval/inference_eval_*.sh`:
+
+```bash
+# Example: Switch from Bedrock to OpenAI
+# model_provider="bedrock"     # Comment out current provider
+model_provider="openai"        # Set new provider
+
+# Update model list accordingly
+models=(
+  "gpt-4o"
+  "gpt-4o-mini"
+)
+```
+
+**No need to modify individual `-p` parameters** - they automatically use `$model_provider`.
 
 ## 🧠 Custom Models Configuration
 

@@ -203,6 +203,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - **2D Heat Transfer**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
 - **Euler 1D**: `cfl`, `beta`, `k` (cases: sod)
+
 **Parameters:**
 - `-n`: Number of samples to test
 - `-p`: LLM provider (`openai`, `gemini`, `bedrock`, `custom_model`)

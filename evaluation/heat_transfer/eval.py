@@ -14,33 +14,33 @@ from evaluation.validation_utils import setup_robust_evaluation, print_usage_hel
 from utils.param_compatibility import fetch_param
 
 def soft_success(d, epsilon):
-    """计算单个 (d, epsilon) 对的 Soft Success 值"""
+    """Calculate Soft Success value for a single (d, epsilon) pair"""
     r = d / epsilon
     
     if r <= 1:
         return 1.0
     
-    # 参数
+    # Parameters
     alpha = 0.6
     beta = 0.43
     gamma = 1.5
     omega = 0.3
     delta = 2.2
     
-    # 双组分衰减函数
+    # Dual-component decay function
     exp_component = np.exp(-beta * (r - 1)**gamma)
     logistic_component = 1 / (1 + omega * (r - 1)**delta)
     
     return alpha * exp_component + (1 - alpha) * logistic_component
 
 def soft_success_multi(d_list, epsilon_list):
-    """计算多个 (d, epsilon) 对的平均 Soft Success 值"""
+    """Calculate average Soft Success value for multiple (d, epsilon) pairs"""
     ss_values = []
     for d, eps in zip(d_list, epsilon_list):
         ss = soft_success(d, eps)
         ss_values.append(ss)
     
-    return np.mean(ss_values)  # 算术平均
+    return np.mean(ss_values)  # Arithmetic mean
 
 
 

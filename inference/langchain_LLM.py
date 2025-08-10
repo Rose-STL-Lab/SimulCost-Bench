@@ -20,21 +20,21 @@ import importlib.util
 
 def load_custom_model_config(model_name: str) -> dict:
     """
-    从JSON配置文件中加载指定模型的配置
+    Load specified model configuration from JSON config file
     
     Args:
-        model_name (str): 模型名称，如 'qwen3_8b'
+        model_name (str): Model name, e.g. 'qwen3_8b'
         
     Returns:
-        dict: 包含custom_code, model_path, custom_class的配置字典
+        dict: Configuration dictionary containing custom_code, model_path, custom_class
         
     Raises:
-        FileNotFoundError: 如果配置文件不存在
-        KeyError: 如果模型名称在配置文件中不存在
+        FileNotFoundError: If config file does not exist
+        KeyError: If model name does not exist in config file
     """
     config_file = "configs/custom_models.json"
     
-    # 如果JSON配置文件不存在，回退到.env文件方式
+    # If JSON config file does not exist, fallback to .env file method
     if not os.path.exists(config_file):
         print(f"⚠️  JSON config file not found: {config_file}")
         print("⚠️  Falling back to .env file configuration...")
@@ -352,22 +352,22 @@ def ensure_file(path, default_content):
 def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 case: str | None = None) -> dict:
     """
-    根据数据集类型自动拼接所有 I/O 路径。
+    Automatically build all I/O paths based on dataset type.
 
-    参数
-    ----
+    Parameters
+    ----------
     dataset : "1D_heat_transfer" / "burgers_1d" / "euler_1d" / ...
-    task    : 如 "cfl"
+    task    : e.g. "cfl"
     flag    : "zero_shot" or "iterative"
-    model_name : 用于日志/结果文件
-    case    : burgers_1d/euler_1d 专用；其余数据集传 None
+    model_name : used for log/result files
+    case    : specific to burgers_1d/euler_1d; pass None for other datasets
 
-    返回
-    ----
-    dict, 键包括 dataset_file / archive_file / log_file /
+    Returns
+    -------
+    dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # 通用顶层目录
+    # Common top-level directory
     case_suffix = f"/{case}" if case else ""
     result_dir = f"results_model_attempt/{dataset}/{task}{case_suffix}"
     log_dir    = f"log_model_tool_call/{dataset}/{task}{case_suffix}"
@@ -376,7 +376,7 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     os.makedirs(log_dir,    exist_ok=True)
 
     # ==================================================
-    # 根据是否有 case 决定中间层路径
+    # Determine intermediate path based on whether case exists
     # ==================================================
     if case:
         dataset_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_dataset.json"
@@ -438,7 +438,7 @@ def main():
     logger.info(f"Total samples available in dataset: {len(dataset)}")
     logger.info(f"Requested samples (-n): {args.num_samples}")
 
-    # --------- 跑完整 case，否则按 -n ----------
+    # --------- Run full case, otherwise use -n ----------
     if args.dataset in ["burgers_1d", "euler_1d"]:
         test_dataset = dataset
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")

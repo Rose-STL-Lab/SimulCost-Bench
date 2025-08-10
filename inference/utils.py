@@ -91,7 +91,7 @@ def setup_logging(filename: str = None, resume: bool = False) -> logging.Logger:
     )
 
     class QIDFilter(logging.Filter):
-        """给没有 qid 字段的 LogRecord 自动补充 qid_prefix 格式"""
+        """Automatically add qid_prefix format for LogRecord without qid field"""
         def filter(self, record):
             if not hasattr(record, 'qid') or record.qid == '-':
                 record.qid_prefix = ''
