@@ -18,6 +18,76 @@ load_dotenv()
 from tqdm import tqdm
 import importlib.util
 
+def load_custom_model_config(model_name: str) -> dict:
+    """
+    从JSON配置文件中加载指定模型的配置
+    
+    Args:
+        model_name (str): 模型名称，如 'qwen3_8b'
+        
+    Returns:
+        dict: 包含custom_code, model_path, custom_class的配置字典
+        
+    Raises:
+        FileNotFoundError: 如果配置文件不存在
+        KeyError: 如果模型名称在配置文件中不存在
+    """
+    config_file = "configs/custom_models.json"
+    
+    # 如果JSON配置文件不存在，回退到.env文件方式
+    if not os.path.exists(config_file):
+        print(f"⚠️  JSON config file not found: {config_file}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+        
+        if model_name not in config_data.get("custom_models", {}):
+            available_models = list(config_data.get("custom_models", {}).keys())
+            print(f"❌ ERROR: Model '{model_name}' not found in JSON config!")
+            print(f"📋 Available models in config: {available_models}")
+            print(f"💡 Please either:")
+            print(f"   1. Use one of the available models: {available_models}")
+            print(f"   2. Add '{model_name}' to configs/custom_models.json")
+            print(f"   3. Remove configs/custom_models.json to use .env configuration")
+            print(f"")
+            print(f"⚠️  REFUSING to fallback to .env to prevent testing wrong model!")
+            raise ValueError(f"Model '{model_name}' not found in JSON config. Available models: {available_models}")
+        
+        model_config = config_data["custom_models"][model_name]
+        print(f"✅ Loaded config for '{model_name}' from {config_file}")
+        if "description" in model_config:
+            print(f"📄 Description: {model_config['description']}")
+        
+        return {
+            "custom_code": model_config["custom_code"],
+            "model_path": model_config["model_path"],
+            "custom_class": model_config["custom_class"]
+        }
+    
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in config file: {e}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+    except Exception as e:
+        print(f"❌ Error loading config: {e}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+
 def FORMAT_INST(request_keys):
     fields_list = request_keys.split(',') if isinstance(request_keys, str) else request_keys
     
@@ -85,13 +155,15 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "custom_model":
-            # Load custom model parameters from .env
-            custom_code = os.getenv("custom_code")
-            model_path = os.getenv("model_path")
-            custom_class = os.getenv("custom_class")
+            # Load custom model parameters from JSON config (with .env fallback)
+            model_config = load_custom_model_config(model_name_global)
+            
+            custom_code = model_config["custom_code"]
+            model_path = model_config["model_path"]
+            custom_class = model_config["custom_class"]
 
             if not all([custom_code, model_path, custom_class]):
-                raise ValueError("Missing one or more of custom_code, model_path, or custom_class in .env")
+                raise ValueError(f"Missing configuration for model '{model_name_global}'. Required: custom_code, model_path, custom_class")
 
             # Dynamically load user-defined code
             spec = importlib.util.spec_from_file_location("custom_inference", custom_code)

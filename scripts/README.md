@@ -5,19 +5,20 @@ The `scripts/` directory contains automated scripts for streamlined execution of
 ## 📁 Directory Structure
 ```
 scripts/
-├── ds_gen/          # Dataset generation scripts
+├── ds_gen/           # Dataset generation scripts
 │   └── ds_gen_all.sh
-├── inference_eval/  # Model inference and evaluation scripts
+├── inference_eval/   # Model inference and evaluation scripts
 │   ├── inference_eval_all.sh
 │   ├── inference_eval_burgers_1d.sh
 │   ├── inference_eval_euler_1d.sh
 │   ├── inference_eval_heat_1d.sh
 │   └── inference_eval_heat_2d.sh
-└── qs_gen/          # Question generation scripts
-    ├── qs_gen_burgers_1d.sh
-    ├── qs_gen_euler_1d.sh
-    ├── qs_gen_heat_1d.sh
-    └── qs_gen_heat_2d.sh
+├── qs_gen/          # Question generation scripts
+│   ├── qs_gen_burgers_1d.sh
+│   ├── qs_gen_euler_1d.sh
+│   ├── qs_gen_heat_1d.sh
+│   └── qs_gen_heat_2d.sh
+└── list_custom_models.py  # List available custom models
 ```
 
 ## 🔧 Quick Start
@@ -63,21 +64,56 @@ The `-p` parameter specifies the model provider. Currently supported providers:
    python inference/langchain_LLM.py -p openai -m $model -d burgers_1d -t $task -c $case $mode
    ```
 
-## 🤖 Adding More Models
+## 🧠 Custom Models Configuration
 
-### Method: Edit Script Arrays
-In `scripts/inference_eval/inference_eval_*.sh`, modify the `models` array:
+### Multiple Custom Models Support
+Scripts now support testing multiple custom models efficiently through JSON configuration.
 
+#### 🚀 Quick Setup
 ```bash
-# Current models array
-models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-)
+# 1. List available custom models
+python scripts/list_custom_models.py
 
-# Add new models
+# 2. Configure models in JSON (recommended)
+# Edit configs/custom_models.json
+
+# 3. Update script model arrays
+# In scripts/inference_eval/inference_eval_*.sh:
+model_provider="custom_model"
 models=(
-  "gpt-4o"                                    # OpenAI model
+ "qwen3_8b"
+ "qwen3_32b" 
+ "qwen3_235b_a22b"
 )
+```
+
+#### 📋 Configuration Methods
+
+**Method 1: JSON Configuration (Multi-Model)**
+Create `configs/custom_models.json`:
+```json
+{
+  "custom_models": {
+    "qwen3_8b": {
+      "custom_code": "/path/to/custom_inference.py",
+      "model_path": "/data/models/Qwen3-8B",
+      "custom_class": "Qwen3"
+    },
+    "llama3_7b": {
+      "custom_code": "/path/to/custom_inference.py",
+      "model_path": "/data/models/Llama3-7B", 
+      "custom_class": "Llama3"
+    }
+  }
+}
+```
+
+**Method 2: Environment Variables (Single Model)**
+Set in `.env` file:
+```ini
+custom_code="/path/to/custom_inference.py"
+model_path="/path/to/model"
+custom_class="CustomModel"
 ```
 
 ## 🔄 Resume Functionality

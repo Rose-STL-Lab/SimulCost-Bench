@@ -124,16 +124,12 @@ python dataset_gen/oneD_euler.py -t cfl -z
 
 **Output:** Datasets are saved to `data/{simulation}/{task}/human_write/` directory 
 
-## 📄 Configure `.env` File for Model Providers
+## 📄 Configure Model Providers
 
-To use the various model providers (OpenAI, Google, AWS, or custom models), you need to configure your `.env` file accordingly. Below is a guide on how to set up the `.env` file for each provider.
-
-### 📜 General `.env` Configuration
-In the root of your project, create or edit the `.env` file to include the following key configurations:
+### 🌐 Commercial API Models
+Configure API keys in your `.env` file:
 
 ```ini
-# .env file template
-
 # OpenAI API key
 OPENAI_API_KEY="your_openai_api_key"
 
@@ -144,36 +140,69 @@ GOOGLE_API_KEY="your_google_api_key"
 AWS_ACCESS_KEY_ID="your_aws_access_key"
 AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 AWS_REGION_NAME="your_aws_region_name"
-
-# Custom Model (when using your own model)
-custom_code="/path/to/custom_model/custom_inference.py"   # Path to your custom inference Python code
-model_path="/path/to/your/custom_model"     # Path to your custom model
-custom_class="CustomModel"                  # The class name within custom_inference.py that will handle inference
 ```
-For detailed implementation guide and examples of using your own model, see [Custom Model Integration Guide](custom_model/README.md).
+
+### 🧠 Custom Models Configuration
+
+**Two configuration methods available:**
+
+#### Method 1: JSON Configuration (Recommended for Multiple Models)
+Create `configs/custom_models.json` to manage multiple custom models:
+
+```json
+{
+  "custom_models": {
+    "qwen3_8b": {
+      "custom_code": "/path/to/custom_model/custom_inference.py",
+      "model_path": "/data/models/Qwen3-8B",
+      "custom_class": "Qwen3"
+    },
+    "llama3_7b": {
+      "custom_code": "/path/to/custom_model/custom_inference.py", 
+      "model_path": "/data/models/Llama3-7B",
+      "custom_class": "Llama3"
+    }
+  }
+}
+```
+
+#### Method 2: Environment Variables (For Single Model)
+Set in your `.env` file:
+
+```ini
+custom_code="/path/to/custom_model/custom_inference.py"
+model_path="/path/to/your/custom_model"
+custom_class="CustomModel"
+```
+
+**📋 List Available Models:**
+```bash
+python scripts/list_custom_models.py
+```
+
+For detailed implementation guide, see [Custom Model Integration Guide](custom_model/README.md).
 
 ## 🧠 Run Inference
 
 Execute LLM inference on benchmark datasets to generate predictions.
+
 ```bash
-# 1D Heat Transfer
+# Commercial API Models
 python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 100 -p openai -m gpt-4o -d 1D_heat_transfer -t cfl -z
+
+# Single Custom Model
 python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
 
-# 2D Steady Heat Transfer
-python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 2D_heat_transfer -t dx -z
-
-# Burgers 1D Equation with 2nd Order Roe Method
-python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
-python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d burgers_1d -t cfl -c blast -z
-Cases: blast, double_shock, rarefaction, sin, sod
-
-# Euler 1D Equations with 2nd Order MUSCL-Roe Method
-python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
-python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d euler_1d -t cfl -c sod -z
-Cases: sod
+# Multiple Custom Models (use batch scripts)
+bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
+
+**📋 Available Datasets & Tasks:**
+- **1D Heat Transfer**: `cfl`, `n_space`
+- **2D Heat Transfer**: `dx`, `error_threshold`, `relax`, `t_init`
+- **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
+- **Euler 1D**: `cfl`, `beta`, `k` (cases: sod)
 **Parameters:**
 - `-n`: Number of samples to test
 - `-p`: LLM provider (`openai`, `gemini`, `bedrock`, `custom_model`)
