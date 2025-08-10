@@ -5,6 +5,7 @@ from dataset_gen.base import DatasetGenerator
 import json
 from inference import save_result
 import argparse
+from utils.param_compatibility import fetch_param
 
 zero_shot_HUMAN_CODE = r"""
 def forward(self, data: dict):
@@ -80,7 +81,8 @@ def forward(self, data: dict):
     )
     agent = LLMAgentBase(
         ['tool_reason', 'tool_name', 'tool_args', 'should_stop'],
-        'Experiment Agent'
+        'Experiment Agent',
+        self.logger
     )
 
     last_valid_tool_result = None  # Track the last successful tool result
@@ -280,14 +282,14 @@ def main():
         for idx, q in enumerate(questions):
             # ---------- Generate workflow based on task type ----------
             if task == "cfl":
-                k0 = q["param_history"][0]["k"]
-                w0 = q["param_history"][0]["w"]
+                k0 = fetch_param(q["param_history"][0], "k")
+                w0 = fetch_param(q["param_history"][0], "w")
                 wf = build_cfl_workflow(zflag, k0, w0)
             elif task == "k":
-                w0 = q["param_history"][0][0]["w"]
+                w0 = fetch_param(q["param_history"][0][0], "w")
                 wf = build_k_workflow(zflag, w0)
             elif task == "w":
-                k0 = q["param_history"][0][0]["k"]
+                k0 = fetch_param(q["param_history"][0][0], "k")
                 wf = build_w_workflow(zflag, k0)
 
             # ---------- Generate single data ----------

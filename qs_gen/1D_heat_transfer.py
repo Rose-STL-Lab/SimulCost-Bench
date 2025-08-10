@@ -11,6 +11,7 @@ import argparse
 from costsci_tools.gen_cfgs.heat_1d import create_heat1d_profiles
 from costsci_tools.dummy_sols.heat_1d import find_convergent_cfl, find_convergent_n_space
 import yaml
+from utils.param_compatibility import fetch_param
 
 HEAT1D_CFG_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -86,7 +87,7 @@ class oneD_HeatTransferQuestionGenerator():
             f"- Left boundary: Convection (h = {params['h']:.3f} W/m^2-K, "
             f"T_inf = {params['T_inf']:.2f} C)",
             f"- Right boundary: Insulated (zero heat flux)",
-            f"- Initial temperature: {params['T_init']:.2f} C (uniform)",
+            f"- Initial temperature: {fetch_param(params, 'T_init', 't_init', 'current_t_init'):.2f} C (uniform)",
             f"- Thermal conductivity: {params['k']:.4f} W/m-K",
             f"- Specific heat: {params['cp']:.1f} J/kg-K",
             f"- Density: {params['rho']:.1f} kg/m^3",

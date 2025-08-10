@@ -1,9 +1,10 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
-from langchain_aws import ChatBedrock
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 from inference.utils import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
@@ -44,10 +45,11 @@ DO NOT MISS ANY FIELDS. DO NOT USE EMPTY VALUES. Your response must be ONLY the 
 
 
 class LLMAgentBase():
-    def __init__(self, output_field: List[str], agent_name: str):
+    def __init__(self, output_field: List[str], agent_name: str, logger: logging.Logger = None):
         global provider_global, model_name_global
         self.agent_name = agent_name
         self.output_field = output_field
+        self.logger = logger
         if provider_global == "openai":
             self.llm = ChatOpenAI(
                 model_name=model_name_global,
@@ -115,9 +117,17 @@ class LLMAgentBase():
         max_retries = 3
         for attempt in range(max_retries):
             if provider_global == "custom_model":
-                json_response = self.llm.invoke(messages).strip()
+                raw_response = self.llm.invoke(messages)
+                json_response = raw_response.strip()
             else:
-                json_response = self.llm.invoke(messages).content.strip()
+                raw_response = self.llm.invoke(messages)
+                json_response = raw_response.content.strip()
+            
+            # Log raw response for debugging
+            if self.logger:
+                attempt_text = f"attempt {attempt + 1}" if max_retries > 1 else ""
+                self.logger.info(f"🤖 Raw model response {attempt_text}: {json.dumps(json_response, ensure_ascii=False)}")
+            
             json_dict = find_json(json_response)
 
             # Check if all required fields are present and non-empty
@@ -185,7 +195,7 @@ class AgentSystem():
             output_fields = ["tool_reason", "tool_name", "tool_args"]
         
         if self.experiment_agent is None or self.experiment_agent.output_field != output_fields:
-            self.experiment_agent = LLMAgentBase(output_fields, "Experiment Agent")
+            self.experiment_agent = LLMAgentBase(output_fields, "Experiment Agent", self.logger)
         
         return self.experiment_agent
 
