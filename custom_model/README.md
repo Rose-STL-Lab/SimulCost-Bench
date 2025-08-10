@@ -1,13 +1,54 @@
 # Custom Model Integration Guide
 
-This guide explains how to integrate your own custom models into the system by implementing the required interface and configuration.
+Integrate your own models into SimulCost-Bench with support for single-model or multi-model testing workflows.
 
-## Overview
+## 🚀 Quick Start
 
-To use a custom model, you need to:
-1. Create a Python file containing your model class
-2. Implement the required `invoke()` method
-3. Configure the `.env` file with the appropriate paths
+### Single Model Testing
+1. Implement your model class with `invoke()` method
+2. Configure `.env` file with model parameters
+3. Run inference: `python inference/langchain_LLM.py -p custom_model -m any_name -d 1D_heat_transfer -t cfl -z`
+
+### Multiple Models Testing  
+1. Create JSON configuration file: `configs/custom_models.json`
+2. Add all your models to the JSON config
+3. Run batch scripts: `bash scripts/inference_eval/inference_eval_heat_1d.sh`
+
+## 📋 Configuration Options
+
+**Two configuration methods available:**
+
+### Method 1: JSON Configuration (Recommended)
+**Best for:** Multiple models, production workflows, team collaboration
+
+```json
+{
+  "custom_models": {
+    "qwen3_8b": {
+      "custom_code": "/path/to/custom_inference.py",
+      "model_path": "/data/models/Qwen3-8B",
+      "custom_class": "Qwen3",
+      "description": "Qwen3 8B parameter model"
+    },
+    "llama3_7b": {
+      "custom_code": "/path/to/custom_inference.py",
+      "model_path": "/data/models/Llama3-7B",
+      "custom_class": "Llama3",
+      "description": "Llama3 7B instruction-tuned model"
+    }
+  }
+}
+```
+
+### Method 2: Environment Variables
+**Best for:** Single model testing, quick experiments
+
+Set in your `.env` file:
+```ini
+custom_code="/path/to/custom_inference.py"
+model_path="/path/to/your/model"
+custom_class="CustomModel"
+```
 
 ## Required Implementation
 
@@ -55,22 +96,14 @@ messages = [
 ]
 ```
 
-## Configuration
-
-Add the following to your `.env` file:
-
-```ini
-# Custom Model Configuration
-custom_code="/path/to/custom_model/custom_inference.py"   # Path to your custom inference Python code
-model_path="/path/to/your/custom_model"     # Path to your custom model
-custom_class="CustomModel"                  # The class name within custom_inference.py that will handle inference
-```
+## 🛠️ Implementation Guide
 
 ### Configuration Parameters
 
-- **`custom_code`**: Absolute or relative path to your Python file containing the model class
-- **`model_path`**: Path to your model files, weights, or configuration directory
-- **`custom_class`**: Exact name of the class in your Python file that implements the interface
+- **`custom_code`**: Path to your Python file containing the model class
+- **`model_path`**: Path to your model files, weights, or configuration directory  
+- **`custom_class`**: Exact name of the class that implements the interface
+- **`description`**: *(Optional)* Human-readable description for documentation
 
 ## Example Implementation
 
@@ -143,16 +176,47 @@ class Qwen3:
         return response
 ```
 
-📜 `.env` Configuration
-```ini
-custom_code = "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py"
-model_path = "/data/leo_work/hf/models/Qwen3-0.6B"
-custom_class = "Qwen3"
+## 🧰 Utilities
+
+### List Available Models
+```bash
+python scripts/list_custom_models.py
 ```
 
-### 🧠 Run Inference
+### Batch Testing Multiple Models
 ```bash
-python inference/langchain_LLM.py -n 10 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
+# Edit model list in scripts/inference_eval/inference_eval_heat_1d.sh
+model_provider="custom_model"
+models=(
+ "qwen3_8b"
+ "qwen3_32b"
+ "qwen3_235b_a22b"
+)
+
+# Run batch test
+bash scripts/inference_eval/inference_eval_heat_1d.sh
+```
+
+## ⚡ Usage Examples
+
+### Single Model (Environment Variables)
+```bash
+# 1. Set up .env file
+echo 'custom_code="/path/to/custom_inference.py"' >> .env
+echo 'model_path="/data/models/Qwen3-8B"' >> .env  
+echo 'custom_class="Qwen3"' >> .env
+
+# 2. Run inference
+python inference/langchain_LLM.py -n 100 -p custom_model -m any_name -d 1D_heat_transfer -t cfl -z
+```
+
+### Multiple Models (JSON Configuration)
+```bash  
+# 1. Create JSON config with multiple models
+# configs/custom_models.json (see example above)
+
+# 2. Run batch inference
+bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
 <!-- ```python
@@ -177,6 +241,22 @@ response = model.invoke(test_messages)
 print(response)
 ``` -->
 
+## 🔧 Advanced Features
+
+### Configuration Priority
+1. **JSON Configuration** (highest priority) - When `configs/custom_models.json` exists
+2. **Environment Variables** (fallback) - When JSON config is missing or model not found
+
+### Error Handling
+- **Model not found in JSON**: Explicit error with available model list
+- **JSON malformed**: Automatic fallback to environment variables  
+- **Missing configuration**: Clear error messages with resolution steps
+
+### Development Tips
+- Use `description` field in JSON for team collaboration
+- Group related models by naming convention (e.g., `qwen3_8b`, `qwen3_32b`)
+- Test single models with `.env` before adding to JSON config
+
 ## 💬 Code is cheap, show me your prompt
 
-Don't want to implement everything from scratch? Check out our [prompt template](prompt.md) that you can simply copy into MCP tools (like Cursor, Claude Code) or language models to easily generate your `custom_inference` code. Just describe your model and let AI do the heavy lifting!
+Don't want to implement from scratch? Check out our [prompt template](prompt.md) for AI tools (Cursor, Claude Code) to auto-generate your `custom_inference` code!

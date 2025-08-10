@@ -1,0 +1,22 @@
+{
+  "custom_models": {
+    "qwen3_8b": {
+      "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
+      "model_path": "/data/leo_work/hf/models/Qwen3-8B",
+      "custom_class": "Qwen3",
+      "description": "Qwen3 8B parameter model"
+    },
+    "qwen3_32b": {
+      "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
+      "model_path": "/data/leo_work/hf/models/Qwen3-32B",
+      "custom_class": "Qwen3",
+      "description": "Qwen3 32B parameter model"
+    },
+    "qwen3_235b_a22b": {
+      "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
+      "model_path": "/data/leo_work/hf/models/Qwen3-235B-A22B",
+      "custom_class": "Qwen3",
+      "description": "Qwen3 235B parameter model with A22B architecture"
+    }
+  }
+}

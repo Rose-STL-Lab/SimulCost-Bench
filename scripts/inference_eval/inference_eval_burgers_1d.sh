@@ -39,6 +39,9 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 model_provider="custom_model"
 models=(
+ "qwen3_0_6b"
+ "qwen3_8b"
+ "qwen3_32b" 
  "qwen3_235b_a22b"
 )
 

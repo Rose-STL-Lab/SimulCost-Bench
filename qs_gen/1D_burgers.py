@@ -49,7 +49,7 @@ BURGERS1D_CFG_DIR = (
     / "burgers_1d"
 )
 
-# 固定的 (w, k) 组合。共 45 + 15 + 15 = 75 道题
+# Fixed (w, k) combinations. Total: 45 + 15 + 15 = 75 questions
 COMBOS = {
     "cfl": [  # 9 × 5 profile = 45
         {"w": 1.0, "k": 1},

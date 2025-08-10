@@ -28,7 +28,7 @@ EULER1D_CFG_DIR = (
     / "euler_1d"
 )
 
-# 固定的 (beta, k) 组合
+# Fixed (beta, k) combinations
 COMBOS = {
     "cfl": [  # 3 × 3 profile = 9
         {"beta": 0.5, "k": -1.0},

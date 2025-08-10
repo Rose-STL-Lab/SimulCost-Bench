@@ -181,7 +181,7 @@ def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float) -> str:
     return header + body
 
 def build_k_workflow(zero_shot: bool, beta0: float) -> str:
-    """k-任务: 0-shot 选 k, 随后只调 cfl; beta 固定。"""
+    """k-task: 0-shot select k, then only adjust cfl; beta is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **k** (blending parameter for MUSCL reconstruction) *once* and must never "
@@ -207,7 +207,7 @@ def build_k_workflow(zero_shot: bool, beta0: float) -> str:
 
 
 def build_beta_workflow(zero_shot: bool, k0: float) -> str:
-    """beta-任务: 0-shot 选 beta, 随后只调 cfl; k 固定。"""
+    """beta-task: 0-shot select beta, then only adjust cfl; k is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **beta** (slope-limiter parameter for generalized superbee) *once* and must never "

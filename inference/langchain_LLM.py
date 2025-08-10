@@ -18,6 +18,76 @@ load_dotenv()
 from tqdm import tqdm
 import importlib.util
 
+def load_custom_model_config(model_name: str) -> dict:
+    """
+    Load specified model configuration from JSON config file
+    
+    Args:
+        model_name (str): Model name, e.g. 'qwen3_8b'
+        
+    Returns:
+        dict: Configuration dictionary containing custom_code, model_path, custom_class
+        
+    Raises:
+        FileNotFoundError: If config file does not exist
+        KeyError: If model name does not exist in config file
+    """
+    config_file = "configs/custom_models.json"
+    
+    # If JSON config file does not exist, fallback to .env file method
+    if not os.path.exists(config_file):
+        print(f"⚠️  JSON config file not found: {config_file}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+        
+        if model_name not in config_data.get("custom_models", {}):
+            available_models = list(config_data.get("custom_models", {}).keys())
+            print(f"❌ ERROR: Model '{model_name}' not found in JSON config!")
+            print(f"📋 Available models in config: {available_models}")
+            print(f"💡 Please either:")
+            print(f"   1. Use one of the available models: {available_models}")
+            print(f"   2. Add '{model_name}' to configs/custom_models.json")
+            print(f"   3. Remove configs/custom_models.json to use .env configuration")
+            print(f"")
+            print(f"⚠️  REFUSING to fallback to .env to prevent testing wrong model!")
+            raise ValueError(f"Model '{model_name}' not found in JSON config. Available models: {available_models}")
+        
+        model_config = config_data["custom_models"][model_name]
+        print(f"✅ Loaded config for '{model_name}' from {config_file}")
+        if "description" in model_config:
+            print(f"📄 Description: {model_config['description']}")
+        
+        return {
+            "custom_code": model_config["custom_code"],
+            "model_path": model_config["model_path"],
+            "custom_class": model_config["custom_class"]
+        }
+    
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in config file: {e}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+    except Exception as e:
+        print(f"❌ Error loading config: {e}")
+        print("⚠️  Falling back to .env file configuration...")
+        return {
+            "custom_code": os.getenv("custom_code"),
+            "model_path": os.getenv("model_path"),
+            "custom_class": os.getenv("custom_class")
+        }
+
 def FORMAT_INST(request_keys):
     fields_list = request_keys.split(',') if isinstance(request_keys, str) else request_keys
     
@@ -85,13 +155,15 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "custom_model":
-            # Load custom model parameters from .env
-            custom_code = os.getenv("custom_code")
-            model_path = os.getenv("model_path")
-            custom_class = os.getenv("custom_class")
+            # Load custom model parameters from JSON config (with .env fallback)
+            model_config = load_custom_model_config(model_name_global)
+            
+            custom_code = model_config["custom_code"]
+            model_path = model_config["model_path"]
+            custom_class = model_config["custom_class"]
 
             if not all([custom_code, model_path, custom_class]):
-                raise ValueError("Missing one or more of custom_code, model_path, or custom_class in .env")
+                raise ValueError(f"Missing configuration for model '{model_name_global}'. Required: custom_code, model_path, custom_class")
 
             # Dynamically load user-defined code
             spec = importlib.util.spec_from_file_location("custom_inference", custom_code)
@@ -281,22 +353,22 @@ def ensure_file(path, default_content):
 def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 case: str | None = None) -> dict:
     """
-    根据数据集类型自动拼接所有 I/O 路径。
+    Automatically build all I/O paths based on dataset type.
 
-    参数
-    ----
+    Parameters
+    ----------
     dataset : "1D_heat_transfer" / "burgers_1d" / "euler_1d" / ...
-    task    : 如 "cfl"
+    task    : e.g. "cfl"
     flag    : "zero_shot" or "iterative"
-    model_name : 用于日志/结果文件
-    case    : burgers_1d/euler_1d 专用；其余数据集传 None
+    model_name : used for log/result files
+    case    : specific to burgers_1d/euler_1d; pass None for other datasets
 
-    返回
-    ----
-    dict, 键包括 dataset_file / archive_file / log_file /
+    Returns
+    -------
+    dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # 通用顶层目录
+    # Common top-level directory
     case_suffix = f"/{case}" if case else ""
     result_dir = f"results_model_attempt/{dataset}/{task}{case_suffix}"
     log_dir    = f"log_model_tool_call/{dataset}/{task}{case_suffix}"
@@ -305,7 +377,7 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     os.makedirs(log_dir,    exist_ok=True)
 
     # ==================================================
-    # 根据是否有 case 决定中间层路径
+    # Determine intermediate path based on whether case exists
     # ==================================================
     if case:
         dataset_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_dataset.json"
@@ -367,7 +439,7 @@ def main():
     logger.info(f"Total samples available in dataset: {len(dataset)}")
     logger.info(f"Requested samples (-n): {args.num_samples}")
 
-    # --------- 跑完整 case，否则按 -n ----------
+    # --------- Run full case, otherwise use -n ----------
     if args.dataset in ["burgers_1d", "euler_1d"]:
         test_dataset = dataset
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
