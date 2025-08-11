@@ -271,7 +271,13 @@ class AgentSystem():
         
         return self.experiment_agent
 
-def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str, progress_file: str = None, resume: bool = False) -> tuple[List[Dict], pd.DataFrame]:
+def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str, progress_file: str = None, resume_state: dict = None) -> tuple[List[Dict], pd.DataFrame]:
+    """
+    Run inference on dataset with improved resume support.
+    
+    Args:
+        resume_state: Resume state from check_resume_state(), contains existing results and metadata
+    """
     global provider_global, model_name_global
     provider_global = provider
     model_name_global = model_name
@@ -291,20 +297,13 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     all_tool_dfs = []
     start_idx = 0
 
-    # Load progress if resuming
-    if resume and progress_file and os.path.exists(progress_file):
-        try:
-            with open(progress_file, 'r', encoding='utf-8') as f:
-                progress_data = json.load(f)
-            all_results = progress_data.get('results', [])
-            all_tool_dfs_data = progress_data.get('tool_dfs', [])
-            # Reconstruct DataFrames from saved data
-            all_tool_dfs = [pd.DataFrame(df_data) if df_data else pd.DataFrame() for df_data in all_tool_dfs_data]
-            start_idx = len(all_results)
-            logger.info(f"Resuming from sample {start_idx}/{len(dataset)}")
-        except Exception as e:
-            logger.warning(f"Failed to load progress file: {e}. Starting from beginning.")
-            start_idx = 0
+    # Initialize with existing data if resuming
+    if resume_state and resume_state.get('existing_results'):
+        all_results = resume_state['existing_results'].copy()
+        if resume_state.get('existing_tool_dfs'):
+            all_tool_dfs = [pd.DataFrame(df_data) if df_data else pd.DataFrame() for df_data in resume_state['existing_tool_dfs']]
+        start_idx = resume_state['start_idx']
+        logger.info(f"Starting from sample {start_idx}/{len(dataset)} with {len(all_results)} existing results")
 
     # Process remaining samples
     for i, data in enumerate(tqdm(dataset[start_idx:], desc="Running inference", initial=start_idx, total=len(dataset))):
@@ -332,10 +331,21 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
 
     final_tool_df = pd.concat(all_tool_dfs, ignore_index=True) if all_tool_dfs else pd.DataFrame()
     
-    # Clean up progress file if all samples completed successfully
+    # Only clean up progress file if we completed the full requested dataset
+    # Keep it for potential future extensions
     if progress_file and os.path.exists(progress_file) and len(all_results) == len(dataset):
-        os.remove(progress_file)
-        logger.info("All samples completed successfully. Progress file removed.")
+        # Instead of deleting, mark as completed in metadata
+        progress_data = {
+            'results': all_results,
+            'tool_dfs': [df.to_dict('records') if not df.empty else [] for df in all_tool_dfs],
+            'completed_samples': len(all_results),
+            'total_samples': len(dataset),
+            'status': 'completed',
+            'completion_time': pd.Timestamp.now().isoformat()
+        }
+        with open(progress_file, 'w', encoding='utf-8') as f:
+            json.dump(progress_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"All {len(dataset)} samples completed successfully. Progress file updated with completion status.")
 
     return all_results, final_tool_df
 
@@ -348,6 +358,128 @@ def ensure_file(path, default_content):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(default_content, f, ensure_ascii=False, indent=2)
         print(f"[INFO] An empty file has been made: {path}")
+
+def check_resume_state(progress_file: str, result_file: str, requested_samples: int, total_dataset_size: int, logger: logging.Logger) -> dict:
+    """
+    Check the current state for resume functionality.
+    
+    Returns:
+        dict: {
+            'action': 'skip' | 'resume' | 'restart' | 'extend',
+            'completed_samples': int,
+            'start_idx': int,
+            'message': str,
+            'existing_results': list | None,
+            'existing_tool_dfs': list | None
+        }
+    """
+    state = {
+        'action': 'restart',
+        'completed_samples': 0,
+        'start_idx': 0,
+        'message': '',
+        'existing_results': None,
+        'existing_tool_dfs': None
+    }
+    
+    # Check progress file first (ongoing work)
+    progress_data = None
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                progress_data = json.load(f)
+            completed_samples = progress_data.get('completed_samples', 0)
+            total_samples_in_progress = progress_data.get('total_samples', 0)
+            status = progress_data.get('status', 'in_progress')
+            
+            logger.info(f"Found progress file: {completed_samples}/{total_samples_in_progress} samples completed (status: {status})")
+            
+            # Handle completed work in progress file
+            if status == 'completed':
+                # This is completed work, check if we need more samples
+                if completed_samples >= requested_samples:
+                    state.update({
+                        'action': 'skip',
+                        'completed_samples': completed_samples,
+                        'message': f"Already completed {completed_samples} samples (requested: {requested_samples}). No additional work needed."
+                    })
+                else:
+                    # Need more samples - extend from completed work
+                    state.update({
+                        'action': 'extend',
+                        'completed_samples': completed_samples,
+                        'start_idx': completed_samples,
+                        'message': f"Extending from {completed_samples} to {requested_samples} samples",
+                        'existing_results': progress_data.get('results', []),
+                        'existing_tool_dfs': progress_data.get('tool_dfs', [])
+                    })
+                return state
+            elif completed_samples < total_samples_in_progress:
+                # Incomplete work exists
+                if completed_samples >= requested_samples:
+                    # Already have enough samples
+                    state.update({
+                        'action': 'skip',
+                        'completed_samples': completed_samples,
+                        'message': f"Already completed {completed_samples} samples (requested: {requested_samples}). No additional work needed."
+                    })
+                else:
+                    # Resume from where we left off
+                    state.update({
+                        'action': 'resume',
+                        'completed_samples': completed_samples,
+                        'start_idx': completed_samples,
+                        'message': f"Resuming from sample {completed_samples}",
+                        'existing_results': progress_data.get('results', []),
+                        'existing_tool_dfs': progress_data.get('tool_dfs', [])
+                    })
+                return state
+        except Exception as e:
+            logger.warning(f"Failed to read progress file: {e}")
+    
+    # Check final result file (completed work)
+    if os.path.exists(result_file):
+        try:
+            with open(result_file, 'r', encoding='utf-8') as f:
+                existing_results = json.load(f)
+            completed_samples = len(existing_results)
+            
+            logger.info(f"Found result file with {completed_samples} completed samples")
+            
+            if completed_samples >= requested_samples:
+                # Already have enough or more samples
+                if completed_samples == requested_samples:
+                    state.update({
+                        'action': 'skip',
+                        'completed_samples': completed_samples,
+                        'message': f"Already completed exactly {requested_samples} samples. Use different -n value if you want different sample count."
+                    })
+                else:
+                    state.update({
+                        'action': 'skip',
+                        'completed_samples': completed_samples,
+                        'message': f"Already completed {completed_samples} samples (requested: {requested_samples}). Use -n {completed_samples + 1} or higher if you want more samples."
+                    })
+            else:
+                # Need more samples - extend existing work
+                state.update({
+                    'action': 'extend',
+                    'completed_samples': completed_samples,
+                    'start_idx': completed_samples,
+                    'message': f"Extending from {completed_samples} to {requested_samples} samples",
+                    'existing_results': existing_results,
+                    'existing_tool_dfs': []  # Will need to reconstruct from table file if needed
+                })
+            return state
+        except Exception as e:
+            logger.warning(f"Failed to read result file: {e}")
+    
+    # No existing work found
+    state.update({
+        'action': 'restart',
+        'message': f"Starting fresh inference for {requested_samples} samples"
+    })
+    return state
 
 def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 case: str | None = None) -> dict:
@@ -438,30 +570,49 @@ def main():
     logger.info(f"Total samples available in dataset: {len(dataset)}")
     logger.info(f"Requested samples (-n): {args.num_samples}")
 
-    # --------- Run full case, otherwise use -n ----------
+    # Create file paths
+    progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
+    
+    # Determine requested sample count
     if args.dataset in ["burgers_1d", "euler_1d"]:
-        test_dataset = dataset
+        requested_samples = len(dataset)
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
     else:
-        # Check if requested samples exceed available samples
         available_samples = len(dataset)
-        requested_samples = args.num_samples
-        
-        if requested_samples > available_samples:
-            logger.warning(f"Requested {requested_samples} samples, but dataset only contains {available_samples} samples.")
+        requested_samples = min(args.num_samples, available_samples)
+        if args.num_samples > available_samples:
+            logger.warning(f"Requested {args.num_samples} samples, but dataset only contains {available_samples} samples.")
             logger.warning(f"Using all available {available_samples} samples instead.")
-            test_dataset = dataset
-            logger.info(f"Evaluating ALL {len(test_dataset)} samples (limited by dataset size).")
-        else:
-            test_dataset = dataset[:args.num_samples]
-            logger.info(f"Evaluating first {len(test_dataset)} / {len(dataset)} samples.")
 
-    # Create progress file path
-    progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
+    # Check resume state if resume flag is set
+    resume_state = None
+    if args.resume:
+        resume_state = check_resume_state(
+            progress_file, paths["result_file"], requested_samples, len(dataset), logger
+        )
+        
+        logger.info(f"Resume check: {resume_state['message']}")
+        
+        # Handle different resume actions
+        if resume_state['action'] == 'skip':
+            logger.info("No additional work needed. Exiting.")
+            return
+        elif resume_state['action'] == 'extend':
+            logger.info(f"Extending existing {resume_state['completed_samples']} samples to {requested_samples} samples.")
+    else:
+        # Fresh start - prepare dataset
+        logger.info(f"Starting fresh inference for {requested_samples} samples")
+
+    # Prepare dataset slice for processing
+    if args.dataset in ["burgers_1d", "euler_1d"]:
+        test_dataset = dataset
+    else:
+        test_dataset = dataset[:requested_samples]
+        logger.info(f"Processing {len(test_dataset)} / {len(dataset)} samples from dataset.")
     
     results, tool_df = parallel_inference(
         test_dataset, agent["code"], logger,
-        args.provider, args.model_name, progress_file, args.resume)
+        args.provider, args.model_name, progress_file, resume_state)
 
     tool_df.to_excel(paths["table_file"], index=False)
     logger.info(f"Saving results to {paths['result_file']}")
