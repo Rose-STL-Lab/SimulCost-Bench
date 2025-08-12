@@ -201,6 +201,14 @@ class LLMAgentBase():
                 self.logger.info(f"🤖 Raw model response {attempt_text}: {json.dumps(json_response, ensure_ascii=False)}")
             
             json_dict = find_json_robust(json_response)
+            
+            # Log parsed JSON structure for debugging
+            if self.logger and "error" in json_dict:
+                self.logger.warning(f"JSON parsing failed: {json_dict.get('error', 'Unknown error')}")
+            elif self.logger:
+                self.logger.debug(f"Successfully parsed JSON: {json_dict}")
+                self.logger.debug(f"Available fields: {list(json_dict.keys()) if isinstance(json_dict, dict) else 'Not a dict'}")
+            
             # Check if all required fields are present and non-empty
             missing_fields = []
             for field in self.output_field:
@@ -244,7 +252,10 @@ class LLMAgentBase():
                 messages = retry_messages
 
         # If all retries failed, return empty strings for missing fields but log the issue
-        print(f"WARNING: Failed to get complete response after {max_retries} attempts. Missing fields: {missing_fields}")
+        if self.logger:
+            self.logger.warning(f"Failed to get complete response after {max_retries} attempts. Missing fields: {missing_fields}. Final parsed JSON: {json_dict}")
+        else:
+            print(f"WARNING: Failed to get complete response after {max_retries} attempts. Missing fields: {missing_fields}")
         output_infos = []
         for field in self.output_field:
             output_infos.append(json_dict.get(field, ""))

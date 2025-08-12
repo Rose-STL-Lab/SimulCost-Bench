@@ -144,18 +144,24 @@ def find_json(response: str) -> Dict[str, Any]:
         return {"error": error_msg}
 
 def find_json_robust(response: str):
-    import ast
+    import json
     try:
         start_idx = response.find('{')
         end_idx = response.rfind('}') + 1
-        response = response[start_idx:end_idx]
+        if start_idx == -1 or end_idx == 0:
+            raise ValueError("No JSON object found in response")
         
-        obj = ast.literal_eval(response) 
+        json_str = response[start_idx:end_idx]
+        obj = json.loads(json_str)
         return obj
 
     except Exception as e:
-        error_msg = f"Error in find_json: {str(e)}"
-        return {"error": error_msg}
+        # Fallback: try the original find_json function
+        try:
+            return find_json(response)
+        except Exception as e2:
+            error_msg = f"Error in find_json_robust: {str(e)}; Fallback error: {str(e2)}"
+            return {"error": error_msg}
             
 
 class ToolCallManager:
@@ -187,13 +193,21 @@ class ToolCallManager:
             if tool_args and not isinstance(tool_args, dict):
                 tool_args = extract_parameters_regex(tool_args, TOOL_NAME_KEYS[tool_name])
 
-            # Check for empty or invalid tool name first
-            if not tool_name or not tool_name.strip():
-                raise ValueError("Tool name is empty or missing")
+            # Check for validation issues and provide detailed error messages
+            validation_errors = []
             
-            # Check for empty or invalid tool_args
+            if not tool_reason or (isinstance(tool_reason, str) and tool_reason.strip() == ""):
+                validation_errors.append("tool_reason is empty or missing")
+                
+            if not tool_name or not tool_name.strip():
+                validation_errors.append("tool_name is empty or missing")
+            
             if not tool_args or not isinstance(tool_args, dict):
-                raise ValueError("Tool args is empty, missing, or not a dictionary")
+                validation_errors.append("tool_args is empty, missing, or not a dictionary")
+            
+            if validation_errors:
+                error_msg = f"Tool call validation failed: {'; '.join(validation_errors)}. This likely indicates the model's response was missing required fields during JSON parsing/validation."
+                raise ValueError(error_msg)
 
             func = globals()[tool_name]
             if "burgers_1d" in tool_name or "euler_1d" in tool_name:
