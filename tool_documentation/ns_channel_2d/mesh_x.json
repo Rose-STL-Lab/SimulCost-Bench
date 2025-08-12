@@ -1,0 +1,28 @@
+{
+  "run_twoD_ns_channel_exp": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "check_converge_mesh_x",
+        "description": "Conduct a 2D Navier-Stokes channel flow simulation and evaluate mesh_x convergence by refining mesh_x (+25). Returns {\"refined_parameter\": str, \"current_value\": int, \"refined_value\": int, \"RMSE_u\": float, \"RMSE_v\": float, \"RMSE_p\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_num_steps\": int, \"refine_num_steps\": int, \"mass_conserved_current\": bool, \"mass_conserved_refined\": bool}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mesh_x": { "type": "integer", "description": "Number of mesh points in x-direction" },
+            "mesh_y": { "type": "integer", "description": "Number of mesh points in y-direction" },
+            "omega_u": { "type": "number", "description": "Relaxation factor for u-velocity" },
+            "omega_v": { "type": "number", "description": "Relaxation factor for v-velocity" },
+            "omega_p": { "type": "number", "description": "Relaxation factor for pressure" },
+            "diff_u_threshold": { "type": "number", "description": "Convergence threshold for u-velocity differences" },
+            "diff_v_threshold": { "type": "number", "description": "Convergence threshold for v-velocity differences" },
+            "res_iter_v_threshold": { "type": "number", "description": "Residual iteration threshold for v-velocity" }
+          },
+          "required": [
+            "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
+            "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"
+          ]
+        }
+      }
+    }
+  }
+}
