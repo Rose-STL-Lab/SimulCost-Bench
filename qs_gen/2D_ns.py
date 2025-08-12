@@ -378,7 +378,7 @@ if __name__ == "__main__":
     flag = "zero_shot" if zero_shot else "iterative"
 
     dataset_dir = f"data/2D_ns/{task}"
-    question_file = f"{dataset_dir}/{flag}_{search_mode}_question.json"
+    question_file = f"{dataset_dir}/{flag}_question.json"
     os.makedirs(dataset_dir, exist_ok=True)
 
     print(f"[INFO] Generating {num_samples} samples for task '{task}'")
