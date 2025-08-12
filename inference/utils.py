@@ -20,7 +20,15 @@ TOOL_NAME_KEYS = {
     "check_converge_t_init": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
     "check_converge_error_threshold": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
     "burgers_1d": ["current_cfl", "k", "w"],
-    "euler_1d": ["current_cfl", "beta", "k"]
+    "euler_1d": ["current_cfl", "beta", "k"],
+    "check_converge_mesh_x": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_mesh_y": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_omega_u": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_omega_v": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_omega_p": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_diff_u_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_diff_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "check_converge_res_iter_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
 }
 
 def extract_parameters_regex(response_text: str, required_keys: List[str]) -> Dict[str, Any]:
@@ -135,6 +143,7 @@ def save_result(dataset: List[Dict], filename: str):
 
 def find_json(response: str) -> Dict[str, Any]:
     try:
+        
         start_idx = response.find('{')
         end_idx = response.rfind('}') + 1
         response = response[start_idx:end_idx]
@@ -195,19 +204,28 @@ class ToolCallManager:
 
             # Check for validation issues and provide detailed error messages
             validation_errors = []
+            tool_reason_missing = False
             
+            # Check tool_reason but don't add to validation_errors (allow missing)
             if not tool_reason or (isinstance(tool_reason, str) and tool_reason.strip() == ""):
-                validation_errors.append("tool_reason is empty or missing")
+                tool_reason_missing = True
+                self.logger.warning("tool_reason is empty or missing, but proceeding with simulation as tool_name and tool_args are available")
                 
+            # Check critical fields that must be present
             if not tool_name or not tool_name.strip():
                 validation_errors.append("tool_name is empty or missing")
             
             if not tool_args or not isinstance(tool_args, dict):
                 validation_errors.append("tool_args is empty, missing, or not a dictionary")
             
+            # Only raise error if critical fields are missing
             if validation_errors:
                 error_msg = f"Tool call validation failed: {'; '.join(validation_errors)}. This likely indicates the model's response was missing required fields during JSON parsing/validation."
                 raise ValueError(error_msg)
+            
+            # Provide a default value for tool_reason if missing to ensure clean logging
+            if tool_reason_missing:
+                tool_reason = "[tool_reason was missing from model response, proceeding with simulation]"
 
             func = globals()[tool_name]
             if "burgers_1d" in tool_name or "euler_1d" in tool_name:
@@ -252,6 +270,27 @@ class ToolCallManager:
                     k=fetch_param(tool_args, "k"),
                     linf_tolerance=0.2,
                     rmse_tolerance=0.02,
+                )
+            elif tool_name in [
+                "check_converge_mesh_x", "check_converge_mesh_y", "check_converge_omega_u", 
+                "check_converge_omega_v", "check_converge_omega_p", "check_converge_diff_u_threshold", 
+                "check_converge_diff_v_threshold", "check_converge_res_iter_v_threshold"
+            ]:
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    mesh_x=fetch_param(tool_args, "mesh_x"),
+                    mesh_y=fetch_param(tool_args, "mesh_y"),
+                    omega_u=fetch_param(tool_args, "omega_u"),
+                    omega_v=fetch_param(tool_args, "omega_v"),
+                    omega_p=fetch_param(tool_args, "omega_p"),
+                    diff_u_threshold=fetch_param(tool_args, "diff_u_threshold"),
+                    diff_v_threshold=fetch_param(tool_args, "diff_v_threshold"),
+                    res_iter_v_threshold=fetch_param(tool_args, "res_iter_v_threshold"),
+                    mass_tolerance=1e-4,
+                    u_rmse_tolerance=3e-2,
+                    v_rmse_tolerance=3e-2,
+                    p_rmse_tolerance=3e-2,
                 )
 
             prev_cost = self.accumulated_cost

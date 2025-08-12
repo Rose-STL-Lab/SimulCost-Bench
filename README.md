@@ -116,6 +116,9 @@ python dataset_gen/oneD_burgers.py -t cfl -z
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
 python dataset_gen/oneD_euler.py -t cfl -z
+
+# 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
+python dataset_gen/twoD_ns.py -t mesh_x -z
 ```
 
 **Parameters:**
@@ -203,6 +206,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - **2D Heat Transfer**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
 - **Euler 1D**: `cfl`, `beta`, `k` (cases: sod)
+- **2D Navier-Stokes**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
 
 **Parameters:**
 - `-n`: Number of samples to test
@@ -212,6 +216,14 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - `-t`: Problem task type
 - `-c`: Case name (for burgers_1d and euler_1d)
 - `-z`: Enable zero-shot mode
+- `--list-combinations`: Show all valid dataset-task combinations and exit
+
+**💡 Tip**: Use `--list-combinations` to see all available dataset-task combinations:
+```bash
+python inference/langchain_LLM.py --list-combinations
+```
+
+The system automatically validates dataset-task compatibility and provides helpful error messages for invalid combinations.
 
 **Outputs:**
 - Results: `results_model_attempt/{dataset}/{task}/`

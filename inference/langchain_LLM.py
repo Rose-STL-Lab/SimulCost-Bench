@@ -229,8 +229,12 @@ class LLMAgentBase():
                     output_infos.append(json_dict.get(field, ""))
                 return output_infos
             
-            # If we have missing fields, prepare retry message
-            if attempt < max_retries - 1:  # Don't add retry message on last attempt
+            # Separate critical fields from tool_reason
+            critical_missing_fields = [field for field in missing_fields if field != 'tool_reason']
+            tool_reason_missing = 'tool_reason' in missing_fields
+            
+            # If we are not at the final attempt, continue retrying for any missing fields
+            if attempt < max_retries - 1:
                 field_hints = []
                 for field in missing_fields:
                     if field == 'tool_reason':
@@ -250,6 +254,28 @@ class LLMAgentBase():
                 retry_messages[-1] = retry_messages[-1].copy()
                 retry_messages[-1]["content"] += retry_message
                 messages = retry_messages
+                continue
+            
+            # We've reached the final attempt - decide how to handle remaining missing fields
+            if critical_missing_fields:
+                # Critical fields still missing after max retries - this should fail
+                if self.logger:
+                    self.logger.warning(f"Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}. Final parsed JSON: {json_dict}")
+                else:
+                    print(f"WARNING: Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}")
+                output_infos = []
+                for field in self.output_field:
+                    output_infos.append(json_dict.get(field, ""))
+                return output_infos
+            elif tool_reason_missing:
+                # Only tool_reason missing after max retries - can proceed with simulation
+                if self.logger:
+                    self.logger.info(f"tool_reason missing after {max_retries} attempts, but tool_name and tool_args are present. Proceeding with simulation.")
+                output_infos = []
+                for field in self.output_field:
+                    # Use empty string for tool_reason if missing, actual values for other fields
+                    output_infos.append(json_dict.get(field, ""))
+                return output_infos
 
         # If all retries failed, return empty strings for missing fields but log the issue
         if self.logger:
@@ -491,6 +517,48 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
     })
     return state
 
+# Dataset-Task compatibility mapping
+DATASET_TASK_MAP = {
+    "1D_heat_transfer": ["cfl", "n_space"],
+    "2D_heat_transfer": ["dx", "relax", "t_init", "error_threshold"],
+    "burgers_1d": ["cfl", "k", "w"],
+    "euler_1d": ["cfl", "beta", "k"],
+    "2D_ns": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
+              "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+}
+
+# Generate all valid tasks for choices
+ALL_TASKS = sorted(set(task for tasks in DATASET_TASK_MAP.values() for task in tasks))
+
+def validate_dataset_task_combination(dataset: str, task: str) -> tuple[bool, str]:
+    """
+    Validate if the given dataset-task combination is valid.
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if dataset not in DATASET_TASK_MAP:
+        available_datasets = ", ".join(DATASET_TASK_MAP.keys())
+        return False, f"Unsupported dataset '{dataset}'. Available datasets: {available_datasets}"
+    
+    valid_tasks = DATASET_TASK_MAP[dataset]
+    if task not in valid_tasks:
+        valid_tasks_str = ", ".join(valid_tasks)
+        return False, f"Task '{task}' is not supported for dataset '{dataset}'. Valid tasks for {dataset}: {valid_tasks_str}"
+    
+    return True, ""
+
+def get_available_tasks_for_dataset(dataset: str) -> list[str]:
+    """Get all available tasks for a given dataset."""
+    return DATASET_TASK_MAP.get(dataset, [])
+
+def print_dataset_task_info():
+    """Print available dataset-task combinations."""
+    print("Available dataset-task combinations:")
+    for dataset, tasks in DATASET_TASK_MAP.items():
+        tasks_str = ", ".join(tasks)
+        print(f"  {dataset}: {tasks_str}")
+
 def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 case: str | None = None) -> dict:
     """
@@ -537,23 +605,55 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 log_dir=log_dir)
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Run inference for various PDE simulation datasets",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python inference/langchain_LLM.py -d 1D_heat_transfer -t cfl -n 50
+  python inference/langchain_LLM.py -d 2D_ns -t mesh_x -z
+  python inference/langchain_LLM.py --list-combinations
+
+Available dataset-task combinations:
+  1D_heat_transfer: cfl, n_space
+  2D_heat_transfer: dx, relax, t_init, error_threshold  
+  burgers_1d: cfl, k, w
+  euler_1d: cfl, beta, k
+  2D_ns: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold
+        """
+    )
     parser.add_argument("-n", "--num_samples", type=int, default=2,
                         help="How many samples to test (ignored for burgers_1d and euler_1d)")
     parser.add_argument("-p", "--provider", default="gemini")
     parser.add_argument("-m", "--model_name", default="gemini-1.5-pro")
     parser.add_argument("-d", "--dataset", default="1D_heat_transfer",
+                        choices=list(DATASET_TASK_MAP.keys()),
                         help="Dataset domain")
-    parser.add_argument("-t", "--task",
-                        choices=["cfl", "n_space", "dx", "relax", "t_init",
-                                 "error_threshold", "k", "w", "beta"],
-                        default="cfl")
+    parser.add_argument("-t", "--task", 
+                        choices=ALL_TASKS,
+                        default="cfl",
+                        help="Task to optimize (validity depends on dataset choice)")
     parser.add_argument("-z", "--zero_shot", action="store_true")
     parser.add_argument("-c", "--case", default=None,
                         help="Case name for burgers_1d (blast, …) or euler_1d (sod, …)")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from previous progress file")
+    parser.add_argument("--list-combinations", action="store_true",
+                        help="List all valid dataset-task combinations and exit")
     args = parser.parse_args()
+    
+    # Handle --list-combinations flag
+    if args.list_combinations:
+        print_dataset_task_info()
+        return
+    
+    # Validate dataset-task combination
+    is_valid, error_msg = validate_dataset_task_combination(args.dataset, args.task)
+    if not is_valid:
+        print(f"❌ Error: {error_msg}")
+        print("\nUse --list-combinations to see all valid combinations.")
+        print(f"\nFor dataset '{args.dataset}', valid tasks are: {', '.join(get_available_tasks_for_dataset(args.dataset))}")
+        parser.exit(1)
 
     zero_shot = args.zero_shot or args.task in ["relax", "t_init"]
     flag = "zero_shot" if zero_shot else "iterative"
