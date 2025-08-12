@@ -1,5 +1,11 @@
 {
   "custom_models": {
+    "qwen3_0_6b": {
+      "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
+      "model_path": "/data/leo_work/hf/models/Qwen3-0.6B",
+      "custom_class": "Qwen3",
+      "description": "Qwen3 0.6B parameter model"
+    },
     "qwen3_8b": {
       "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
       "model_path": "/data/leo_work/hf/models/Qwen3-8B",

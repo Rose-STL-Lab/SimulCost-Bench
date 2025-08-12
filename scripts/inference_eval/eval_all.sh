@@ -17,9 +17,9 @@ models=(
   "mistral.mistral-large-2402-v1:0"
   "meta.llama3-70b-instruct-v1:0"
   "amazon.nova-premier-v1:0"
-#   "qwen3_8b"
-#   "qwen3_32b"
-#   "qwen3_235b_a22b"
+  "qwen3_8b"
+  "qwen3_32b"
+  "qwen3_235b_a22b"
 )
 
 # Help function
