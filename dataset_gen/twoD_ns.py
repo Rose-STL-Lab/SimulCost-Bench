@@ -144,9 +144,6 @@ def forward(self, data: dict):
     return summary, tool_df
 """
 
-def list_cases(task_dir: str):
-    """Return all cases in the task directory"""
-    return [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
 
 def build_workflow(task: str, zero_shot: bool, defaults: dict) -> str:
     """Build workflow based on task type"""
@@ -222,10 +219,6 @@ def main():
     flag = "zero_shot" if zflag else "iterative"
 
     task_dir = f"data/2D_ns/{task}"
-    cases = list_cases(task_dir)
-    if not cases:
-        cases = [""]
-
     out_dir = "data/2D_ns/human_write"
     os.makedirs(out_dir, exist_ok=True)
 
@@ -233,47 +226,44 @@ def main():
         f"tool_documentation/ns_channel_2d/{task}.json"
     )
 
-    for case in cases:
-        case_prefix = f"{case}/" if case else ""
-        question_file = f"{task_dir}/{case_prefix}{flag}_question.json"
+    question_file = f"{task_dir}/{flag}_question.json"
 
-        with open(question_file, "r") as f:
-            questions = json.load(f)
+    with open(question_file, "r") as f:
+        questions = json.load(f)
 
-        dataset_entries = []
+    dataset_entries = []
 
-        for idx, q in enumerate(questions):
-            defaults = {
-                "mesh_x": fetch_param(q["param_history"][0], "mesh_x", 100),
-                "mesh_y": fetch_param(q["param_history"][0], "mesh_y", 20),
-                "omega_u": fetch_param(q["param_history"][0], "omega_u", 0.5),
-                "omega_v": fetch_param(q["param_history"][0], "omega_v", 0.5),
-                "omega_p": fetch_param(q["param_history"][0], "omega_p", 0.5),
-                "diff_u_threshold": fetch_param(q["param_history"][0], "diff_u_threshold", 0.0001),
-                "diff_v_threshold": fetch_param(q["param_history"][0], "diff_v_threshold", 0.0001),
-                "res_iter_v_threshold": fetch_param(q["param_history"][0], "res_iter_v_threshold", 0.0001)
-            }
+    for idx, q in enumerate(questions):
+        defaults = {
+            "mesh_x": fetch_param(q["param_history"][0], "mesh_x", 100),
+            "mesh_y": fetch_param(q["param_history"][0], "mesh_y", 20),
+            "omega_u": fetch_param(q["param_history"][0], "omega_u", 0.5),
+            "omega_v": fetch_param(q["param_history"][0], "omega_v", 0.5),
+            "omega_p": fetch_param(q["param_history"][0], "omega_p", 0.5),
+            "diff_u_threshold": fetch_param(q["param_history"][0], "diff_u_threshold", 0.0001),
+            "diff_v_threshold": fetch_param(q["param_history"][0], "diff_v_threshold", 0.0001),
+            "res_iter_v_threshold": fetch_param(q["param_history"][0], "res_iter_v_threshold", 0.0001)
+        }
 
-            wf = build_workflow(task, zflag, defaults)
+        wf = build_workflow(task, zflag, defaults)
 
-            single_ds = generator.generate_dataset(wf, [q], zflag)[0]
-            single_ds["profile"] = q.get("profile")
-            single_ds["zero_shot"] = q.get("zero_shot")
-            single_ds["case"] = q.get("case")
-            single_ds["boundary_condition"] = q.get("boundary_condition")
+        single_ds = generator.generate_dataset(wf, [q], zflag)[0]
+        single_ds["profile"] = q.get("profile")
+        single_ds["zero_shot"] = q.get("zero_shot")
+        single_ds["boundary_condition"] = q.get("boundary_condition")
 
-            dataset_entries.append(single_ds)
+        dataset_entries.append(single_ds)
 
-            if idx == 0:
-                human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
-                agent = {"workflow": wf, "code": human_code}
-                archive_file = f"{out_dir}/{task}_{case or 'default'}_{flag}_agent.json"
-                with open(archive_file, "w") as f:
-                    json.dump([agent], f, indent=4)
+        if idx == 0:
+            human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
+            agent = {"workflow": wf, "code": human_code}
+            archive_file = f"{out_dir}/{task}_{flag}_agent.json"
+            with open(archive_file, "w") as f:
+                json.dump([agent], f, indent=4)
 
-        dataset_file = f"{out_dir}/{task}_{case or 'default'}_{flag}_dataset.json"
-        save_result(dataset_entries, dataset_file)
-        print(f"[✓] {case or 'default'} done -> {dataset_file}")
+    dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
+    save_result(dataset_entries, dataset_file)
+    print(f"[✓] Dataset generation completed -> {dataset_file}")
 
 if __name__ == "__main__":
     main()

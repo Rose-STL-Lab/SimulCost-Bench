@@ -230,6 +230,10 @@ class ToolCallManager:
             func = globals()[tool_name]
             if "burgers_1d" in tool_name or "euler_1d" in tool_name:
                 profile = f"{profile}"
+            elif any(tool in tool_name for tool in ["check_converge_mesh_x", "check_converge_mesh_y", "check_converge_omega_u", 
+                    "check_converge_omega_v", "check_converge_omega_p", "check_converge_diff_u_threshold", 
+                    "check_converge_diff_v_threshold", "check_converge_res_iter_v_threshold"]):
+                profile = f"{profile}"  # ns_channel_2d tools expect profile to already have "p" prefix
             else:
                 profile = f"p{profile}"
 
