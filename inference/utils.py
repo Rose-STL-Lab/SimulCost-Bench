@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from logging import LoggerAdapter
 from utils.param_compatibility import fetch_param
-
+import pdb
 
 TOOL_NAME_KEYS = {
     "check_converge_cfl": ["n_space", "cfl"],
@@ -142,6 +142,21 @@ def find_json(response: str) -> Dict[str, Any]:
     except Exception as e:
         error_msg = f"Error in find_json: {str(e)}"
         return {"error": error_msg}
+
+def find_json_robust(response: str):
+    import ast
+    try:
+        start_idx = response.find('{')
+        end_idx = response.rfind('}') + 1
+        response = response[start_idx:end_idx]
+        
+        obj = ast.literal_eval(response) 
+        return obj
+
+    except Exception as e:
+        error_msg = f"Error in find_json: {str(e)}"
+        return {"error": error_msg}
+            
 
 class ToolCallManager:
     def __init__(self, base_logger: logging.Logger, qid: int,

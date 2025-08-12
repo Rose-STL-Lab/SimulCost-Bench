@@ -200,8 +200,7 @@ class LLMAgentBase():
                 attempt_text = f"attempt {attempt + 1}" if max_retries > 1 else ""
                 self.logger.info(f"🤖 Raw model response {attempt_text}: {json.dumps(json_response, ensure_ascii=False)}")
             
-            json_dict = find_json(json_response)
-
+            json_dict = find_json_robust(json_response)
             # Check if all required fields are present and non-empty
             missing_fields = []
             for field in self.output_field:
