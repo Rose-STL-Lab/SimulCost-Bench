@@ -1,12 +1,20 @@
-import sys, os, json, logging
+import json
+import os
+import sys
+from typing import Dict
+
 import numpy as np
-from typing import List, Dict, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
+
+# Constants
+DEFAULT_RMSE_TOLERANCE = 0.01
+VALID_PRECISION_LEVELS = {"low", "medium", "high"}
+VALID_TASKS = {"cfl", "k", "beta", "n_space"}
+
 # Note: validation_utils not needed for euler_1d precision_level structure
-# from utils.param_compatibility import fetch_param  # No longer used
 
 def soft_success(d, epsilon):
     """Calculate Soft Success value for a single (d, epsilon) pair"""
@@ -38,22 +46,9 @@ def soft_success_multi(d_list, epsilon_list):
     return np.mean(ss_values)  # Arithmetic mean
 
 
-def get_reference_params(task: str, dummy: Dict) -> Dict:
-    """Extract reference parameters based on task type"""
-    if task == "cfl":
-        return dummy["param_history"][-1]
-    elif task == "k":
-        best_k = dummy["best_k"]
-        ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["k"] == best_k)
-        return ref_seq[-1]
-    elif task == "beta":
-        best_beta = dummy["best_beta"]
-        ref_seq = next(seq for seq in dummy["param_history"] if seq[-1]["beta"] == best_beta)
-        return ref_seq[-1]
-    elif task == "n_space":
-        return dummy["best_params"]
-    else:
-        raise ValueError(f"Unsupported task: {task}")
+def get_reference_params(dummy: Dict) -> Dict:
+    """Extract reference parameters from the dummy data"""
+    return dummy["best_params"]
 
 
 def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None):
@@ -63,7 +58,11 @@ def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None):
     elif alt_name and alt_name in param_dict:
         return param_dict[alt_name]
     else:
-        raise KeyError(f"Required parameter '{param_name}' not found in {param_dict}")
+        available_keys = list(param_dict.keys())
+        raise KeyError(
+            f"Required parameter '{param_name}' not found. "
+            f"Available keys: {available_keys}"
+        )
 
 
 def evaluate(
@@ -73,6 +72,21 @@ def evaluate(
     precision_level: str = "medium",
     zero_shot: bool = False,
 ) -> Dict:
+    """Evaluate model performance against reference solutions.
+    
+    Args:
+        dataset: Dataset name (e.g., 'euler_1d')
+        task: Task type (e.g., 'cfl', 'k', 'beta', 'n_space')
+        model_name: Name of the model being evaluated
+        precision_level: Precision level ('low', 'medium', 'high')
+        zero_shot: Whether to use zero-shot evaluation
+        
+    Returns:
+        Dictionary containing evaluation metrics
+        
+    Raises:
+        RuntimeError: If required files are not found or data loading fails
+    """
     flag = "zero_shot" if zero_shot else "iterative"
     
     # Use precision_level-based paths for euler_1d
@@ -102,10 +116,16 @@ def evaluate(
     try:
         with open(result_path, 'r', encoding='utf-8') as f:
             result_dataset = json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        error_msg = f"Error loading model results from {result_path}: {e}"
+        logger.error(f"❌ {error_msg}")
+        raise RuntimeError(error_msg)
+        
+    try:
         with open(dummy_path, 'r', encoding='utf-8') as f:
             dummy_dataset = json.load(f)
-    except Exception as e:
-        error_msg = f"Error loading data files: {e}"
+    except (json.JSONDecodeError, IOError) as e:
+        error_msg = f"Error loading reference data from {dummy_path}: {e}"
         logger.error(f"❌ {error_msg}")
         raise RuntimeError(error_msg)
     
@@ -121,8 +141,14 @@ def evaluate(
     total_hard_efficiency = 0.0
     total_soft_success = 0.0
 
+    # Validate inputs
+    if task not in VALID_TASKS:
+        raise ValueError(f"Invalid task '{task}'. Valid tasks: {sorted(VALID_TASKS)}")
+    if precision_level not in VALID_PRECISION_LEVELS:
+        raise ValueError(f"Invalid precision_level '{precision_level}'. Valid levels: {sorted(VALID_PRECISION_LEVELS)}")
+    
     # Fixed tolerance for success checking
-    rmse_tol = 0.01
+    rmse_tol = DEFAULT_RMSE_TOLERANCE
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -171,11 +197,11 @@ def evaluate(
             rmse = float('inf')
             
             # --------- Select reference parameter set ---------
-            ref_iter = get_reference_params(task, dummy)
+            ref_iter = get_reference_params(dummy)
             
         else:
             # --------- Select reference parameter set ---------
-            ref_iter = get_reference_params(task, dummy)
+            ref_iter = get_reference_params(dummy)
 
             try:
                 
@@ -199,38 +225,44 @@ def evaluate(
                 success = False
                 rmse = float('inf')
 
-        # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
-        # Use RMSE metric for soft success calculation
+        # Calculate metrics with robust error handling
+        dummy_cost = dummy["dummy_cost"]
         
-        # Handle NaN values in rmse: if rmse is NaN or infinite, set soft success to 0
+        # Calculate soft success value
         if np.isnan(rmse) or np.isinf(rmse):
             soft_success_value = 0.0
             logger.warning(f"⚠️ QID {qid}: RMSE ({rmse}) is NaN/inf, setting soft success to 0")
         else:
             soft_success_value = soft_success(rmse, rmse_tol)
             
-        efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
-        
-        # Handle NaN values in efficiency calculation
-        if np.isnan(efficiency) or np.isinf(efficiency):
+        # Calculate efficiency metrics with division by zero protection
+        if cost <= 0:
             efficiency = 0.0
-            logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
-        
-        # Calculate hard efficiency using binary success instead of soft success
-        hard_efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
-        
-        # Handle NaN values in hard efficiency calculation
-        if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
             hard_efficiency = 0.0
-            logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
+            logger.warning(f"⚠️ QID {qid}: Cost is {cost}, setting efficiencies to 0")
+        else:
+            efficiency = soft_success_value * (dummy_cost / cost)
+            hard_efficiency = float(success) * (dummy_cost / cost)
+            
+            # Handle NaN/inf values in efficiency calculations
+            if np.isnan(efficiency) or np.isinf(efficiency):
+                efficiency = 0.0
+                logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
+                
+            if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
+                hard_efficiency = 0.0
+                logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
         
+        # Accumulate metrics
         total_model_cost += cost
-        total_dummy_cost += dummy["dummy_cost"]
-        success_cnt      += int(success)
-        converged_cnt    += int(converged)
-        # Always add error metrics to totals (including NaN/inf) for diagnostic purposes
-        total_rmse += rmse
-        # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
+        total_dummy_cost += dummy_cost
+        success_cnt += int(success)
+        converged_cnt += int(converged)
+        
+        # Handle RMSE accumulation (use 0 for NaN/inf values in totals)
+        rmse_for_total = 0.0 if (np.isnan(rmse) or np.isinf(rmse)) else rmse
+        total_rmse += rmse_for_total
+        
         total_efficiency += efficiency
         total_hard_efficiency += hard_efficiency
         total_soft_success += soft_success_value
@@ -250,30 +282,33 @@ def evaluate(
             f"------------------------------"
         )
 
-    success_rate      = success_cnt   / evaluated        if evaluated else 0.0
-    converged_rate    = converged_cnt / evaluated        if evaluated else 0.0
-    # model_cost_eff    = success_cnt   / total_model_cost if total_model_cost else 0.0
-    # dummy_cost_eff    = evaluated     / total_dummy_cost if total_dummy_cost else 0.0
-    # relative_eff      = model_cost_eff / dummy_cost_eff  if dummy_cost_eff else 0.0
-    mean_efficiency   = total_efficiency / evaluated if evaluated else 0.0
-    mean_hard_efficiency = total_hard_efficiency / evaluated if evaluated else 0.0
-    mean_rmse         = total_rmse / evaluated if evaluated else 0.0
-    mean_ss           = total_soft_success / evaluated if evaluated else 0.0
+    # Calculate final metrics with division by zero protection
+    if evaluated == 0:
+        logger.warning("⚠️ No valid evaluations performed")
+        success_rate = converged_rate = mean_efficiency = 0.0
+        mean_hard_efficiency = mean_rmse = mean_ss = 0.0
+    else:
+        success_rate = success_cnt / evaluated
+        converged_rate = converged_cnt / evaluated
+        mean_efficiency = total_efficiency / evaluated
+        mean_hard_efficiency = total_hard_efficiency / evaluated
+        mean_rmse = total_rmse / evaluated
+        mean_ss = total_soft_success / evaluated
 
     metrics = {
-        "converged_rate (converge does not guarantee success)": converged_rate,
-        "success_rate": success_rate,
-        # "model_cost_efficiency": f"{model_cost_eff:.2e}",
-        # "dummy_cost_efficiency": f"{dummy_cost_eff:.2e}",
-        # "relative_cost_efficiency": f"{relative_eff:.3f}",
+        "evaluated_count": evaluated,
+        "success_rate": f"{success_rate:.3f}",
+        "converged_rate": f"{converged_rate:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
         "mean_hard_efficiency": f"{mean_hard_efficiency:.3f}",
-        "mean_ss": f"{mean_ss:.3f}",
-        "mean_RMSE": f"{mean_rmse:.2e}",
-        "tolerances": f"RMSE ≤ {rmse_tol:.2e}",
+        "mean_soft_success": f"{mean_ss:.3f}",
+        "mean_rmse": f"{mean_rmse:.2e}",
+        "rmse_tolerance": f"{rmse_tol:.2e}",
+        "total_model_cost": total_model_cost,
+        "total_dummy_cost": total_dummy_cost,
     }
 
-    logger.info("🧾 Evaluation summary:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
+    logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
     return metrics
 
 
