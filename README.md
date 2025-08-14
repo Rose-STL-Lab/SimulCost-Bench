@@ -62,6 +62,7 @@ The table below summarizes the available tasks for each problem type and indicat
 | 1D Euler                 | `cfl`            | ✅ Supported        |
 | 1D Euler                 | `beta`           | ✅ Supported (Compositional)  |
 | 1D Euler                 | `k`              | ✅ Supported (Compositional)  |
+| 1D Euler                 | `n_space`        | ✅ Supported        |
 | 2D Navier-Stokes Channel| `mesh_x`         | ✅ Supported        |
 | 2D Navier-Stokes Channel| `mesh_y`         | ✅ Supported        |
 | 2D Navier-Stokes Channel| `omega_u`        | ✅ Supported        |
@@ -87,7 +88,7 @@ python qs_gen/2D_heat_transfer.py -n 100 -t dx -z
 python qs_gen/1D_burgers.py -t cfl -z
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
-python qs_gen/1D_euler.py -t cfl -z
+python qs_gen/1D_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python qs_gen/2D_ns.py -n 25 -t mesh_x -z
@@ -115,7 +116,7 @@ python dataset_gen/twoD_heat_transfer.py -t dx -z
 python dataset_gen/oneD_burgers.py -t cfl -z
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
-python dataset_gen/oneD_euler.py -t cfl -z
+python dataset_gen/oneD_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python dataset_gen/twoD_ns.py -t mesh_x -z
@@ -125,7 +126,9 @@ python dataset_gen/twoD_ns.py -t mesh_x -z
 - `-t`: Problem task type
 - `-z`: Enable zero-shot mode
 
-**Output:** Datasets are saved to `data/{simulation}/{task}/human_write/` directory 
+**Output:** Datasets are saved to:
+- Most datasets: `data/{simulation}/{task}/human_write/` directory  
+- Euler 1D: `data/euler_1d/{task}/{precision_level}/` directory 
 
 ## 📄 Configure Model Providers
 
@@ -205,7 +208,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - **1D Heat Transfer**: `cfl`, `n_space`
 - **2D Heat Transfer**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
-- **Euler 1D**: `cfl`, `beta`, `k` (cases: sod)
+- **Euler 1D**: `cfl`, `beta`, `k`, `n_space` (precision levels: low, medium, high)
 - **2D Navier-Stokes**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
 
 **Parameters:**
@@ -214,7 +217,8 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - `-m`: Model name/identifier
 - `-d`: Dataset name
 - `-t`: Problem task type
-- `-c`: Case name (for burgers_1d and euler_1d)
+- `-c`: Case name (for burgers_1d only)
+- `-l`: Precision level (for euler_1d: low, medium, high; default: medium)
 - `-z`: Enable zero-shot mode
 - `--list-combinations`: Show all valid dataset-task combinations and exit
 
@@ -226,8 +230,10 @@ python inference/langchain_LLM.py --list-combinations
 The system automatically validates dataset-task compatibility and provides helpful error messages for invalid combinations.
 
 **Outputs:**
-- Results: `results_model_attempt/{dataset}/{task}/`
-- Logs: `log_model_tool_call/{dataset}/{task}/`
+- Results: `results_model_attempt/{dataset}/{task}/` (for most datasets)
+- Results: `results_model_attempt/euler_1d/{precision_level}/{task}/` (for euler_1d)
+- Logs: `log_model_tool_call/{dataset}/{task}/` (for most datasets) 
+- Logs: `log_model_tool_call/euler_1d/{precision_level}/{task}/` (for euler_1d)
 
 ## 🔄 Resume Functionality
 
@@ -251,7 +257,9 @@ python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_
 ```
 
 ### Progress Files
-- **Location**: `log_model_tool_call/{dataset}/{task}/{flag}_{model_name}_progress.json`
+- **Location**: 
+  - Most datasets: `log_model_tool_call/{dataset}/{task}/{flag}_{model_name}_progress.json`
+  - Euler 1D: `log_model_tool_call/euler_1d/{precision_level}/{task}/{flag}_{model_name}_progress.json`
 - **Content**: Contains completed results and intermediate data for resuming
 - **Cleanup**: Automatically deleted when all samples complete successfully
 
@@ -276,14 +284,13 @@ python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d
 Cases: blast, double_shock, rarefaction, sin, sod
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
-python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -c sod -z
-Cases: sod
+python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -l medium -z
 ```
 **Parameters:**
 - `-m`: Model name/identifier
 - `-d`: Dataset name  
 - `-t`: Problem task type
-- `-c`: Case name (for burgers_1d and euler_1d)
+- `-c`: Case name (for burgers_1d only; euler_1d cases are handled automatically)
 - `-z`: Enable zero-shot mode
 
 **Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/` 

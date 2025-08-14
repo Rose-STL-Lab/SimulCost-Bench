@@ -18,10 +18,12 @@ def forward(self, data: dict):
         self.logger,
         qid,
         focused_parameters=[
-            "current_cfl",
+            "cfl",
             "beta",
-            "k"
-        ]
+            "k",
+            "n_space"
+        ],
+        tolerance_rmse=data.get("tolerance_rmse")
     )
 
     # Set up experiment agent
@@ -71,7 +73,8 @@ def forward(self, data: dict):
     experiment_manager = ToolCallManager(
         self.logger,
         qid,
-        focused_parameters=['current_cfl', 'beta', 'k']
+        focused_parameters=['cfl', 'beta', 'k', 'n_space'],
+        tolerance_rmse=data.get('tolerance_rmse')
     )
 
     exp_instr = (
@@ -153,13 +156,13 @@ def list_cases(task_dir: str):
     """Return all cases in the task directory"""
     return [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
 
-def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float) -> str:
+def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int) -> str:
     """Build the workflow for the first question based on the k0 and beta0"""
     header = (
         "CFL (Courant-Friedrichs-Lewy) number is defined as: "
         "$CFL = \\frac{(|u| + c) \\Delta t}{\\Delta x}$ where $c = \\sqrt{\\gamma \\frac{p}{\\rho}}$ is the speed of sound.\n"
         "You may **only** change `cfl`.\n"
-        f"The value of k is **{k0}**, beta is **{beta0}**. **You must not change them!**\n"
+        f"The value of k is **{k0}**, beta is **{beta0}**, n_space is **{n_space0}**. **You must not change them!**\n"
     )
     if zero_shot:
         body = (
@@ -180,52 +183,79 @@ def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float) -> str:
         )
     return header + body
 
-def build_k_workflow(zero_shot: bool, beta0: float) -> str:
-    """k-task: 0-shot select k, then only adjust cfl; beta is fixed."""
+def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float) -> str:
+    """Build the workflow for n_space parameter optimization"""
+    header = (
+        "n_space (Number of grid cells) determines the spatial discretization resolution: "
+        "$\\Delta x = L / n\\_space$ where L is the domain length.\n"
+        "You may **only** change `n_space`.\n"
+        f"The value of k is **{k0}**, beta is **{beta0}**, cfl is **{cfl0}**. **You must not change them!**\n"
+    )
+    if zero_shot:
+        body = (
+            "You have only one opportunity to choose an optimal value for n_space.\n"
+            "No trial-and-error or iterative optimization is permitted.\n"
+            "Your goal is to select a value that provides adequate spatial resolution while keeping computational cost reasonable.\n"
+            "Step 1: Make your best **one-shot** guess for n_space.\n"
+            "Step 2: Call the Convergence Test Function and check if converged.\n"
+            "Step 3: Output final answer with no further tool calls."
+        )
+    else:
+        body = (
+            "Step 1: Estimate an initial fairly coarse choice of n_space, as you will gradually refine the solution and check convergence.\n"
+            "Step 2: Call the Convergence Test Function; check if converged.\n"
+            "Step 3: Refine n_space based on the feedback from the simulation.\n"
+            "Step 4: You have at most 10 total opportunities to refine your resolution."
+            "Step 5: If you think the experiment can be stopped, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
+        )
+    return header + body
+
+def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float) -> str:
+    """k-task: 0-shot select k, then only adjust n_space; beta is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **k** (blending parameter for MUSCL reconstruction) *once* and must never "
         "change it afterwards. The value of **k** determines the blend between central differencing (k=1) "
         "and upwind differencing (k=-1).\n"
-        f"The parameter **beta is fixed at {beta0}** and must not be changed.\n"
-        "After choosing k, you may only modify `cfl`.\n"
+        f"The parameter **beta is fixed at {beta0}**, cfl is **{cfl0}** and must not be changed.\n"
+        "After choosing k, you may only modify `n_space`.\n"
     )
     if zero_shot:
         body = (
-            "You have **one shot** to pick both *k* and *cfl*.\n"
+            "You have **one shot** to pick both *k* and *n_space*.\n"
             "Then call the Convergence Test Function and report the result."
         )
     else:
         body = (
             "Step 1  Choose k based on domain knowledge (only one chance).\n"
-            "Step 2  Choose an initial coarse cfl.\n"
-            "Step 3  Call the convergence test function, and refine cfl based on the feedback from the simulation.\n"
-            "Step 4  You may refine cfl at most 10 times.\n"
+            "Step 2  Choose an initial coarse n_space.\n"
+            "Step 3  Call the convergence test function, and refine n_space based on the feedback from the simulation.\n"
+            "Step 4  You may refine n_space at most 10 times.\n"
             "Step 5  If you think the experiment can be stopped, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
         )
     return header + body
 
 
-def build_beta_workflow(zero_shot: bool, k0: float) -> str:
-    """beta-task: 0-shot select beta, then only adjust cfl; k is fixed."""
+def build_beta_workflow(zero_shot: bool, k0: float, cfl0: float) -> str:
+    """beta-task: 0-shot select beta, then only adjust n_space; k is fixed."""
     header = (
         "This is a *composite* search task.\n"
         "You first pick **beta** (slope-limiter parameter for generalized superbee) *once* and must never "
         "change it afterwards.\n"
-        f"The parameter **k is fixed at {k0}** and must not be changed.\n"
-        "After choosing beta, you may only modify `cfl`.\n"
+        f"The parameter **k is fixed at {k0}**, cfl is **{cfl0}** and must not be changed.\n"
+        "After choosing beta, you may only modify `n_space`.\n"
     )
     if zero_shot:
         body = (
-            "You have **one shot** to pick both *beta* and *cfl*.\n"
+            "You have **one shot** to pick both *beta* and *n_space*.\n"
             "Then call the Convergence Test Function and report the result."
         )
     else:
         body = (
             "Step 1  Choose beta based on domain knowledge (only one chance).\n"
-            "Step 2  Choose an initial cfl.\n"
-            "Step 3  Call the convergence test function, and refine cfl based on the feedback from the simulation.\n"
-            "Step 4  You may refine cfl at most 10 times.\n"
+            "Step 2  Choose an initial n_space.\n"
+            "Step 3  Call the convergence test function, and refine n_space based on the feedback from the simulation.\n"
+            "Step 4  You may refine n_space at most 10 times.\n"
             "Step 5  If you think the experiment can be stopped, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
         )
     return header + body
@@ -252,65 +282,119 @@ class oneD_Euler_DatasetGenerator(DatasetGenerator):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--task", choices=["cfl", "k", "beta"],
-                        default="cfl", help="Task to solve")
+    parser.add_argument("-t", "--task", choices=["cfl", "k", "beta", "n_space"],
+                        help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
-                        help="Enable zero-shot mode")
+                        help="Enable zero-shot mode (if not specified, generates both modes)")
     args = parser.parse_args()
-    task  = args.task
-    zflag = args.zero_shot
-    flag  = "zero_shot" if zflag else "iterative"
+    
+    # If no specific task is provided, generate all tasks
+    if args.task:
+        tasks = [args.task]
+    else:
+        tasks = ["cfl", "n_space", "k", "beta"]
+    
+    # If no specific mode is provided, generate both modes
+    if args.zero_shot:
+        modes = [True]  # Only zero-shot
+    else:
+        modes = [False, True]  # Both iterative and zero-shot
 
-    task_dir = f"data/euler_1d/{task}"
-    cases = list_cases(task_dir)
-    if not cases:
-        cases = [""]
+    print("🚀 EULER 1D DATASET GENERATOR")
+    print("=" * 80)
+    print(f"📋 Tasks: {tasks}")
+    print(f"🎯 Modes: {'zero-shot only' if len(modes) == 1 else 'iterative + zero-shot'}")
+    
+    total_files = 0
+    
+    for task in tasks:
+        print(f"\n📋 TASK: {task.upper()}")
+        print("-" * 50)
+        
+        task_dir = f"data/euler_1d/{task}"
+        
+        # Get precision levels from the new structure
+        precision_levels = []
+        if os.path.exists(task_dir):
+            precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
+        if not precision_levels:
+            precision_levels = ["low", "medium", "high"]  # fallback
 
-    out_dir = "data/euler_1d/human_write"
-    os.makedirs(out_dir, exist_ok=True)
+        generator = oneD_Euler_DatasetGenerator(
+            f"tool_documentation/euler_1d/{task}.json"
+        )
 
-    generator = oneD_Euler_DatasetGenerator(
-        f"tool_documentation/euler_1d/{task}.json"
-    )
+        for precision_level in precision_levels:
+            print(f"  🎯 {precision_level.upper()} precision:")
+            
+            # Create output directory for this precision level
+            out_dir = f"data/euler_1d/human_write/{precision_level}"
+            os.makedirs(out_dir, exist_ok=True)
+            
+            for zflag in modes:
+                flag = "zero_shot" if zflag else "iterative"
+                question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
+                
+                if not os.path.exists(question_file):
+                    print(f"     [!] Question file not found: {question_file}")
+                    continue
 
-    for case in cases:
-        case_prefix   = f"{case}/" if case else ""
-        question_file = f"{task_dir}/{case_prefix}{flag}_questions.json"
+                with open(question_file, "r") as f:
+                    questions = json.load(f)
 
-        with open(question_file, "r") as f:
-            questions = json.load(f)
+                dataset_entries = []
 
-        dataset_entries = []
+                for idx, q in enumerate(questions):
+                    if task == "cfl":
+                        k0 = fetch_param(q["param_history"][0], "k")
+                        beta0 = fetch_param(q["param_history"][0], "beta")
+                        n_space0 = fetch_param(q["param_history"][0], "n_space")
+                        wf = build_cfl_workflow(zflag, k0, beta0, n_space0)
+                    elif task == "n_space":
+                        k0 = fetch_param(q["param_history"][0], "k")
+                        beta0 = fetch_param(q["param_history"][0], "beta")
+                        cfl0 = fetch_param(q["param_history"][0], "cfl")
+                        wf = build_n_space_workflow(zflag, k0, beta0, cfl0)
+                    elif task == "k":
+                        beta0 = fetch_param(q["param_history"][0][0], "beta")
+                        cfl0 = fetch_param(q["param_history"][0][0], "cfl")
+                        wf = build_k_workflow(zflag, beta0, cfl0)
+                    elif task == "beta":
+                        k0 = fetch_param(q["param_history"][0][0], "k")
+                        cfl0 = fetch_param(q["param_history"][0][0], "cfl")
+                        wf = build_beta_workflow(zflag, k0, cfl0)
 
-        for idx, q in enumerate(questions):
-            if task == "cfl":
-                k0 = fetch_param(q["param_history"][0], "k")
-                beta0 = fetch_param(q["param_history"][0], "beta")
-                wf = build_cfl_workflow(zflag, k0, beta0)
-            elif task == "k":
-                beta0 = fetch_param(q["param_history"][0][0], "beta")
-                wf = build_k_workflow(zflag, beta0)
-            elif task == "beta":
-                k0 = fetch_param(q["param_history"][0][0], "k")
-                wf = build_beta_workflow(zflag, k0)
+                    single_ds = generator.generate_dataset(wf, [q], zflag)[0]
+                    
+                    # Update dataset entry to only include required fields
+                    filtered_ds = {
+                        "QID": single_ds.get("QID", q.get("QID")),
+                        "profile": q.get("profile"),
+                        "case": q.get("case"),
+                        "zero_shot": q.get("zero_shot"),
+                        "target_parameter": q.get("target_parameter"),
+                        "precision_level": q.get("precision_level"),
+                        "tolerance_rmse": q.get("tolerance_rmse"),
+                        "messages": single_ds.get("messages")
+                    }
 
-            single_ds = generator.generate_dataset(wf, [q], zflag)[0]
-            single_ds["profile"] = q.get("profile")
-            single_ds["zero_shot"] = q.get("zero_shot")
-            single_ds["case"] = q.get("case")
+                    dataset_entries.append(filtered_ds)
 
-            dataset_entries.append(single_ds)
+                    if idx == 0:
+                        human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
+                        agent = {"workflow": wf, "code": human_code}
+                        archive_file = f"{out_dir}/{task}_{flag}_agent.json"
+                        with open(archive_file, "w") as f:
+                            json.dump([agent], f, indent=4)
 
-            if idx == 0:
-                human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
-                agent = {"workflow": wf, "code": human_code}
-                archive_file = f"{out_dir}/{task}_{case or 'default'}_{flag}_agent.json"
-                with open(archive_file, "w") as f:
-                    json.dump([agent], f, indent=4)
-
-        dataset_file = f"{out_dir}/{task}_{case or 'default'}_{flag}_dataset.json"
-        save_result(dataset_entries, dataset_file)
-        print(f"[✓] {case or 'default'} done -> {dataset_file}")
+                dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
+                save_result(dataset_entries, dataset_file)
+                print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
+                total_files += 1
+    
+    print("\n" + "=" * 80)
+    print(f"🎉 SUMMARY: Generated {total_files} dataset files")
+    print("=" * 80)
 
 if __name__ == "__main__":
     main()

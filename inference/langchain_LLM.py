@@ -288,7 +288,7 @@ class LLMAgentBase():
         return output_infos
 
     def execute_tool(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], tool_manager: ToolCallManager, profile: int) -> dict:
-        tool_result, acc_cost = tool_manager.execute_tool_call(tool_reason, tool_name, tool_args, profile)
+        tool_result, acc_cost = tool_manager.execute_tool_call(tool_reason=tool_reason, tool_name=tool_name, tool_args=tool_args, profile=profile)
         
         return tool_result, acc_cost
     
@@ -345,6 +345,21 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     for i, data in enumerate(tqdm(dataset[start_idx:], desc="Running inference", initial=start_idx, total=len(dataset))):
         try:
             result, tool_df = agent.forward(data)
+            
+            # For euler_1d dataset, preserve additional fields from dataset
+            if 'profile' in data:
+                result['profile'] = data['profile']
+            if 'case' in data:
+                result['case'] = data['case']
+            if 'zero_shot' in data:
+                result['zero_shot'] = data['zero_shot']
+            if 'target_parameter' in data:
+                result['target_parameter'] = data['target_parameter']
+            if 'precision_level' in data:
+                result['precision_level'] = data['precision_level']
+            if 'tolerance_rmse' in data:
+                result['tolerance_rmse'] = data['tolerance_rmse']
+            
             all_results.append(result)
             all_tool_dfs.append(tool_df)
             
@@ -522,7 +537,7 @@ DATASET_TASK_MAP = {
     "1D_heat_transfer": ["cfl", "n_space"],
     "2D_heat_transfer": ["dx", "relax", "t_init", "error_threshold"],
     "burgers_1d": ["cfl", "k", "w"],
-    "euler_1d": ["cfl", "beta", "k"],
+    "euler_1d": ["cfl", "beta", "k", "n_space"],
     "2D_ns": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
 }
@@ -560,7 +575,7 @@ def print_dataset_task_info():
         print(f"  {dataset}: {tasks_str}")
 
 def build_paths(dataset: str, task: str, flag: str, model_name: str,
-                case: str | None = None) -> dict:
+                precision_level: str = "medium") -> dict:
     """
     Automatically build all I/O paths based on dataset type.
 
@@ -570,30 +585,29 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     task    : e.g. "cfl"
     flag    : "zero_shot" or "iterative"
     model_name : used for log/result files
-    case    : specific to burgers_1d/euler_1d; pass None for other datasets
+    precision_level : precision level for euler_1d ("low", "medium", "high")
 
     Returns
     -------
     dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # Common top-level directory
-    case_suffix = f"/{case}" if case else ""
-    result_dir = f"results_model_attempt/{dataset}/{task}{case_suffix}"
-    log_dir    = f"log_model_tool_call/{dataset}/{task}{case_suffix}"
+    # For euler_1d, use precision_level in path structure but keep human_write directory
+    if dataset == "euler_1d":
+        result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
+        log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
+        dataset_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_dataset.json"
+        archive_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_agent.json"
+    else:
+        # Other datasets keep the old structure
+        result_dir = f"results_model_attempt/{dataset}/{task}"
+        log_dir    = f"log_model_tool_call/{dataset}/{task}"
+        dataset_file = f"data/{dataset}/human_write/{task}_{flag}_dataset.json"
+        archive_file = f"data/{dataset}/human_write/{task}_{flag}_agent.json"
+    
     # --------------------------------
     os.makedirs(result_dir, exist_ok=True)
     os.makedirs(log_dir,    exist_ok=True)
-
-    # ==================================================
-    # Determine intermediate path based on whether case exists
-    # ==================================================
-    if case:
-        dataset_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_dataset.json"
-        archive_file = f"data/{dataset}/human_write/{task}_{case}_{flag}_agent.json"
-    else:
-        dataset_file = f"data/{dataset}/human_write/{task}_{flag}_dataset.json"
-        archive_file = f"data/{dataset}/human_write/{task}_{flag}_agent.json"
 
     log_file    = f"{log_dir}/{flag}_{model_name}.log"
     result_file = f"{result_dir}/{flag}_{model_name}.json"
@@ -612,13 +626,14 @@ def main():
 Examples:
   python inference/langchain_LLM.py -d 1D_heat_transfer -t cfl -n 50
   python inference/langchain_LLM.py -d 2D_ns -t mesh_x -z
+  python inference/langchain_LLM.py -d euler_1d -t beta -z -l medium
   python inference/langchain_LLM.py --list-combinations
 
 Available dataset-task combinations:
   1D_heat_transfer: cfl, n_space
   2D_heat_transfer: dx, relax, t_init, error_threshold  
   burgers_1d: cfl, k, w
-  euler_1d: cfl, beta, k
+  euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   2D_ns: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold
         """
     )
@@ -634,8 +649,9 @@ Available dataset-task combinations:
                         default="cfl",
                         help="Task to optimize (validity depends on dataset choice)")
     parser.add_argument("-z", "--zero_shot", action="store_true")
-    parser.add_argument("-c", "--case", default=None,
-                        help="Case name for burgers_1d (blast, …) or euler_1d (sod, …)")
+    parser.add_argument("-l", "--precision_level", default="medium", 
+                        choices=["low", "medium", "high"],
+                        help="Precision level for euler_1d dataset")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from previous progress file")
     parser.add_argument("--list-combinations", action="store_true",
@@ -659,7 +675,7 @@ Available dataset-task combinations:
     flag = "zero_shot" if zero_shot else "iterative"
 
     paths = build_paths(args.dataset, args.task, flag,
-                        args.model_name, case=args.case)
+                        args.model_name, precision_level=args.precision_level)
 
     ensure_file(paths["dataset_file"],  default_content=[])
     ensure_file(paths["archive_file"],  default_content=[])
@@ -676,6 +692,8 @@ Available dataset-task combinations:
 
     # Display dataset information
     logger.info(f"Dataset: {args.dataset}, Task: {args.task}, Mode: {'zero_shot' if zero_shot else 'iterative'}")
+    if args.dataset == "euler_1d":
+        logger.info(f"Precision level: {args.precision_level}")
     logger.info(f"Dataset file: {paths['dataset_file']}")
     logger.info(f"Total samples available in dataset: {len(dataset)}")
     logger.info(f"Requested samples (-n): {args.num_samples}")

@@ -10,8 +10,8 @@ DATASET_TASK_MAP = {
         "dummy_filename": "questions.json"  # burgers uses questions.json (plural)
     },
     "euler_1d": {
-        "tasks": {"cfl", "k", "beta"},
-        "cases": {"sod"},
+        "tasks": {"cfl", "k", "beta", "n_space"},
+        "precision_levels": {"low", "medium", "high"},
         "dummy_filename": "questions.json"
     },
     "1D_heat_transfer": {

@@ -3,7 +3,7 @@
         "description": {
             "type": "function",
             "function": {
-                "name": "check_converge_cfl",
+                "name": "heat_1d_check_converge_cfl",
                 "description": "Conduct a 1D heat transfer PDE simulation and evaluate its cfl convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"cfl_l2_error\": float, \"is_converged\": bool, \"accumulated_cost\": int}." ,
                 "parameters": {
                     "type": "object",

@@ -50,7 +50,7 @@ def _refine_parameters(params, refine_param):
     
     return refined_params
 
-def check_converge_parameter(
+def ns_2d_check_converge_parameter(
     *,
     accumulated_cost: int,
     profile: str,
@@ -160,34 +160,34 @@ def check_converge_parameter(
     }
 
 # Convenience functions for each parameter
-def check_converge_mesh_x(**kwargs):
+def ns_2d_check_converge_mesh_x(**kwargs):
     """Check convergence by refining mesh_x (+25)."""
-    return check_converge_parameter(refine_param='mesh_x', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='mesh_x', **kwargs)
 
-def check_converge_mesh_y(**kwargs):
+def ns_2d_check_converge_mesh_y(**kwargs):
     """Check convergence by refining mesh_y (+10)."""
-    return check_converge_parameter(refine_param='mesh_y', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='mesh_y', **kwargs)
 
-def check_converge_omega_u(**kwargs):
+def ns_2d_check_converge_omega_u(**kwargs):
     """Check convergence by refining omega_u (+0.1)."""
-    return check_converge_parameter(refine_param='omega_u', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='omega_u', **kwargs)
 
-def check_converge_omega_v(**kwargs):
+def ns_2d_check_converge_omega_v(**kwargs):
     """Check convergence by refining omega_v (+0.1)."""
-    return check_converge_parameter(refine_param='omega_v', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='omega_v', **kwargs)
 
-def check_converge_omega_p(**kwargs):
+def ns_2d_check_converge_omega_p(**kwargs):
     """Check convergence by refining omega_p (+0.1)."""
-    return check_converge_parameter(refine_param='omega_p', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='omega_p', **kwargs)
 
-def check_converge_diff_u_threshold(**kwargs):
+def ns_2d_check_converge_diff_u_threshold(**kwargs):
     """Check convergence by refining diff_u_threshold (/10)."""
-    return check_converge_parameter(refine_param='diff_u_threshold', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='diff_u_threshold', **kwargs)
 
-def check_converge_diff_v_threshold(**kwargs):
+def ns_2d_check_converge_diff_v_threshold(**kwargs):
     """Check convergence by refining diff_v_threshold (/10)."""
-    return check_converge_parameter(refine_param='diff_v_threshold', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='diff_v_threshold', **kwargs)
 
-def check_converge_res_iter_v_threshold(**kwargs):
+def ns_2d_check_converge_res_iter_v_threshold(**kwargs):
     """Check convergence by refining res_iter_v_threshold (/10)."""
-    return check_converge_parameter(refine_param='res_iter_v_threshold', **kwargs)
+    return ns_2d_check_converge_parameter(refine_param='res_iter_v_threshold', **kwargs)

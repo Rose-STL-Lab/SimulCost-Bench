@@ -3,7 +3,7 @@
     "description": {
       "type": "function",
       "function": {
-        "name": "check_converge_omega_u",
+        "name": "ns_2d_check_converge_omega_u",
         "description": "Conduct a 2D Navier-Stokes channel flow simulation and evaluate omega_u convergence by refining omega_u (+0.1). Returns {\"refined_parameter\": str, \"current_value\": float, \"refined_value\": float, \"RMSE_u\": float, \"RMSE_v\": float, \"RMSE_p\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_num_steps\": int, \"refine_num_steps\": int, \"mass_conserved_current\": bool, \"mass_conserved_refined\": bool}.",
         "parameters": {
           "type": "object",

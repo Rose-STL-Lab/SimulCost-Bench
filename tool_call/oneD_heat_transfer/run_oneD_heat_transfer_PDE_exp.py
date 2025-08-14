@@ -1,6 +1,6 @@
 from costsci_tools.wrappers.heat_1d import run_sim_heat_1d, compare_res_heat_1d
 
-def check_converge_n_space(*, accumulated_cost: int, profile: str,
+def heat_1d_check_converge_n_space(*, accumulated_cost: int, profile: str,
                            current_n_space: int, current_cfl: float, tolerance: float):
     # Fix the CFL for the n_space searching
     print(f"\nRunning simulation with n_space = {current_n_space}")
@@ -25,7 +25,7 @@ def check_converge_n_space(*, accumulated_cost: int, profile: str,
         "accumulated_cost": accumulated_cost,
     }
 
-def check_converge_cfl(*, accumulated_cost: int, profile: str,
+def heat_1d_check_converge_cfl(*, accumulated_cost: int, profile: str,
                            current_n_space: int, current_cfl: float, tolerance: float):
     # Fix the CFL for the n_space searching
     print(f"\nRunning simulation with cfl = {current_cfl}")

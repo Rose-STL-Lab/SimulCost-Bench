@@ -23,27 +23,27 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
-tasks=("cfl" "beta" "k")
-cases=("sod")  # 1D Euler only has sod test case
+tasks=("cfl" "beta" "k" "n_space")
+precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
-# model_provider="bedrock"
-# models=(
-#  "anthropic.claude-3-5-haiku-20241022-v1:0"
-#  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-#  "anthropic.claude-3-7-sonnet-20250219-v1:0"
-#  "mistral.mistral-large-2402-v1:0"
-#  "meta.llama3-70b-instruct-v1:0"
-#  "amazon.nova-premier-v1:0"
-# )
-
-model_provider="custom_model"
+model_provider="bedrock"
 models=(
- "qwen3_0_6b"
- "qwen3_8b"
- "qwen3_32b" 
- "qwen3_235b_a22b"
+ "anthropic.claude-3-5-haiku-20241022-v1:0"
+ "anthropic.claude-3-5-sonnet-20240620-v1:0"
+ "anthropic.claude-3-7-sonnet-20250219-v1:0"
+ "mistral.mistral-large-2402-v1:0"
+ "meta.llama3-70b-instruct-v1:0"
+ "amazon.nova-premier-v1:0"
 )
+
+# model_provider="custom_model"
+# models=(
+#  "qwen3_0_6b"
+#  "qwen3_8b"
+#  "qwen3_32b" 
+#  "qwen3_235b_a22b"
+# )
 
 # model_provider="openai"
 # models=(
@@ -54,9 +54,9 @@ models=(
 for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
-      for case in "${cases[@]}"; do
-        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -c $case $mode --resume"
-        run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -c $case $mode"
+      for precision_level in "${precision_levels[@]}"; do
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -l $precision_level $mode --resume"
+        run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -l $precision_level $mode"
       done
     done
   done

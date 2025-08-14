@@ -12,7 +12,7 @@ def _to_jsonable(obj):
         return [_to_jsonable(v) for v in obj]
     return obj
 
-def burgers_1d(
+def burgers_1d_solve(
     *, 
     accumulated_cost: int,
     profile: str,

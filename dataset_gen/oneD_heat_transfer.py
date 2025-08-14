@@ -90,7 +90,7 @@ def forward(self, data: dict):
 
     # Execute tool and inject results
     tool_result, acc_cost = experiment_agent.execute_tool(
-        tool_reason, tool_name, tool_args, experiment_manager, qid
+        tool_reason=tool_reason, tool_name=tool_name, tool_args=tool_args, tool_manager=experiment_manager, profile=qid
     )
     messages.append({'role': 'user', 'content': json.dumps(tool_result)})
 
@@ -164,7 +164,7 @@ def forward(self, data: dict):
         
         # Execute tool and inject results from tool
         tool_result, acc_cost = experiment_agent.execute_tool(
-            tool_reason, tool_name, tool_args, experiment_manager, qid
+            tool_reason=tool_reason, tool_name=tool_name, tool_args=tool_args, tool_manager=experiment_manager, profile=qid
         )
         
         # Track the last valid tool result (not containing error)

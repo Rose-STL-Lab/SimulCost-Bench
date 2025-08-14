@@ -3,7 +3,7 @@
     "description": {
       "type": "function",
       "function": {
-        "name": "burgers_1d",
+        "name": "burgers_1d_solve",
         "description": "Conduct a 1D Burgers PDE simulation and evaluate its CFL convergence. It returns {\"Linf_Norm\": float, \"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"metrics1\": object, \"metrics2\": object}.",
         "parameters": {
           "type": "object",

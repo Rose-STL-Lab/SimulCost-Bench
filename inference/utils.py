@@ -13,22 +13,26 @@ from utils.param_compatibility import fetch_param
 import pdb
 
 TOOL_NAME_KEYS = {
-    "check_converge_cfl": ["n_space", "cfl"],
-    "check_converge_n_space": ["n_space", "cfl"],
-    "check_converge_dx": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "check_converge_relax": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "check_converge_t_init": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "check_converge_error_threshold": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "burgers_1d": ["current_cfl", "k", "w"],
-    "euler_1d": ["current_cfl", "beta", "k"],
-    "check_converge_mesh_x": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_mesh_y": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_omega_u": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_omega_v": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_omega_p": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_diff_u_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_diff_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "check_converge_res_iter_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    "heat_1d_check_converge_cfl": ["n_space", "cfl"],
+    "heat_1d_check_converge_n_space": ["n_space", "cfl"],
+    "heat_2d_check_converge_dx": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "heat_2d_check_converge_relax": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "heat_2d_check_converge_t_init": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "heat_2d_check_converge_error_threshold": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
+    "burgers_1d_solve": ["current_cfl", "k", "w"],
+    "euler_1d_check_converge_cfl": ["cfl", "beta", "k", "n_space"],
+    "euler_1d_check_converge_beta": ["cfl", "beta", "k", "n_space"],
+    "euler_1d_check_converge_k": ["cfl", "beta", "k", "n_space"],
+    "euler_1d_check_converge_n_space": ["cfl", "beta", "k", "n_space"],
+    "ns_2d_check_converge_mesh_x": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_mesh_y": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_omega_u": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_omega_v": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_omega_p": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_diff_u_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_diff_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_res_iter_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_2d_check_converge_parameter": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
 }
 
 def extract_parameters_regex(response_text: str, required_keys: List[str]) -> Dict[str, Any]:
@@ -175,7 +179,7 @@ def find_json_robust(response: str):
 
 class ToolCallManager:
     def __init__(self, base_logger: logging.Logger, qid: int,
-                 focused_parameters: List[str] = None):
+                 focused_parameters: List[str] = None, tolerance_rmse: float = None):
         self.logger = LoggerAdapter(base_logger, {'qid': qid})
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
@@ -184,6 +188,7 @@ class ToolCallManager:
         self.param_sequence = []
         self.cost_sequence  = [] 
         self.accumulated_cost = 0
+        self.tolerance_rmse = tolerance_rmse
 
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], profile: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
@@ -228,16 +233,12 @@ class ToolCallManager:
                 tool_reason = "[tool_reason was missing from model response, proceeding with simulation]"
 
             func = globals()[tool_name]
-            if "burgers_1d" in tool_name or "euler_1d" in tool_name:
-                profile = f"{profile}"
-            elif any(tool in tool_name for tool in ["check_converge_mesh_x", "check_converge_mesh_y", "check_converge_omega_u", 
-                    "check_converge_omega_v", "check_converge_omega_p", "check_converge_diff_u_threshold", 
-                    "check_converge_diff_v_threshold", "check_converge_res_iter_v_threshold"]):
-                profile = f"{profile}"  # ns_channel_2d tools expect profile to already have "p" prefix
-            else:
+            if "heat" in tool_name:
                 profile = f"p{profile}"
+            else:
+                profile = f"{profile}"
 
-            if tool_name in ["check_converge_cfl", "check_converge_n_space"]:
+            if tool_name in ["heat_1d_check_converge_cfl", "heat_1d_check_converge_n_space"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
@@ -245,7 +246,7 @@ class ToolCallManager:
                     current_cfl=fetch_param(tool_args, "cfl", "current_cfl"),
                     tolerance=1e-4
                 )
-            elif tool_name in ["check_converge_dx", "check_converge_relax", "check_converge_t_init", "check_converge_error_threshold"]:
+            elif tool_name in ["heat_2d_check_converge_dx", "heat_2d_check_converge_relax", "heat_2d_check_converge_t_init", "heat_2d_check_converge_error_threshold"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
@@ -255,7 +256,7 @@ class ToolCallManager:
                     current_error_threshold=fetch_param(tool_args, "current_error_threshold", "error_threshold"),
                     tolerance=1e-3
                 )
-            elif tool_name in ["burgers_1d"]:
+            elif tool_name in ["burgers_1d_solve"]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
@@ -265,20 +266,24 @@ class ToolCallManager:
                     linf_tolerance=5e-2,
                     rmse_tolerance=5e-3,
                 )
-            elif tool_name in ["euler_1d"]:
+            elif tool_name in ["euler_1d_check_converge_cfl", "euler_1d_check_converge_beta", "euler_1d_check_converge_k", "euler_1d_check_converge_n_space"]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for euler_1d tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_cfl=fetch_param(tool_args, "current_cfl", "cfl"),
+                    cfl=fetch_param(tool_args, "cfl"),
                     beta=fetch_param(tool_args, "beta"),
                     k=fetch_param(tool_args, "k"),
-                    linf_tolerance=0.2,
-                    rmse_tolerance=0.02,
+                    n_space=fetch_param(tool_args, "n_space"),
+                    rmse_tolerance=tolerance
                 )
             elif tool_name in [
-                "check_converge_mesh_x", "check_converge_mesh_y", "check_converge_omega_u", 
-                "check_converge_omega_v", "check_converge_omega_p", "check_converge_diff_u_threshold", 
-                "check_converge_diff_v_threshold", "check_converge_res_iter_v_threshold"
+                "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
+                "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
+                "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
             ]:
                 result = func(
                     accumulated_cost=self.accumulated_cost,

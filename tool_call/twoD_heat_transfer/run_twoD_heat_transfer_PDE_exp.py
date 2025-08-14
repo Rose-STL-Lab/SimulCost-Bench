@@ -1,6 +1,6 @@
 from costsci_tools.wrappers.heat_steady_2d import run_sim_heat_steady_2d, compare_res_heat_steady_2d
 
-def check_converge_dx(*, accumulated_cost: int, profile: str,
+def heat_2d_check_converge_dx(*, accumulated_cost: int, profile: str,
                            current_dx: float, current_relax: float, 
                            current_t_init: float, current_error_threshold: float, 
                            tolerance: float):
@@ -36,7 +36,7 @@ def check_converge_dx(*, accumulated_cost: int, profile: str,
         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": refine_cost,
     }
 
-def check_converge_error_threshold(*, accumulated_cost: int, profile: str,
+def heat_2d_check_converge_error_threshold(*, accumulated_cost: int, profile: str,
                            current_dx: float, current_relax: float, 
                            current_t_init: float, current_error_threshold: float, 
                            tolerance: float):
@@ -72,7 +72,7 @@ def check_converge_error_threshold(*, accumulated_cost: int, profile: str,
         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": refine_cost,
     }
 
-def check_converge_relax(*, accumulated_cost: int, profile: str,
+def heat_2d_check_converge_relax(*, accumulated_cost: int, profile: str,
                            current_dx: float, current_relax: float, 
                            current_t_init: float, current_error_threshold: float, 
                            tolerance: float):
@@ -102,7 +102,7 @@ def check_converge_relax(*, accumulated_cost: int, profile: str,
         "The number of iterations the solver will perform to simulate the environment based on the parameters you have given": current_num_steps,
     }
 
-def check_converge_t_init(*, accumulated_cost: int, profile: str,
+def heat_2d_check_converge_t_init(*, accumulated_cost: int, profile: str,
                            current_dx: float, current_relax: float, 
                            current_t_init: float, current_error_threshold: float, 
                            tolerance: float):
