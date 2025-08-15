@@ -23,78 +23,149 @@ from statistics import mean
 import pandas as pd
 
 # ------------------------------------------------------------
-# Regex patterns (no emojis needed)
+# Regex patterns and field standardization
 # ------------------------------------------------------------
-SUMMARY_REGEX = re.compile(r"Evaluation summary:\s*({.*?})", re.S)
+SUMMARY_REGEX = re.compile(r"🧾 Evaluation [Ss]ummary.*?:\s*({.*?})", re.S)
 QID_REGEX = re.compile(r"QID:\s*(\d+)")
+
+# Field name standardization mapping: maps variant names to canonical names
+FIELD_NAME_MAPPING = {
+    # Converged rate variations
+    "converged_rate (converge does not guarantee success)": "converged_rate",
+    
+    # RMSE variations
+    "mean_RMSE": "mean_rmse",
+    
+    # Tolerance/threshold variations  
+    "tolerances": "rmse_tolerance",
+    
+    # Soft success variations
+    "mean_ss": "mean_soft_success",
+}
 
 # Preferred ordering for some common metrics (will appear first)
 PRIORITY_METRICS = [
-    "converged_rate (converge does not guarantee success)",
+    "converged_rate",
     "success_rate",
-    # "model_cost_efficiency",
-    # "dummy_cost_efficiency",
-    # "relative_cost_efficiency",
-    "mean_ss",
+    "mean_soft_success",
     "mean_efficiency",
     "mean_hard_efficiency",
+    "mean_rmse",
+    "rmse_tolerance",
 ]
 
 # ------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------
+def normalize_metrics(metrics: Dict[str, str]) -> Dict[str, str]:
+    """
+    Normalize field names to canonical forms using FIELD_NAME_MAPPING.
+    
+    Args:
+        metrics: Raw metrics dictionary with potentially inconsistent field names
+        
+    Returns:
+        Normalized metrics dictionary with standardized field names
+    """
+    normalized = {}
+    for key, value in metrics.items():
+        # Use canonical name if mapping exists, otherwise keep original
+        canonical_key = FIELD_NAME_MAPPING.get(key, key)
+        normalized[canonical_key] = value
+    return normalized
 def parse_log(path: Path) -> Tuple[int, Dict[str, str]] | None:
-    """Return (num_samples, metrics_dict) extracted from a single .log file, or None if parsing fails."""
+    """
+    Extract metrics from a single .log file with field name standardization.
+    
+    Args:
+        path: Path to the .log file
+        
+    Returns:
+        Tuple of (num_samples, normalized_metrics_dict) or None if parsing fails
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
 
-        # 1) number of samples = highest QID
+        # 1) Number of samples = highest QID found
         qids = [int(x) for x in QID_REGEX.findall(text)]
         num_samples = max(qids) if qids else 0
 
-        # 2) evaluation summary block
-        m = SUMMARY_REGEX.search(text)
-        if not m:
+        # 2) Extract evaluation summary block
+        match = SUMMARY_REGEX.search(text)
+        if not match:
             print(f"Warning: No evaluation summary found in {path}, skipping...")
             return None
-        metrics = json.loads(m.group(1))
-        return num_samples, metrics
+            
+        # 3) Parse JSON and normalize field names
+        raw_metrics = json.loads(match.group(1))
+        normalized_metrics = normalize_metrics(raw_metrics)
+        
+        return num_samples, normalized_metrics
+        
+    except json.JSONDecodeError as e:
+        print(f"Warning: Invalid JSON in {path}: {e}, skipping...")
+        return None
     except Exception as e:
         print(f"Warning: Failed to parse {path}: {e}, skipping...")
         return None
 
 
-def is_number(v: str) -> bool:
+def is_number(v) -> bool:
     """Return True if v can be cast to float."""
     try:
         float(v)
         return True
-    except Exception:
+    except (ValueError, TypeError):
         return False
 
 
 def merge_metrics(metrics_list: List[Dict[str, str]]) -> Dict[str, float]:
     """
-    Aggregate metrics from multiple test cases by averaging:
-    - If all values can be converted to float, return the average
-    - Otherwise, return the first non-empty string value
+    Aggregate metrics from multiple test cases with robust handling.
+    
+    For each metric:
+    - If all values are numeric, return the average
+    - If values are mixed (numeric/string), prioritize numeric and average them
+    - If all values are non-numeric strings, return the first non-empty value
+    
+    Args:
+        metrics_list: List of metrics dictionaries from different test cases
+        
+    Returns:
+        Merged metrics dictionary with aggregated values
     """
-    merged: Dict[str, float] = {}
+    if not metrics_list:
+        return {}
+        
+    merged = {}
     all_keys = set().union(*(m.keys() for m in metrics_list))
 
-    for k in all_keys:
-        vals = [m[k] for m in metrics_list if k in m]
-        if all(is_number(v) for v in vals):
-            merged[k] = mean(float(v) for v in vals)
-        else:
-            merged[k] = vals[0]  # Keep first value for non-numeric fields
+    for key in all_keys:
+        # Collect all values for this key across test cases
+        all_values = [m[key] for m in metrics_list if key in m and m[key] is not None]
+        
+        if not all_values:
+            continue
+            
+        # Separate numeric and non-numeric values
+        numeric_values = [float(v) for v in all_values if is_number(v)]
+        non_numeric_values = [v for v in all_values if not is_number(v)]
+        
+        if numeric_values:
+            # If we have numeric values, use their average
+            merged[key] = mean(numeric_values)
+        elif non_numeric_values:
+            # If only non-numeric values, use the first non-empty one
+            merged[key] = next(v for v in non_numeric_values if str(v).strip())
+            
     return merged
 
 
-def collect_rows(dataset: str, tasks: List[str]) -> Tuple[List[Dict[str, str]], List[str]]:
+def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) -> Tuple[List[Dict[str, str]], List[str]]:
     """
     Gather all rows (one per log file) and union of metric columns.
     Special handling for burgers_1d: aggregate 5 cases by (model, task, mode).
+    For euler_1d: if precision_level is specified, only process that precision level.
     """
     base_root = Path("eval_results") / dataset
     rows: List[Dict[str, str]] = []
@@ -107,8 +178,14 @@ def collect_rows(dataset: str, tasks: List[str]) -> Tuple[List[Dict[str, str]], 
 
         for task in tasks:
             task_dir = base_root / task
-            # Five case directories
-            for case_dir in sorted(p for p in task_dir.iterdir() if p.is_dir()):
+            # For euler_1d with precision levels, filter by precision_level
+            if dataset == "euler_1d" and precision_level:
+                case_dirs = [p for p in task_dir.iterdir() if p.is_dir() and p.name == precision_level]
+            else:
+                # Five case directories (for burgers_1d or all precision levels for euler_1d)
+                case_dirs = sorted(p for p in task_dir.iterdir() if p.is_dir())
+            
+            for case_dir in case_dirs:
                 for log_path in sorted(case_dir.glob("*.log")):
                     fname = log_path.stem
                     MODE_RE = re.compile(r"^(iterative|zero_shot)_(.+)$")
@@ -351,34 +428,63 @@ def main() -> None:
             print(f"⚠️  No task subdirectories found in '{dataset_dir}'")
             return
 
-    # Collect rows
-    rows, metric_cols = collect_rows(args.dataset, task_dirs)
-    if not rows:
-        print("⚠️  No .log files found - nothing to parse.")
-        return
+    # Special handling for euler_1d with precision levels
+    if args.dataset == "euler_1d":
+        precision_levels = ["high", "medium", "low"]
+        for precision in precision_levels:
+            # Collect rows for this precision level
+            rows, metric_cols = collect_rows(args.dataset, task_dirs, precision_level=precision)
+            if not rows:
+                print(f"⚠️  No .log files found for precision level '{precision}' - skipping.")
+                continue
 
-    # Output filenames
-    if args.task:
-        default_prefix = (
-            (dataset_dir / args.task) / f"{args.dataset}_{args.task}_summary"
-        )
+            # Output filenames with precision level
+            if args.task:
+                default_prefix = (
+                    (dataset_dir / args.task) / f"{args.dataset}_{args.task}_{precision}_summary"
+                )
+            else:
+                default_prefix = dataset_dir / f"{args.dataset}_{precision}_summary"
+
+            csv_path = Path(args.csv_output.replace('.csv', f'_{precision}.csv')) if args.csv_output else default_prefix.with_suffix(".csv")
+            xlsx_path = Path(args.xlsx_output.replace('.xlsx', f'_{precision}.xlsx')) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
+
+            # Write outputs
+            write_csv(rows, metric_cols, csv_path)
+            write_excel(rows, metric_cols, xlsx_path)
+
+            print(f"✅ Summary for {precision} precision saved:")
+            print("   CSV  :", csv_path)
+            print("   Excel:", xlsx_path, "(ready for humans ✨)")
     else:
-        default_prefix = dataset_dir / f"{args.dataset}_summary"
+        # Original logic for other datasets
+        rows, metric_cols = collect_rows(args.dataset, task_dirs)
+        if not rows:
+            print("⚠️  No .log files found - nothing to parse.")
+            return
 
-    csv_path = Path(args.csv_output) if args.csv_output else default_prefix.with_suffix(
-        ".csv"
-    )
-    xlsx_path = Path(
-        args.xlsx_output
-    ) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
+        # Output filenames
+        if args.task:
+            default_prefix = (
+                (dataset_dir / args.task) / f"{args.dataset}_{args.task}_summary"
+            )
+        else:
+            default_prefix = dataset_dir / f"{args.dataset}_summary"
 
-    # Write outputs
-    write_csv(rows, metric_cols, csv_path)
-    write_excel(rows, metric_cols, xlsx_path)
+        csv_path = Path(args.csv_output) if args.csv_output else default_prefix.with_suffix(
+            ".csv"
+        )
+        xlsx_path = Path(
+            args.xlsx_output
+        ) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
 
-    print("✅ Summary saved:")
-    print("   CSV  :", csv_path)
-    print("   Excel:", xlsx_path, "(ready for humans ✨)")
+        # Write outputs
+        write_csv(rows, metric_cols, csv_path)
+        write_excel(rows, metric_cols, xlsx_path)
+
+        print("✅ Summary saved:")
+        print("   CSV  :", csv_path)
+        print("   Excel:", xlsx_path, "(ready for humans ✨)")
 
 
 if __name__ == "__main__":

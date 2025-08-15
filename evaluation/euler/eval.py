@@ -296,7 +296,6 @@ def evaluate(
         mean_ss = total_soft_success / evaluated
 
     metrics = {
-        "evaluated_count": evaluated,
         "success_rate": f"{success_rate:.3f}",
         "converged_rate": f"{converged_rate:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
