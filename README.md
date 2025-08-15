@@ -332,13 +332,6 @@ python evaluation/simul_sum.py -d euler_1d
 - **CSV**: `eval_results/{dataset}/{dataset}_sum.csv` - Combined results with precision_level column
 - **Excel**: `eval_results/{dataset}/{dataset}_sum.xlsx` - Clean, professional formatting with visual separators
 
-**Excel Features:**
-- Clean, color-free design focused on clarity and readability
-- Best efficiency model in each precision level + inference mode group highlighted with **bold** formatting
-- Visual separators (blank rows) between precision levels and inference modes
-- Professional formatting with borders and auto-sized columns
-- Minimalist design that's easy on the eyes
-
 **Note:** Run `tabulate.py` first to generate the required task-level CSV files before running `simul_sum.py`.
 
 ## 🤖 Evaluated Models

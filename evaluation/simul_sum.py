@@ -126,12 +126,21 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
     remaining_cols = sorted(all_cols - set(priority_cols))
     ordered_cols = [col for col in priority_cols if col in all_cols] + remaining_cols
     
+    # Format specific metrics to 2 decimal places
+    formatted_results = []
+    for result in results:
+        formatted_result = result.copy()
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+            if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
+                formatted_result[metric] = f"{formatted_result[metric]:.2f}"
+        formatted_results.append(formatted_result)
+    
     # Write CSV
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open('w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=ordered_cols)
         writer.writeheader()
-        writer.writerows(results)
+        writer.writerows(formatted_results)
 
 
 def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
@@ -155,8 +164,17 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     remaining_cols = sorted(all_cols - set(priority_cols))
     ordered_cols = [col for col in priority_cols if col in all_cols] + remaining_cols
     
+    # Format specific metrics to 2 decimal places for Excel
+    formatted_results = []
+    for result in results:
+        formatted_result = result.copy()
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+            if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
+                formatted_result[metric] = f"{formatted_result[metric]:.2f}"
+        formatted_results.append(formatted_result)
+    
     # Create DataFrame
-    df = pd.DataFrame(results)[ordered_cols]
+    df = pd.DataFrame(formatted_results)[ordered_cols]
     
     # Convert numeric columns
     for col in ['mean_efficiency', 'mean_hard_efficiency']:
@@ -200,8 +218,10 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
         excel_row = 1
         col_idx = {c: i for i, c in enumerate(ordered_cols)}
         
-        # Sort by Precision Level and Inference Mode for organized display
-        df_sorted = df.sort_values(['Precision Level', 'Inference Mode'])
+        # Sort by Precision Level (low → medium → high) and Inference Mode for organized display
+        precision_order = ['low', 'medium', 'high']
+        df['precision_order'] = df['Precision Level'].map({level: i for i, level in enumerate(precision_order)})
+        df_sorted = df.sort_values(['precision_order', 'Inference Mode']).drop('precision_order', axis=1)
         
         current_precision = None
         current_mode = None
@@ -308,7 +328,7 @@ def main():
         return
     
     # Process each precision level and combine results
-    precision_levels = ["high", "medium", "low"]
+    precision_levels = ["low", "medium", "high"]
     all_results = []
     
     for precision in precision_levels:

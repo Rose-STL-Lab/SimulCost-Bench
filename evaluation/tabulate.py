@@ -272,11 +272,21 @@ def write_csv(rows: List[Dict[str, str]], metric_cols: List[str], outfile: Path)
         "Number of Samples",
         *ordered_metrics,
     ]
+    
+    # Format specific metrics to 2 decimal places
+    formatted_rows = []
+    for row in rows:
+        formatted_row = row.copy()
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+            if metric in formatted_row and isinstance(formatted_row[metric], (int, float)):
+                formatted_row[metric] = f"{formatted_row[metric]:.2f}"
+        formatted_rows.append(formatted_row)
+    
     outfile.parent.mkdir(parents=True, exist_ok=True)
     with outfile.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(formatted_rows)
 
 
 def write_excel(
@@ -293,7 +303,17 @@ def write_excel(
         "Number of Samples",
         *ordered_metrics,
     ]
-    df = pd.DataFrame(rows)[ordered_cols]
+    
+    # Format specific metrics to 2 decimal places for Excel
+    formatted_rows = []
+    for row in rows:
+        formatted_row = row.copy()
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+            if metric in formatted_row and isinstance(formatted_row[metric], (int, float)):
+                formatted_row[metric] = f"{formatted_row[metric]:.2f}"
+        formatted_rows.append(formatted_row)
+    
+    df = pd.DataFrame(formatted_rows)[ordered_cols]
 
     # Convert to numeric for easier comparison
     for col in ("mean_efficiency", "mean_hard_efficiency"):

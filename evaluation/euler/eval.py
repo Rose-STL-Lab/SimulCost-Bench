@@ -10,7 +10,7 @@ from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
 
 # Constants
-DEFAULT_RMSE_TOLERANCE = 0.01
+DEFAULT_RMSE_TOLERANCE = 0.005
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"cfl", "k", "beta", "n_space"}
 
