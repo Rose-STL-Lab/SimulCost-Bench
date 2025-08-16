@@ -192,11 +192,11 @@ Execute LLM inference on benchmark datasets to generate predictions.
 
 ```bash
 # Commercial API Models
-python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
-python inference/langchain_LLM.py -n 100 -p openai -m gpt-4o -d heat_1d -t cfl -l medium -z
+python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
+python inference/langchain_LLM.py -p openai -m gpt-4o -d heat_1d -t cfl -l medium -z
 
 # Single Custom Model
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium -z
+python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium -z
 
 # Multiple Custom Models (use batch scripts)
 bash scripts/inference_eval/inference_eval_heat_1d.sh
@@ -246,12 +246,12 @@ The inference system includes automatic progress tracking and resume capabilitie
 
 **Normal execution** (automatically saves progress):
 ```bash
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium
+python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium
 ```
 
 **Resume from interruption**:
 ```bash
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium --resume
+python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium --resume
 ```
 
 ### Progress Files
@@ -309,7 +309,7 @@ After generating task-level results with `tabulate.py`, you can create simulatio
 
 ```bash
 # Aggregate task-level results to simulation-level summaries
-python evaluation/simul_sum.py -d euler_1d
+python evaluation/simul_sum.py -d heat_1d
 ```
 
 **Parameters:**

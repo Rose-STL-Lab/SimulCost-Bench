@@ -12,7 +12,6 @@ from typing import List, Dict, Any
 import logging
 import argparse
 import json
-from evaluation.heat_transfer.eval import evaluate
 from dotenv import load_dotenv
 load_dotenv()
 from tqdm import tqdm

@@ -241,8 +241,8 @@ class ToolCallManager:
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_n_space=fetch_param(tool_args, "n_space", "current_n_space"),
-                    current_cfl=fetch_param(tool_args, "cfl", "current_cfl"),
+                    n_space=fetch_param(tool_args, "n_space", "current_n_space"),
+                    cfl=fetch_param(tool_args, "cfl", "current_cfl"),
                     tolerance=1e-4
                 )
             elif tool_name in ["heat_2d_check_converge_dx", "heat_2d_check_converge_relax", "heat_2d_check_converge_t_init", "heat_2d_check_converge_error_threshold"]:
