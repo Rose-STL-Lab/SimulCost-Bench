@@ -7,7 +7,7 @@ Integrate your own models into SimulCost-Bench with support for single-model or 
 ### Single Model Testing
 1. Implement your model class with `invoke()` method
 2. Configure `.env` file with model parameters
-3. Run inference: `python inference/langchain_LLM.py -p custom_model -m any_name -d 1D_heat_transfer -t cfl -z`
+3. Run inference: `python inference/langchain_LLM.py -p custom_model -m any_name -d heat_1d -t cfl -l medium -z`
 
 ### Multiple Models Testing  
 1. Create JSON configuration file: `configs/custom_models.json`
@@ -207,7 +207,7 @@ echo 'model_path="/data/models/Qwen3-8B"' >> .env
 echo 'custom_class="Qwen3"' >> .env
 
 # 2. Run inference
-python inference/langchain_LLM.py -n 100 -p custom_model -m any_name -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -p custom_model -m any_name -d heat_1d -t cfl -l medium -z
 ```
 
 ### Multiple Models (JSON Configuration)

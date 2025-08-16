@@ -534,7 +534,7 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 
 # Dataset-Task compatibility mapping
 DATASET_TASK_MAP = {
-    "1D_heat_transfer": ["cfl", "n_space"],
+    "heat_1d": ["cfl", "n_space"], 
     "2D_heat_transfer": ["dx", "relax", "t_init", "error_threshold"],
     "burgers_1d": ["cfl", "k", "w"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
@@ -581,19 +581,19 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
 
     Parameters
     ----------
-    dataset : "1D_heat_transfer" / "burgers_1d" / "euler_1d" / ...
+    dataset : "heat_1d" / "burgers_1d" / "euler_1d" / ...
     task    : e.g. "cfl"
     flag    : "zero_shot" or "iterative"
     model_name : used for log/result files
-    precision_level : precision level for euler_1d ("low", "medium", "high")
+    precision_level : precision level for heat_1d and euler_1d ("low", "medium", "high")
 
     Returns
     -------
     dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # For euler_1d, use precision_level in path structure but keep human_write directory
-    if dataset == "euler_1d":
+    # For heat_1d and euler_1d, use precision_level in path structure but keep human_write directory
+    if dataset in ["heat_1d", "euler_1d"]:
         result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
         log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
         dataset_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_dataset.json"
@@ -624,13 +624,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python inference/langchain_LLM.py -d 1D_heat_transfer -t cfl -n 50
+  python inference/langchain_LLM.py -d heat_1d -t cfl -n 50 -l medium
   python inference/langchain_LLM.py -d 2D_ns -t mesh_x -z
   python inference/langchain_LLM.py -d euler_1d -t beta -z -l medium
   python inference/langchain_LLM.py --list-combinations
 
 Available dataset-task combinations:
-  1D_heat_transfer: cfl, n_space
+  heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
   2D_heat_transfer: dx, relax, t_init, error_threshold  
   burgers_1d: cfl, k, w
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
@@ -638,10 +638,10 @@ Available dataset-task combinations:
         """
     )
     parser.add_argument("-n", "--num_samples", type=int, default=2,
-                        help="How many samples to test (ignored for burgers_1d and euler_1d)")
+                        help="How many samples to test (ignored for burgers_1d, heat_1d and euler_1d)")
     parser.add_argument("-p", "--provider", default="gemini")
     parser.add_argument("-m", "--model_name", default="gemini-1.5-pro")
-    parser.add_argument("-d", "--dataset", default="1D_heat_transfer",
+    parser.add_argument("-d", "--dataset", default="heat_1d",
                         choices=list(DATASET_TASK_MAP.keys()),
                         help="Dataset domain")
     parser.add_argument("-t", "--task", 
@@ -651,7 +651,7 @@ Available dataset-task combinations:
     parser.add_argument("-z", "--zero_shot", action="store_true")
     parser.add_argument("-l", "--precision_level", default="medium", 
                         choices=["low", "medium", "high"],
-                        help="Precision level for euler_1d dataset")
+                        help="Precision level for heat_1d and euler_1d datasets")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from previous progress file")
     parser.add_argument("--list-combinations", action="store_true",
@@ -692,7 +692,7 @@ Available dataset-task combinations:
 
     # Display dataset information
     logger.info(f"Dataset: {args.dataset}, Task: {args.task}, Mode: {'zero_shot' if zero_shot else 'iterative'}")
-    if args.dataset == "euler_1d":
+    if args.dataset in ["heat_1d", "euler_1d"]:
         logger.info(f"Precision level: {args.precision_level}")
     logger.info(f"Dataset file: {paths['dataset_file']}")
     logger.info(f"Total samples available in dataset: {len(dataset)}")
@@ -702,7 +702,7 @@ Available dataset-task combinations:
     progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
     
     # Determine requested sample count
-    if args.dataset in ["burgers_1d", "euler_1d"]:
+    if args.dataset in ["burgers_1d", "heat_1d", "euler_1d"]:
         requested_samples = len(dataset)
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
     else:
@@ -732,7 +732,7 @@ Available dataset-task combinations:
         logger.info(f"Starting fresh inference for {requested_samples} samples")
 
     # Prepare dataset slice for processing
-    if args.dataset in ["burgers_1d", "euler_1d"]:
+    if args.dataset in ["burgers_1d", "heat_1d", "euler_1d"]:
         test_dataset = dataset
     else:
         test_dataset = dataset[:requested_samples]

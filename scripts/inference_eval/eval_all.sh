@@ -28,14 +28,14 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer"
+    echo "                   Available: burgers_1d, euler_1d, heat_1d, 2D_heat_transfer"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
     echo "Available datasets and their tasks:"
     echo "  burgers_1d: cfl, k, w (with cases: blast, double_shock, rarefaction, sin, sod)"
     echo "  euler_1d: cfl, beta, k, n_space (with precision levels: low, medium, high)"
-    echo "  1D_heat_transfer: cfl, n_space"
+    echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
     echo "  2D_heat_transfer: dx, error_threshold (both modes), relax, t_init (zero-shot only)"
     echo ""
     echo "Models to be evaluated:"
@@ -45,8 +45,8 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 -d burgers_1d"
-    echo "  $0 -d 1D_heat_transfer -d 2D_heat_transfer"
-    echo "  $0 -d burgers_1d -d euler_1d -d 1D_heat_transfer -d 2D_heat_transfer"
+    echo "  $0 -d heat_1d -d 2D_heat_transfer"
+    echo "  $0 -d burgers_1d -d euler_1d -d heat_1d -d 2D_heat_transfer"
 }
 
 # Parse command line arguments
@@ -121,15 +121,18 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
             
-        "1D_heat_transfer")
-            echo "📋 Running 1D Heat Transfer evaluation..."
+        "heat_1d")
+            echo "📋 Running Heat 1D evaluation..."
             tasks=("cfl" "n_space")
+            precision_levels=("low" "medium" "high")
             modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
             
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
-                    echo "▶ Executing: python evaluation/heat_transfer/eval.py -m $MODEL -d 1D_heat_transfer -t $task $mode"
-                    python evaluation/heat_transfer/eval.py -m $MODEL -d 1D_heat_transfer -t $task $mode
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d -t $task -l $precision $mode"
+                        python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d -t $task -l $precision $mode
+                    done
                 done
             done
             ;;
@@ -163,7 +166,7 @@ for DATASET in "${DATASETS[@]}"; do
             
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, 1D_heat_transfer, 2D_heat_transfer"
+            echo "Supported datasets: burgers_1d, euler_1d, heat_1d, 2D_heat_transfer"
             exit 1
             ;;
     esac

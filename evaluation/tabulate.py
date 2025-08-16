@@ -6,10 +6,10 @@ Parse evaluation logs and produce CSV / Excel summaries.
 Usage
 -----
 Single task:
-    python evaluation/tabulate.py -d 1D_heat_transfer -t cfl
+    python evaluation/tabulate.py -d heat_1d -t cfl
 
 All tasks under a dataset:
-    python evaluation/tabulate.py -d 1D_heat_transfer
+    python evaluation/tabulate.py -d heat_1d
 """
 
 import argparse
@@ -165,24 +165,24 @@ def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) ->
     """
     Gather all rows (one per log file) and union of metric columns.
     Special handling for burgers_1d: aggregate 5 cases by (model, task, mode).
-    For euler_1d: if precision_level is specified, only process that precision level.
+    For heat_1d and euler_1d: if precision_level is specified, only process that precision level.
     """
     base_root = Path("eval_results") / dataset
     rows: List[Dict[str, str]] = []
     metric_names = set()
 
-    # ---------- burgers_1d and euler_1d (requires cross-case aggregation) ----------
-    if dataset in ["burgers_1d", "euler_1d"]:
+    # ---------- burgers_1d, heat_1d and euler_1d (requires cross-case aggregation) ----------
+    if dataset in ["burgers_1d", "heat_1d", "euler_1d"]:
         # key: (model, task, mode)  → {"num_samples": int, "metrics": [dict, ...]}
         agg: Dict[Tuple[str, str, str], Dict[str, object]] = {}
 
         for task in tasks:
             task_dir = base_root / task
-            # For euler_1d with precision levels, filter by precision_level
-            if dataset == "euler_1d" and precision_level:
+            # For heat_1d and euler_1d with precision levels, filter by precision_level
+            if dataset in ["heat_1d", "euler_1d"] and precision_level:
                 case_dirs = [p for p in task_dir.iterdir() if p.is_dir() and p.name == precision_level]
             else:
-                # Five case directories (for burgers_1d or all precision levels for euler_1d)
+                # Five case directories (for burgers_1d or all precision levels for heat_1d/euler_1d)
                 case_dirs = sorted(p for p in task_dir.iterdir() if p.is_dir())
             
             for case_dir in case_dirs:
@@ -411,7 +411,7 @@ def main() -> None:
         description="Parse evaluation logs to CSV & Excel"
     )
     parser.add_argument(
-        "-d", "--dataset", required=True, help="problem type (e.g. 1D_heat_transfer)"
+        "-d", "--dataset", required=True, help="problem type (e.g. heat_1d)"
     )
     parser.add_argument(
         "-t",
@@ -448,8 +448,8 @@ def main() -> None:
             print(f"⚠️  No task subdirectories found in '{dataset_dir}'")
             return
 
-    # Special handling for euler_1d with precision levels
-    if args.dataset == "euler_1d":
+    # Special handling for heat_1d and euler_1d with precision levels
+    if args.dataset in ["heat_1d", "euler_1d"]:
         precision_levels = ["high", "medium", "low"]
         for precision in precision_levels:
             # Collect rows for this precision level

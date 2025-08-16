@@ -9,11 +9,12 @@ of all metrics across all tasks within the simulation.
 
 Usage
 -----
-python evaluation/simul_wise_sum.py -d euler_1d
+python evaluation/simul_sum.py -d euler_1d
+python evaluation/simul_sum.py -d heat_1d
 
-Output: Creates two files in eval_results/euler_1d/:
-- euler_1d_sum.csv (combined results with precision_level column)
-- euler_1d_sum.xlsx (beautifully formatted with colors and visual separators)
+Output: Creates two files in eval_results/{dataset}/:
+- {dataset}_sum.csv (combined results with precision_level column)
+- {dataset}_sum.xlsx (beautifully formatted with colors and visual separators)
 """
 
 import argparse
@@ -40,13 +41,14 @@ def weighted_average(values: List[float], weights: List[int]) -> float:
     return sum(v * w for v, w in zip(values, weights)) / sum(weights)
 
 
-def aggregate_simulation_results(csv_file: Path, precision_level: str) -> List[Dict]:
+def aggregate_simulation_results(csv_file: Path, precision_level: str, dataset: str) -> List[Dict]:
     """
     Aggregate task-level results to simulation-level results.
     
     Args:
         csv_file: Path to task-level CSV file
         precision_level: The precision level (high, medium, low)
+        dataset: The dataset name (e.g., 'heat_1d', 'euler_1d')
         
     Returns:
         List of dictionaries with simulation-level aggregated results
@@ -64,7 +66,7 @@ def aggregate_simulation_results(csv_file: Path, precision_level: str) -> List[D
         # Prepare the aggregated row
         agg_row = {
             'Model': model,
-            'Simulation': 'euler_1d',  # Fixed for now, can be made dynamic later
+            'Simulation': dataset,
             'Precision Level': precision_level,
             'Inference Mode': mode,
             'Number of Samples': total_samples
@@ -309,7 +311,7 @@ def main():
     )
     parser.add_argument(
         "-d", "--dataset", required=True, 
-        help="Dataset name (e.g. euler_1d)"
+        help="Dataset name (e.g. heat_1d, euler_1d)"
     )
     args = parser.parse_args()
     
@@ -322,9 +324,9 @@ def main():
         print(f"✅ Available datasets: {available}")
         return
     
-    # Currently only support euler_1d
-    if args.dataset != "euler_1d":
-        print(f"❌ Currently only supports euler_1d dataset")
+    # Currently only support datasets with precision levels
+    if args.dataset not in ["heat_1d", "euler_1d"]:
+        print(f"❌ Currently only supports heat_1d and euler_1d datasets")
         return
     
     # Process each precision level and combine results
@@ -341,7 +343,7 @@ def main():
         
         # Aggregate results for this precision level
         print(f"Processing {precision} precision level...")
-        precision_results = aggregate_simulation_results(input_csv, precision)
+        precision_results = aggregate_simulation_results(input_csv, precision, args.dataset)
         
         if not precision_results:
             print(f"⚠️  No results to aggregate for {precision} precision level")

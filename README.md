@@ -192,18 +192,18 @@ Execute LLM inference on benchmark datasets to generate predictions.
 
 ```bash
 # Commercial API Models
-python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
-python inference/langchain_LLM.py -n 100 -p openai -m gpt-4o -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 100 -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
+python inference/langchain_LLM.py -n 100 -p openai -m gpt-4o -d heat_1d -t cfl -l medium -z
 
 # Single Custom Model
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl -z
+python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium -z
 
 # Multiple Custom Models (use batch scripts)
 bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
 **📋 Available Datasets & Tasks:**
-- **1D Heat Transfer**: `cfl`, `n_space`
+- **Heat 1D**: `cfl`, `n_space` (precision levels: low, medium, high)
 - **2D Heat Transfer**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
 - **Euler 1D**: `cfl`, `beta`, `k`, `n_space` (precision levels: low, medium, high)
@@ -216,7 +216,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - `-d`: Dataset name
 - `-t`: Problem task type
 - `-c`: Case name (for burgers_1d only)
-- `-l`: Precision level (for euler_1d: low, medium, high; default: medium)
+- `-l`: Precision level (for heat_1d and euler_1d: low, medium, high; default: medium)
 - `-z`: Enable zero-shot mode
 - `--list-combinations`: Show all valid dataset-task combinations and exit
 
@@ -229,9 +229,9 @@ The system automatically validates dataset-task compatibility and provides helpf
 
 **Outputs:**
 - Results: `results_model_attempt/{dataset}/{task}/` (for most datasets)
-- Results: `results_model_attempt/euler_1d/{precision_level}/{task}/` (for euler_1d)
+- Results: `results_model_attempt/{dataset}/{precision_level}/{task}/` (for heat_1d and euler_1d)
 - Logs: `log_model_tool_call/{dataset}/{task}/` (for most datasets) 
-- Logs: `log_model_tool_call/euler_1d/{precision_level}/{task}/` (for euler_1d)
+- Logs: `log_model_tool_call/{dataset}/{precision_level}/{task}/` (for heat_1d and euler_1d)
 
 ## 🔄 Resume Functionality
 
@@ -246,18 +246,18 @@ The inference system includes automatic progress tracking and resume capabilitie
 
 **Normal execution** (automatically saves progress):
 ```bash
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl
+python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium
 ```
 
 **Resume from interruption**:
 ```bash
-python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_transfer -t cfl --resume
+python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium --resume
 ```
 
 ### Progress Files
 - **Location**: 
   - Most datasets: `log_model_tool_call/{dataset}/{task}/{flag}_{model_name}_progress.json`
-  - Euler 1D: `log_model_tool_call/euler_1d/{precision_level}/{task}/{flag}_{model_name}_progress.json`
+  - Heat 1D & Euler 1D: `log_model_tool_call/{dataset}/{precision_level}/{task}/{flag}_{model_name}_progress.json`
 - **Content**: Contains completed results and intermediate data for resuming
 - **Cleanup**: Automatically deleted when all samples complete successfully
 
@@ -271,33 +271,28 @@ python inference/langchain_LLM.py -n 100 -p custom_model -m qwen3_8b -d 1D_heat_
 
 Compute performance metrics and accuracy scores for model predictions.
 ```bash
-# 1D Heat Transfer
-python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 1D_heat_transfer -t cfl -z
-
-# 2D Steady Heat Transfer
-python evaluation/heat_transfer/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d 2D_heat_transfer -t dx -z
+# Heat 1D
+python evaluation/heat_1d/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
 Cases: blast, double_shock, rarefaction, sin, sod
-
-# Euler 1D Equations with 2nd Order MUSCL-Roe Method
-python evaluation/euler/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d euler_1d -t cfl -l medium -z
 ```
 **Parameters:**
 - `-m`: Model name/identifier
 - `-d`: Dataset name  
 - `-t`: Problem task type
 - `-c`: Case name (for burgers_1d only; euler_1d cases are handled automatically)
+- `-l`: Precision level (for heat_1d and euler_1d: low, medium, high; default: medium)
 - `-z`: Enable zero-shot mode
 
-**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/` 
+**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/` (most datasets) or `eval_results/{dataset}/{task}/{precision_level}/` (heat_1d and euler_1d) 
 
 ## 🗂️ Tabulate Evaluation Results
 
 Generate summary tables and comparative analysis across different models and tasks.
 ```bash
-python evaluation/tabulate.py -d 1D_heat_transfer
+python evaluation/tabulate.py -d heat_1d
 python evaluation/tabulate.py -d 2D_heat_transfer
 python evaluation/tabulate.py -d burgers_1d
 python evaluation/tabulate.py -d euler_1d
@@ -318,7 +313,7 @@ python evaluation/simul_sum.py -d euler_1d
 ```
 
 **Parameters:**
-- `-d`: Dataset name to aggregate results for (currently supports `euler_1d`)
+- `-d`: Dataset name to aggregate results for (currently supports `heat_1d`, `euler_1d`)
 
 **Functionality:**
 - Reads task-level CSV files generated by `tabulate.py`

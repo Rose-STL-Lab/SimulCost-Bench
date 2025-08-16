@@ -1,6 +1,6 @@
 #!/bin/bash
 # model_inference_heat_1d.sh
-# Function: Execute 1D Heat Transfer model inference and evaluation in sequential order, stop on error; resume from failed command on next run
+# Function: Execute Heat 1D model inference and evaluation in sequential order, stop on error; resume from failed command on next run
 set -eE -o pipefail          # Exit immediately on any command or pipeline error, preserve ERR information
 
 RESUME_LOG="scripts/inference_eval/heat_1d_resume_progress.log"   # Log file for successful commands
@@ -24,6 +24,7 @@ run_cmd () {
 
 # ========= Parameter lists =========
 tasks=("cfl" "n_space")
+precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 # model_provider="bedrock"
@@ -52,12 +53,14 @@ models=(
 # ========= Main loop =========
 for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
-    for model in "${models[@]}"; do
-      # 1D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 1D_heat_transfer -t $task $mode --resume"
-      run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 1D_heat_transfer -t $task $mode"
+    for precision_level in "${precision_levels[@]}"; do
+      for model in "${models[@]}"; do
+        # Heat 1D with precision level support
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d heat_1d -t $task -l $precision_level $mode --resume"
+        run_cmd "python evaluation/heat_1d/eval.py -m $model -d heat_1d -t $task -l $precision_level $mode"
+      done
     done
   done
 done
 
-echo "✅ All 1D Heat Transfer inference tasks completed successfully!"
+echo "✅ All Heat 1D inference tasks completed successfully!"
