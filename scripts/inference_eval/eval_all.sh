@@ -114,8 +114,8 @@ for DATASET in "${DATASETS[@]}"; do
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
                     for precision in "${precision_levels[@]}"; do
-                        echo "▶ Executing: python evaluation/euler/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode"
-                        python evaluation/euler/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode
                     done
                 done
             done

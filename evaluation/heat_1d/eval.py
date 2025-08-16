@@ -10,7 +10,7 @@ from costsci_tools.wrappers.heat_1d import compare_res_heat_1d
 from inference.utils import setup_logging, NumpyEncoder
 
 # Constants
-DEFAULT_RMSE_TOLERANCE = 0.01
+DEFAULT_RMSE_TOLERANCE = 0.0001
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"cfl", "n_space"}
 

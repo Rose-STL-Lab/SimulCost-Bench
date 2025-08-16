@@ -56,7 +56,7 @@ for mode in "${modes[@]}"; do
     for model in "${models[@]}"; do
       for precision_level in "${precision_levels[@]}"; do
         run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d -t $task -l $precision_level $mode --resume"
-        run_cmd "python evaluation/euler/eval.py -m $model -d euler_1d -t $task -l $precision_level $mode"
+        run_cmd "python evaluation/euler_1d/eval.py -m $model -d euler_1d -t $task -l $precision_level $mode"
       done
     done
   done
