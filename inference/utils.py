@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import logging
 import json
-# from api_call import *
 from tool_call import *
 from typing import List, Dict, Any, Tuple
 import pandas as pd
@@ -233,7 +232,7 @@ class ToolCallManager:
                 tool_reason = "[tool_reason was missing from model response, proceeding with simulation]"
 
             func = globals()[tool_name]
-            if "heat" in tool_name:
+            if "heat_2d" in tool_name:
                 profile = f"p{profile}"
             else:
                 profile = f"{profile}"

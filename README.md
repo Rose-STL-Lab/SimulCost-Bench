@@ -79,7 +79,7 @@ The table below summarizes the available tasks for each problem type and indicat
 Generate question templates for different physics domains and task types.
 ```bash
 # 1D Heat Transfer
-python qs_gen/1D_heat_transfer.py -n 100 -t cfl -z
+python qs_gen/1D_heat_transfer.py
 
 # 2D Steady Heat Transfer
 python qs_gen/2D_heat_transfer.py -n 100 -t dx -z
@@ -100,14 +100,14 @@ python qs_gen/2D_ns.py -n 25 -t mesh_x -z
 - `-t`: Problem task type (cfl, n_space, dx, mesh_x, omega_u, etc.)
 - `-z`: Enable zero-shot mode
 
-**Output:** Generated questions are saved to `data/{simulation}/{task}/question.json`
+**Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
 
 ## 🚀 Generate Benchmark Datasets
 
 Create complete benchmark datasets with problem instances and ground truth solutions.
 ```bash
 # 1D Heat Transfer
-python dataset_gen/oneD_heat_transfer.py -t cfl -z
+python dataset_gen/oneD_heat_transfer.py
 
 # 2D Steady Heat Transfer
 python dataset_gen/twoD_heat_transfer.py -t dx -z
@@ -126,9 +126,7 @@ python dataset_gen/twoD_ns.py -t mesh_x -z
 - `-t`: Problem task type
 - `-z`: Enable zero-shot mode
 
-**Output:** Datasets are saved to:
-- Most datasets: `data/{simulation}/{task}/human_write/` directory  
-- Euler 1D: `data/euler_1d/{task}/{precision_level}/` directory 
+**Output:** Datasets are saved to: `data/euler_1d/{task}/{precision_level}/human_write/` directory 
 
 ## 📄 Configure Model Providers
 

@@ -151,7 +151,7 @@ class OneDEulerQuestionGenerator:
                 "cost_history": cost_history,
                 "best_params": best_params,
                 "param_history": param_history,
-                "question": self._build_question_text(params),
+                "question": self._build_question_text(params, precision_level, tolerance_rmse),
             }
             
             dataset.append(question_entry)
@@ -160,7 +160,7 @@ class OneDEulerQuestionGenerator:
         return dataset
 
     @staticmethod
-    def _build_question_text(params: dict) -> str:
+    def _build_question_text(params: dict, precision_level: str, tolerance_rmse: float) -> str:
         question_lines = [
             "Problem: Euler 1D Equations with 2nd Order MUSCL-Roe Method",
             "",
@@ -233,7 +233,9 @@ class OneDEulerQuestionGenerator:
             "- Convergence is confirmed if the following validation criteria are satisfied.",
             "",
             "Validation Criteria:",
-            "- Relative RMSE meets the precision-dependent tolerance (low: 0.01, medium: 0.005, high: 0.0025) compared to reference solution",
+            f"- **Current Problem Precision Level**: {precision_level.upper()}",
+            f"- **Required RMSE Tolerance**: ≤ {tolerance_rmse}",
+            "- Relative RMSE must meet this tolerance compared to self-refined solution",
             "- Positivity preservation: pressure and density must remain positive at all times",
             "- Shock speed consistency: pressure gradients should not exceed physical bounds"
         ]
