@@ -46,9 +46,9 @@ poetry install --no-root
 
 ## 📋 Tasks and Zero-Shot Support
 
-The table below summarizes the available tasks for each problem type and indicates whether each task supports zero-shot inference.
+The table below summarizes the available tasks for each simulation type and indicates whether each task supports zero-shot inference.
 
-| Problem Type             | Task Type        | Iterative & Zero-Shot |
+| Simulation Type             | Task Type        | Iterative & Zero-Shot |
 |--------------------------|------------------|--------------------|
 | 1D Heat Transfer         | `cfl`            | ✅ Supported        |
 | 1D Heat Transfer         | `n_space`        | ✅ Supported        |
@@ -310,6 +310,7 @@ After generating task-level results with `tabulate.py`, you can create simulatio
 ```bash
 # Aggregate task-level results to simulation-level summaries
 python evaluation/simul_sum.py -d heat_1d
+python evaluation/simul_sum.py -d euler_1d
 ```
 
 **Parameters:**

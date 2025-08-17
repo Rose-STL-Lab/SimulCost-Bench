@@ -156,24 +156,114 @@ def find_json(response: str) -> Dict[str, Any]:
         return {"error": error_msg}
 
 def find_json_robust(response: str):
+    """
+    Robust JSON extraction with multiple fallback strategies.
+    Prioritizes extracting the first complete JSON object.
+    """
     import json
+    import re
+    
+    # Strategy 1: Extract first complete JSON object with proper brace matching
+    try:
+        brace_count = 0
+        start_idx = -1
+        
+        for i, char in enumerate(response):
+            if char == '{':
+                if start_idx == -1:
+                    start_idx = i
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0 and start_idx != -1:
+                    try:
+                        json_str = response[start_idx:i+1]
+                        obj = json.loads(json_str)
+                        # Validate that it contains expected fields
+                        if isinstance(obj, dict) and any(key in obj for key in ['tool_name', 'tool_args', 'tool_reason']):
+                            return obj
+                    except json.JSONDecodeError:
+                        # This JSON object is malformed, continue searching
+                        pass
+                    # Reset for next potential JSON object
+                    start_idx = -1
+                    brace_count = 0
+    except Exception:
+        pass
+    
+    # Strategy 2: Try multiple JSON boundaries (first occurrence vs last occurrence)
+    try:
+        # Try first { to first complete }
+        start_idx = response.find('{')
+        if start_idx != -1:
+            brace_count = 0
+            for i in range(start_idx, len(response)):
+                if response[i] == '{':
+                    brace_count += 1
+                elif response[i] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        json_str = response[start_idx:i+1]
+                        obj = json.loads(json_str)
+                        return obj
+    except Exception:
+        pass
+    
+    # Strategy 3: Original method (first { to last })
     try:
         start_idx = response.find('{')
         end_idx = response.rfind('}') + 1
-        if start_idx == -1 or end_idx == 0:
-            raise ValueError("No JSON object found in response")
+        if start_idx != -1 and end_idx > start_idx:
+            json_str = response[start_idx:end_idx]
+            obj = json.loads(json_str)
+            return obj
+    except Exception:
+        pass
+    
+    # Strategy 4: Try to extract JSON from each line separately
+    try:
+        lines = response.strip().split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('{') and line.endswith('}'):
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict) and any(key in obj for key in ['tool_name', 'tool_args', 'tool_reason']):
+                        return obj
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        pass
+    
+    # Strategy 5: Regex-based parameter extraction as last resort
+    try:
+        # Extract key fields using regex when JSON parsing completely fails
+        tool_name_match = re.search(r'"tool_name"\s*:\s*"([^"]+)"', response)
+        tool_args_match = re.search(r'"tool_args"\s*:\s*(\{[^}]+\})', response)
+        tool_reason_match = re.search(r'"tool_reason"\s*:\s*"([^"]*)"', response)
+        should_stop_match = re.search(r'"should_stop"\s*:\s*(true|false)', response)
         
-        json_str = response[start_idx:end_idx]
-        obj = json.loads(json_str)
-        return obj
-
-    except Exception as e:
-        # Fallback: try the original find_json function
-        try:
-            return find_json(response)
-        except Exception as e2:
-            error_msg = f"Error in find_json_robust: {str(e)}; Fallback error: {str(e2)}"
-            return {"error": error_msg}
+        if tool_name_match and tool_args_match:
+            result = {
+                "tool_name": tool_name_match.group(1),
+                "tool_reason": tool_reason_match.group(1) if tool_reason_match else "",
+                "should_stop": should_stop_match.group(1) == "true" if should_stop_match else False
+            }
+            # Try to parse tool_args as JSON
+            try:
+                result["tool_args"] = json.loads(tool_args_match.group(1))
+            except:
+                # Extract parameters from tool_args string using regex
+                args_str = tool_args_match.group(1)
+                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "current_dx", "current_relax", "current_t_init", "current_error_threshold", "k", "w", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
+            
+            return result
+    except Exception:
+        pass
+    
+    # Final fallback: return error with detailed message
+    error_msg = f"All JSON extraction strategies failed. Response preview: {response[:200]}..."
+    return {"error": error_msg}
             
 
 class ToolCallManager:
