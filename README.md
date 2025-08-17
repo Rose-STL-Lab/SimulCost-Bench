@@ -82,7 +82,7 @@ Generate question templates for different physics domains and task types.
 python qs_gen/1D_heat_transfer.py
 
 # 2D Steady Heat Transfer
-python qs_gen/2D_heat_transfer.py -n 100 -t dx -z
+python qs_gen/2D_heat_transfer.py
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python qs_gen/1D_burgers.py -t cfl -z
@@ -94,11 +94,11 @@ python qs_gen/1D_euler.py
 python qs_gen/2D_ns.py -n 25 -t mesh_x -z
 ```
 
-**Parameters:**
+<!-- **Parameters:**
 - `-n`: Number of examples to generate
   - **Note for 2D Navier-Stokes**: This creates N profiles for EACH boundary condition (total: 1 + 4×N profiles)
 - `-t`: Problem task type (cfl, n_space, dx, mesh_x, omega_u, etc.)
-- `-z`: Enable zero-shot mode
+- `-z`: Enable zero-shot mode -->
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
 
@@ -110,7 +110,7 @@ Create complete benchmark datasets with problem instances and ground truth solut
 python dataset_gen/oneD_heat_transfer.py
 
 # 2D Steady Heat Transfer
-python dataset_gen/twoD_heat_transfer.py -t dx -z
+python dataset_gen/twoD_heat_transfer.py
 
 # Burgers 1D Equation with 2nd Order Roe Method
 python dataset_gen/oneD_burgers.py -t cfl -z

@@ -1,189 +1,250 @@
-import sys
+# -*- coding: utf-8 -*-
 import os
+import sys
+import json
+from pathlib import Path
+from typing import Dict, Any, List
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
-from typing import Dict, Any
-from qs_gen.utils import *
-import time
-import argparse
-from costsci_tools.gen_cfgs.heat_steady_2d import create_heat1d_profiles
-from costsci_tools.dummy_sols.heat_steady_2d import find_optimal_dx, grid_search_relax, grid_search_T_init, find_optimal_error_threshold
 import yaml
 
-HEAT2D_CFG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "costsci_tools", "run_configs", "heat_steady_2d"
+from qs_gen.utils import *
+
+# -----------------------------------------------------------------------------#
+#  Global settings                                                             #
+# -----------------------------------------------------------------------------#
+HEAT2D_CFG_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "costsci_tools"
+    / "run_configs"
+    / "heat_steady_2d"
 )
 
-class twoD_HeatTransferQuestionGenerator():
-    """Generate training dataset for heat transfer problems"""
-    def __init__(self):
+TASKS_JSON_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "costsci_tools"
+    / "dataset"
+    / "heat_steady_2d"
+    / "successful"
+    / "tasks.json"
+)
+
+PRECISION_LEVELS = {
+    "low": {"tolerance_rmse": 0.05, "description": "Relaxed convergence criteria"},
+    "medium": {"tolerance_rmse": 0.005, "description": "Moderate convergence criteria"},
+    "high": {"tolerance_rmse": 0.0005, "description": "Most stringent convergence criteria"},
+}
+
+# -----------------------------------------------------------------------------#
+#  Question generator                                                           #
+# -----------------------------------------------------------------------------#
+class TwoDHeatTransferQuestionGenerator:
+    """Generate Heat Steady 2D training-set questions from pre-computed results"""
+
+    def __init__(self) -> None:
         np.random.seed(42)
+        self.tasks_data = self._load_tasks_data()
+        
+    def _load_tasks_data(self) -> Dict:
+        """Load pre-computed tasks results"""
+        with open(TASKS_JSON_PATH, "r", encoding="utf-8") as fp:
+            return json.load(fp)
 
-    def generate_question_dataset(self, num_samples: int, task: str, zero_shot: bool) -> List[Dict]:
+    def generate_all_questions(self) -> None:
+        """Generate questions for all tasks and precision levels"""
+        tasks = ["dx", "relax", "t_init", "error_threshold"]
+        # Define which tasks support iterative mode based on search_type in yaml config
+        iterative_tasks = ["dx", "error_threshold"]  # "iterative+0-shot"
+        
+        total_files = 0
+        total_questions = 0
+        
+        print("=" * 80)
+        for task in tasks:
+            print(f"\nTASK: {task.upper()}")
+            print("-" * 50)
+            
+            for precision_level in PRECISION_LEVELS.keys():
+                tolerance = PRECISION_LEVELS[precision_level]["tolerance_rmse"]
+                print(f"  {precision_level.upper()} precision (RMSE <= {tolerance}):")
+                
+                # Generate iterative questions only for tasks that support it
+                if task in iterative_tasks:
+                    dataset_iter = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=False)
+                    self._save_dataset(dataset_iter, task=task, precision_level=precision_level, zero_shot=False)
+                    total_files += 1
+                    total_questions += len(dataset_iter)
+                    print(f"      Iterative: {len(dataset_iter):2d} questions")
+                
+                # Generate zero-shot questions for all tasks
+                dataset_zero = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=True)
+                self._save_dataset(dataset_zero, task=task, precision_level=precision_level, zero_shot=True)
+                
+                total_files += 1
+                total_questions += len(dataset_zero)
+                print(f"      Zero-shot: {len(dataset_zero):2d} questions")
+        
+        print("\n" + "=" * 80)
+        print(f"SUMMARY: Generated {total_questions} questions across {total_files} files")
+        print("=" * 80)
+
+    def generate_question_dataset(self, task: str, precision_level: str, zero_shot: bool) -> List[Dict]:
+        """Generate question dataset for specific task and precision level"""
         dataset: List[Dict] = []
-
-        tolerance = 1e-3
-        max_iter  = 10
-
-        for idx in range(1, num_samples + 1):
-            profile_name = f"p{idx}"
-            profile_path = os.path.join(HEAT2D_CFG_DIR, f"{profile_name}.yaml")
-
+        tolerance_rmse = PRECISION_LEVELS[precision_level]["tolerance_rmse"]
+        
+        # Filter tasks by target parameter and precision level
+        matching_tasks = [
+            t for t in self.tasks_data["tasks"] 
+            if (t["target_parameter"] == task and 
+                t["precision_config"]["tolerance_rmse"] == tolerance_rmse)
+        ]
+        
+        qid = 1
+        for task_data in matching_tasks:
+            profile = task_data["profile"]
+            
+            # Load profile configuration
+            profile_path = HEAT2D_CFG_DIR / f"{profile}.yaml"
             with open(profile_path, "r", encoding="utf-8") as fp:
                 params: Dict[str, Any] = yaml.safe_load(fp)
-
-            if task.lower() == "dx":
-                is_converged, best_param, cost_history, param_history = find_optimal_dx(
-                    profile=profile_name,
-                    initial_dx=0.1,
-                    relax=1.0,
-                    error_threshold=1e-7,
-                    T_init=0.25,
-                    tolerance=tolerance,
-                    max_iter=max_iter,
-                )
-                param_tag = "best_dx"
-            elif task.lower() == "relax":
-                # relax_values = [1.1]
-                relax_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-
-                # cost_history is a dictionary here
-                is_converged, best_param, cost_history, param_history = grid_search_relax(
-                    profile=profile_name,
-                    dx=0.005,
-                    relax_values=relax_values,
-                    error_threshold=1e-7,
-                    T_init=0.25,
-                    max_iter=max_iter,
-                )
-                param_tag = "optimal_relaxation_factor"
-            elif task.lower() == "t_init":
-                T_init_values = [
-                    0.05,
-                    0.1,
-                    0.15,
-                    0.2,
-                    0.25,
-                    0.3,
-                    0.35,
-                    0.4,
-                    0.45,
-                    0.5,
-                    0.55,
-                    0.6,
-                    0.65,
-                    0.7,
-                    0.75,
-                    0.8,
-                    0.85,
-                    0.9,
-                ]
-
-                # cost_history is a dictionary here
-                is_converged, best_param, cost_history, param_history = grid_search_T_init(
-                    profile=profile_name,
-                    dx=0.005,
-                    relax=1.0,
-                    error_threshold=1e-7,
-                    T_init_values=T_init_values,
-                    max_iter=max_iter,
-                )
-                param_tag = "optimal_initial_temperature"
-            elif task.lower() == "error_threshold":
-                is_converged, best_param, cost_history, param_history = find_optimal_error_threshold(
-                    profile=profile_name,
-                    dx=0.005,
-                    relax=1.0,
-                    initial_error=1e-5,
-                    T_init=0.25,
-                    tolerance=tolerance,
-                    max_iter=max_iter,
-                )
-                param_tag = "best_error_threshold"
-
-            if best_param is not None:
-                print(f"\nRecommended {param_tag}: {best_param}, the total cost is {cost_history}")
+            
+            # Extract results
+            results = task_data["results"]
+            cost_history = results["cost_history"]
+            param_history = results["parameter_history"]
+            is_converged = results["converged"]
+            
+            # Calculate dummy cost according to requirements
+            if zero_shot:
+                # For zero-shot, use the last cost if only one element, otherwise second to last
+                dummy_cost = cost_history[-1] if len(cost_history) == 1 else cost_history[-2]
             else:
-                print(f"\nNo convergent {param_tag} found within the given iterations, the total cost is {sum(cost_history[:-1])}")
-
-            if task.lower() == "relax" or task.lower() == "t_init":
-                dummy_cost = cost_history[best_param]
-            else:
-                dummy_cost = cost_history[-2] if zero_shot else sum(cost_history[:-1])
-
-            question = self.generate_question(dummy_cost, params, task)
-            dataset.append(
-                {
-                    "QID":    idx,
-                    "profile": profile_name,
-                    "zero_shot": zero_shot,
-                    "is_converged": is_converged,
-                    "dummy_cost": dummy_cost,
-                    "cost_history": cost_history,
-                    param_tag: best_param,
-                    "param_history": param_history,
-                    "question":  question,
-                }
-            )
-
+                # For iterative, sum all costs except the last one
+                dummy_cost = sum(cost_history[:-1]) if len(cost_history) > 1 else 0
+            
+            # Find the best_params from parameter_history based on optimal_parameter_value
+            optimal_value = results["optimal_parameter_value"]
+            best_params = None
+            
+            # Search through parameter_history to find the matching parameter combination
+            for param_set in param_history:
+                if param_set.get(task) == optimal_value:
+                    best_params = param_set.copy()
+                    break
+            
+            # If not found, this is an error in the data
+            if best_params is None:
+                raise ValueError(f"Could not find optimal parameter {task}={optimal_value} in parameter_history")
+            
+            # Build question entry
+            question_entry = {
+                "QID": qid,
+                "profile": profile,
+                "zero_shot": zero_shot,
+                "target_parameter": task,
+                "precision_level": precision_level,
+                "tolerance_rmse": tolerance_rmse,
+                "is_converged": is_converged,
+                "dummy_cost": dummy_cost,
+                "cost_history": cost_history,
+                "best_params": best_params,
+                "param_history": param_history,
+                "question": self._build_question_text(params, precision_level, tolerance_rmse),
+            }
+            
+            dataset.append(question_entry)
+            qid += 1
+        
         return dataset
 
-    def generate_question(self, cost: int, params: Dict[str, Any], task: str) -> str:
+    @staticmethod
+    def _build_question_text(params: dict, precision_level: str, tolerance_rmse: float) -> str:
         question_lines = [
-            "Problem: Steady State Heat Transfer in 2D",
+            "Problem: 2D Steady-State Heat Conduction with Jacobi Iteration and SOR",
+            "",
+            "This simulation solves 2D steady-state heat transfer problems using the Jacobi iteration method with Successive Over-Relaxation (SOR). The solver handles rectangular domains with fixed boundary conditions using an iterative approach.",
+            "",
+            "Governing Equation:",
+            r"$\nabla^2 T = 0$",
+            "",
+            "Discretized Form (5-point stencil):",
+            r"$T_{i,j} = \frac{1}{4}(T_{i-1,j} + T_{i+1,j} + T_{i,j-1} + T_{i,j+1})$",
+            "",
+            "SOR Update Formula:",
+            r"$T_{i,j}^{new} = \omega \cdot T_{i,j}^{Jacobi} + (1-\omega) \cdot T_{i,j}^{old}$",
+            "",
+            "where $\\omega$ is the relaxation parameter.",
+            "",
+            "Numerical Method:",
+            "The solution uses point-wise Jacobi iteration with SOR acceleration:",
+            "",
+            "1. **Jacobi Update**: Calculate new temperature based on neighboring values",
+            "2. **SOR Relaxation**: Blend new and old values using relaxation parameter $\\omega$",
+            "3. **Convergence Check**: Monitor RMSE between successive iterations",
+            "4. **Boundary Enforcement**: Maintain fixed boundary conditions at each iteration",
+            "",
+            "Corner temperatures are set as the average of adjacent boundary values.",
+            "",
+            "Parameter Information:",
+            "- **dx**: Grid spacing determines spatial resolution: $\\Delta x = L_x / n_x$, $\\Delta y = L_y / n_y$",
+            "- **relax**: SOR relaxation parameter $\\omega$ affecting convergence speed and stability",
+            "- **error_threshold**: Convergence criterion - iteration stops when RMSE between steps drops below threshold",
+            "- **t_init**: Initial temperature field value for starting the iteration",
             "",
             "Physical Parameters:",
-            f"- T_top: {params['T_top']}",
-            f"- T_bottom: {params['T_bottom']}",
-            f"- T_left: {params['T_left']}",
-            f"- T_right: {params['T_right']}",
+            f"- Domain width: $L_x = {params.get('Lx', 'Lx')}$ m",
+            f"- Domain height: $L_y = {params.get('Ly', 'Ly')}$ m",
+            f"- Top boundary temperature: {params.get('T_top', 'T_top')} K",
+            f"- Bottom boundary temperature: {params.get('T_bottom', 'T_bottom')} K",
+            f"- Left boundary temperature: {params.get('T_left', 'T_left')} K",
+            f"- Right boundary temperature: {params.get('T_right', 'T_right')} K",
             "",
-            "Convergence criteria:",
-            "- L2 ≤ 1e-3",
+            "Grid Information:",
+            "- Number of grid points: $n_x = L_x / dx + 1$, $n_y = L_y / dx + 1$",
+            "- Total interior points: $(n_x - 2) \\times (n_y - 2)$",
+            "- Computational cost scales approximately as $O(n_x \\times n_y \\times \\text{iterations})$",
+            "",
+            "Convergence Check:",
+            "- Errors between the simulation based on your solution and the simulation based on the self-refined solution are computed to assess convergence.",
+            "- Convergence is confirmed if the following validation criteria are satisfied.",
+            "",
+            "Validation Criteria:",
+            f"- **Current Problem Precision Level**: {precision_level.upper()}",
+            f"- **Required RMSE Tolerance**: ≤ {tolerance_rmse}",
+            "- Relative RMSE must meet this tolerance compared to self-refined solution",
+            "- Temperature validity: All values finite and within boundary range",
+            "- Gradient reasonableness: Temperature gradients remain physically reasonable"
         ]
-
         return "\n".join(question_lines)
+    
+    def _save_dataset(self, dataset: List[Dict], task: str, precision_level: str, zero_shot: bool) -> None:
+        """Save dataset to the new path format: data/heat_steady_2d/{task}/{precision_level}/"""
+        base_dir = Path("data") / "heat_steady_2d" / task / precision_level
+        base_dir.mkdir(parents=True, exist_ok=True)
+        
+        filename = "zero_shot_questions.json" if zero_shot else "iterative_questions.json"
+        out_path = base_dir / filename
+        
+        with open(out_path, "w", encoding="utf-8") as fp:
+            json.dump(dataset, fp, ensure_ascii=False, indent=2)
+
+def main() -> None:
+    """Generate all Heat Steady 2D questions for all tasks and precision levels"""
+    print("HEAT STEADY 2D QUESTION GENERATOR")
+    print("=" * 80)
+    print(f"Output directory: data/heat_steady_2d/{{task}}/{{precision_level}}/")
+    print(f"Tasks: dx, relax, t_init, error_threshold")
+    print(f"Precision levels: {list(PRECISION_LEVELS.keys())}")
+    print(f"File types: iterative_questions.json, zero_shot_questions.json")
+    
+    gen = TwoDHeatTransferQuestionGenerator()
+    gen.generate_all_questions()
+    
+    print("\nAll questions generated successfully!")
+
 
 if __name__ == "__main__":
-    # Create generator and generate dataset
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--num_samples", type=int, default=5,
-                        help="Number of samples to generate")
-    parser.add_argument("-t", "--task", type=str, choices=["dx", "relax", "t_init", "error_threshold"],
-                    default="dx", help="Task of problem to solve")
-    parser.add_argument("-z", "--zero_shot", action="store_true",
-                        help="Enable zero-shot mode")
-
-    args = parser.parse_args()
-    num_samples = args.num_samples
-    task = args.task
-
-    # Force zero_shot to True for specific tasks
-    zero_shot = args.zero_shot or task in ["relax", "t_init"]
-    flag = "zero_shot" if zero_shot else "iterative"
-
-    dataset_dir = f"data/2D_heat_transfer/{task}"
-    question_file = f"{dataset_dir}/{flag}_question.json"
-    os.makedirs(dataset_dir, exist_ok=True)
-
-    print(f"[INFO] Generating {num_samples} samples for task '{task}'")
-    print(f"[INFO] Zero-shot mode: {'ON' if zero_shot else 'OFF'}")
-    print(f"[INFO] Output path: {question_file}")
-
-    base_profile_path = "costsci_tools/run_configs/heat_steady_2d/p1.yaml"
-    if not os.path.isfile(base_profile_path):
-        raise FileNotFoundError(f"Base profile path not found: {base_profile_path}")
-
-    generator = twoD_HeatTransferQuestionGenerator()
-    random_profiles = create_heat1d_profiles(
-        num_profiles=num_samples - 1,
-        base_profile_path=base_profile_path,
-        solver_name="heat_steady_2d"
-    )
-    dataset = generator.generate_question_dataset(
-        num_samples=num_samples,
-        task=task,
-        zero_shot=zero_shot
-    )
-    save_dataset(dataset, question_file)
+    main()

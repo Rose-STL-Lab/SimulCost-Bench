@@ -4,32 +4,32 @@
             "type": "function",
             "function": {
                 "name": "heat_2d_check_converge_dx",
-                "description": "Conduct a 2D heat transfer PDE simulation and evaluate its dx convergence. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"Error_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The number of iterations the solver will perform to simulate the environment based on the parameters you have given\": int, \"The number of iterations the solver will try to verify convergence based on the parameters you have given\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
+                "description": "Conduct a 2D heat transfer PDE simulation and evaluate its dx convergence by halving dx. This experiment will conduct both PDE solving and convergence testing in one function. It will return {\"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The number of iterations the solver will perform to simulate the environment based on the parameters you have given\": int, \"The number of iterations the solver will try to verify convergence based on the parameters you have given\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"metrics1\": dict, \"metrics2\": dict}.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "current_dx": {
+                        "dx": {
                             "type": "float",
                             "description": "Number of dx"
                         },
-                        "current_relax": {
+                        "relax": {
                             "type": "float",
                             "description": "Number of relax"
                         },
-                        "current_t_init": {
+                        "t_init": {
                             "type": "float",
                             "description": "Number of t_init"
                         },
-                        "current_error_threshold": {
+                        "error_threshold": {
                             "type": "float",
                             "description": "Number of error_threshold"
                         }
                     },
                     "required": [
-                        "current_dx",
-                        "current_relax",
-                        "current_t_init",
-                        "current_error_threshold"
+                        "dx",
+                        "relax",
+                        "t_init",
+                        "error_threshold"
                     ]
                 }
             }
