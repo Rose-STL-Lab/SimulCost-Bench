@@ -1,17 +1,22 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-
-import pdb
 import json
-import logging
+import os
+import sys
+from typing import Dict
+
 import numpy as np
-from typing import List, Dict, Tuple
-from costsci_tools.wrappers.heat_1d import compare_res_heat_1d
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.heat_steady_2d import compare_res_heat_steady_2d
 from inference.utils import setup_logging, NumpyEncoder
-from evaluation.validation_utils import setup_robust_evaluation, print_usage_help
-from utils.param_compatibility import fetch_param
+
+# Constants
+RMSE_TOLERANCE_BY_PRECISION = {
+    "low": 0.05,     # Relaxed convergence criteria
+    "medium": 0.005, # Moderate convergence criteria  
+    "high": 0.0005,   # Most stringent convergence criteria
+}
+VALID_PRECISION_LEVELS = {"low", "medium", "high"}
+VALID_TASKS = {"dx", "error_threshold", "relax", "t_init"}
 
 def soft_success(d, epsilon):
     """Calculate Soft Success value for a single (d, epsilon) pair"""
@@ -43,63 +48,123 @@ def soft_success_multi(d_list, epsilon_list):
     return np.mean(ss_values)  # Arithmetic mean
 
 
+def get_reference_params(dummy: Dict, task: str) -> Dict:
+    """Extract reference parameters from the dummy data"""
+    if task == "relax":
+        optimal_val = dummy["optimal_relaxation_factor"]
+        return next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
+    elif task == "t_init":
+        optimal_val = dummy["optimal_initial_temperature"]
+        return next(p for p in dummy["param_history"] if p.get("T_init") == optimal_val or p.get("t_init") == optimal_val)
+    else:
+        return dummy["best_params"]
+
+
+def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None, alt_name2: str = None):
+    """Strict parameter fetching - no defaults, raise error if missing"""
+    if param_name in param_dict:
+        return param_dict[param_name]
+    elif alt_name and alt_name in param_dict:
+        return param_dict[alt_name]
+    elif alt_name2 and alt_name2 in param_dict:
+        return param_dict[alt_name2]
+    else:
+        available_keys = list(param_dict.keys())
+        raise KeyError(
+            f"Required parameter '{param_name}' not found. "
+            f"Available keys: {available_keys}"
+        )
+
+
 
 def evaluate(
     dataset: str,
     task: str,
     model_name: str,
+    precision_level: str = "medium",
     zero_shot: bool = False,
 ) -> Dict:
-    """
-    Load model attempt results and dummy solutions, calculate success rate / cost efficiency metrics,
-    and write logs to eval_results/{dataset}/{task}/...
-
-    Returns
-    -------
-    metrics : Dict
-        Fields consistent with previous version: success_rate, converged_rate, mean_efficiency
-        # model_cost_efficiency, dummy_cost_efficiency, relative_cost_efficiency
-    """
-    flag = "zero_shot" if zero_shot or task in {"relax", "t_init"} else "iterative"
+    """Evaluate model performance against reference solutions for heat_2d.
     
-    log_dir = f"eval_results/{dataset}/{task}"
+    Args:
+        dataset: Dataset name (should be 'heat_2d')
+        task: Task type (e.g., 'dx', 'error_threshold', 'relax', 't_init')
+        model_name: Name of the model being evaluated
+        precision_level: Precision level ('low', 'medium', 'high')
+        zero_shot: Whether to use zero-shot evaluation
+        
+    Returns:
+        Dictionary containing evaluation metrics
+        
+    Raises:
+        RuntimeError: If required files are not found or data loading fails
+    """
+    # Force zero_shot for relax and t_init tasks
+    if task in {"relax", "t_init"}:
+        zero_shot = True
+    
+    flag = "zero_shot" if zero_shot else "iterative"
+    
+    # Use precision_level-based paths for heat_2d
+    log_dir = f"eval_results/{dataset}/{task}/{precision_level}"
     os.makedirs(log_dir, exist_ok=True)
     log_file = f"{log_dir}/{flag}_{model_name}.log"
     logger = setup_logging(log_file)
     
-    # Robust validation and file loading
-    success, info = setup_robust_evaluation(dataset, task, model_name, "", zero_shot, logger)
-    if not success:
-        error_msg = info["error"]
-        logger.error(f"❌ Evaluation setup failed: {error_msg}")
-        
-        # Print helpful information to console
-        print(f"\n❌ Evaluation failed: {error_msg}\n")
-        if info.get("error_type") == "invalid_configuration":
-            print_usage_help()
-        elif info.get("error_type") == "missing_model_results":
-            print_usage_help(dataset, task)
-        
-        raise RuntimeError(f"Evaluation setup failed: {error_msg}")
+    # Build paths for heat_2d precision_level structure
+    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
+    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
-    result_path = info["result_path"]
-    dummy_path = info["dummy_path"]
-    result_dataset = info["result_data"]
-    dummy_dataset = info["dummy_data"]
+    # Validate paths exist
+    if not os.path.exists(result_path):
+        error_msg = f"Model results file not found: {result_path}"
+        logger.error(f"❌ {error_msg}")
+        print(f"\n❌ Evaluation failed: {error_msg}\n")
+        raise RuntimeError(error_msg)
+    
+    if not os.path.exists(dummy_path):
+        error_msg = f"Reference data file not found: {dummy_path}"
+        logger.error(f"❌ {error_msg}")
+        print(f"\n❌ Evaluation failed: {error_msg}\n")
+        raise RuntimeError(error_msg)
+    
+    # Load data files
+    try:
+        with open(result_path, 'r', encoding='utf-8') as f:
+            result_dataset = json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        error_msg = f"Error loading model results from {result_path}: {e}"
+        logger.error(f"❌ {error_msg}")
+        raise RuntimeError(error_msg)
+        
+    try:
+        with open(dummy_path, 'r', encoding='utf-8') as f:
+            dummy_dataset = json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        error_msg = f"Error loading reference data from {dummy_path}: {e}"
+        logger.error(f"❌ {error_msg}")
+        raise RuntimeError(error_msg)
     
     logger.info(f"✅ Loaded model results from {result_path} ({len(result_dataset)} entries)")
     logger.info(f"✅ Loaded dummy solutions from {dummy_path} ({len(dummy_dataset)} entries)")
 
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
 
-    # ---------- Evaluation ----------
     total_model_cost = total_dummy_cost = 0.0
-    success_cnt = 0
-    converged_valid = converged_cnt = evaluated = 0
-    total_error = 0.0
+    success_cnt = converged_cnt = evaluated = 0
+    total_rmse = 0.0
     total_efficiency = 0.0
     total_hard_efficiency = 0.0
     total_soft_success = 0.0
+
+    # Validate inputs
+    if task not in VALID_TASKS:
+        raise ValueError(f"Invalid task '{task}'. Valid tasks: {sorted(VALID_TASKS)}")
+    if precision_level not in VALID_PRECISION_LEVELS:
+        raise ValueError(f"Invalid precision_level '{precision_level}'. Valid levels: {sorted(VALID_PRECISION_LEVELS)}")
+    
+    # Get precision-specific tolerance for success checking
+    rmse_tol = RMSE_TOLERANCE_BY_PRECISION[precision_level]
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -110,8 +175,8 @@ def evaluate(
         dummy = dummy_by_qid[qid]
         evaluated += 1
 
-        cost = res["accumulated_cost"]
-        converged = res.get("is_converged", res.get("converged", False))
+        cost       = res["accumulated_cost"]
+        converged  = res.get("is_converged", res.get("converged", False))
         
         # Handle entries with empty param_sequence - mark as failed instead of skipping
         if not res["param_sequence"]:
@@ -123,18 +188,12 @@ def evaluate(
             for i in range(len(res["param_sequence"]) - 1, -1, -1):
                 candidate = res["param_sequence"][i]
                 if candidate and isinstance(candidate, dict):
-                    # Check if this parameter set has the required keys for this dataset
-                    has_valid_params = True
-                    if dataset == "1D_heat_transfer":
-                        has_cfl = any(k in candidate for k in ["cfl", "current_cfl"])
-                        has_n_space = any(k in candidate for k in ["n_space", "current_n_space"]) 
-                        has_valid_params = has_cfl and has_n_space
-                    elif dataset == "2D_heat_transfer":
-                        has_dx = any(k in candidate for k in ["dx", "current_dx"])
-                        has_relax = any(k in candidate for k in ["relax", "current_relax"])
-                        has_error = any(k in candidate for k in ["error_threshold", "current_error_threshold"])
-                        has_t_init = any(k in candidate for k in ["t_init", "current_t_init", "T_init"])
-                        has_valid_params = has_dx and has_relax and has_error and has_t_init
+                    # Check if this parameter set has the required keys for heat_2d
+                    has_dx = any(k in candidate for k in ["dx", "current_dx"])
+                    has_relax = any(k in candidate for k in ["relax", "current_relax"])
+                    has_error = any(k in candidate for k in ["error_threshold", "current_error_threshold"])
+                    has_t_init = any(k in candidate for k in ["t_init", "current_t_init", "T_init"])
+                    has_valid_params = has_dx and has_relax and has_error and has_t_init
                     
                     if has_valid_params:
                         last_iter = candidate
@@ -151,107 +210,73 @@ def evaluate(
         if not last_iter:
             logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
             success = False
-            tolerance=1e-4
-            error = float('inf')  # Maximum error for failed attempts
-            # Reference solution - consistent with legacy code
-            if task == "relax":
-                optimal_val = dummy["optimal_relaxation_factor"]
-                ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
-            elif task == "t_init":
-                optimal_val = dummy["optimal_initial_temperature"]
-                ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
-            else:
-                ref_iter = dummy["param_history"][-1]
+            rmse = float('inf')
+            
+            # --------- Select reference parameter set ---------
+            ref_iter = get_reference_params(dummy, task)
+            
         else:
-            # Reference solution - consistent with legacy code
-            if task == "relax":
-                optimal_val = dummy["optimal_relaxation_factor"]
-                ref_iter = next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
-            elif task == "t_init":
-                optimal_val = dummy["optimal_initial_temperature"]
-                ref_iter = next(p for p in dummy["param_history"] if p["T_init"] == optimal_val)
-            else:
-                ref_iter = dummy["param_history"][-1]
+            # --------- Select reference parameter set ---------
+            ref_iter = get_reference_params(dummy, task)
 
-            # -------- Success determination --------
             try:
-                if dataset == "1D_heat_transfer":
-                    tolerance = 1e-4
-                    # Use safe parameter fetching with reasonable defaults
-                    default_cfl = fetch_param(ref_iter, "cfl", "current_cfl")  # Use reference value as fallback
-                    default_n_space = fetch_param(ref_iter, "n_space", "current_n_space")
-                    
-                    success, error = compare_res_heat_1d(
-                        profile1=dummy["profile"],
-                        cfl1=fetch_param(last_iter, "cfl", "current_cfl") if last_iter.get("cfl") or last_iter.get("current_cfl") else default_cfl,
-                        n_space1=fetch_param(last_iter, "n_space", "current_n_space") if last_iter.get("n_space") or last_iter.get("current_n_space") else default_n_space,
-                        profile2=dummy["profile"],
-                        cfl2=fetch_param(ref_iter, "cfl", "current_cfl"),
-                        n_space2=fetch_param(ref_iter, "n_space", "current_n_space"),
-                        tolerance=tolerance,
-                    )
-                elif dataset == "2D_heat_transfer":
-                    tolerance = 1e-3
-                    # Use safe parameter fetching with reasonable defaults
-                    default_dx = fetch_param(ref_iter, "dx", "current_dx")
-                    default_relax = fetch_param(ref_iter, "relax", "current_relax")
-                    default_error_threshold = fetch_param(ref_iter, "error_threshold", "current_error_threshold")
-                    default_t_init = fetch_param(ref_iter, "t_init", "T_init", "current_t_init")
-                    
-                    success, error = compare_res_heat_steady_2d(
-                        profile1=dummy["profile"],
-                        dx1=fetch_param(last_iter, "dx", "current_dx") if last_iter.get("dx") or last_iter.get("current_dx") else default_dx,
-                        relax1=fetch_param(last_iter, "relax", "current_relax") if last_iter.get("relax") or last_iter.get("current_relax") else default_relax,
-                        error_threshold1=fetch_param(last_iter, "error_threshold", "current_error_threshold") if last_iter.get("error_threshold") or last_iter.get("current_error_threshold") else default_error_threshold,
-                        t_init1=fetch_param(last_iter, "t_init", "current_t_init") if last_iter.get("t_init") or last_iter.get("current_t_init") else default_t_init,
-                        profile2=dummy["profile"],
-                        dx2=fetch_param(ref_iter, "dx", "current_dx"),
-                        relax2=fetch_param(ref_iter, "relax", "current_relax"),
-                        error_threshold2=fetch_param(ref_iter, "error_threshold", "current_error_threshold"),
-                        t_init2=fetch_param(ref_iter, "t_init", "T_init", "current_t_init"),
-                        tolerance=tolerance,
-                    )
-                else:
-                    raise ValueError(f"Unsupported dataset type: {dataset}")
+                success, rmse = compare_res_heat_steady_2d(
+                    profile1=dummy["profile"],
+                    dx1=get_required_param(last_iter, "dx", "current_dx"),
+                    relax1=get_required_param(last_iter, "relax", "current_relax"),
+                    error_threshold1=get_required_param(last_iter, "error_threshold", "current_error_threshold"),
+                    t_init1=get_required_param(last_iter, "t_init", "current_t_init", "T_init"),
+                    profile2=dummy["profile"],
+                    dx2=get_required_param(ref_iter, "dx", "current_dx"),
+                    relax2=get_required_param(ref_iter, "relax", "current_relax"),
+                    error_threshold2=get_required_param(ref_iter, "error_threshold", "current_error_threshold"),
+                    t_init2=get_required_param(ref_iter, "t_init", "current_t_init", "T_init"),
+                    tolerance=rmse_tol,
+                )
+                
             except Exception as e:
                 logger.warning(f"⚠️ QID {qid}: Error in success determination: {e}, marking as failed")
                 success = False
-                error = float('inf')
+                rmse = float('inf')
 
-        # -------- Accumulate metrics --------
-        # Calculate efficiency using soft success: soft_success * (dummy_cost / model_cost)
-        # Use error metric for soft success calculation
+        # Calculate metrics with robust error handling
+        dummy_cost = dummy["dummy_cost"]
         
-        # Handle NaN error values: if error is NaN or infinite, set soft success to 0
-        if np.isnan(error) or np.isinf(error):
+        # Calculate soft success value
+        if np.isnan(rmse) or np.isinf(rmse):
             soft_success_value = 0.0
-            logger.warning(f"⚠️ QID {qid}: Error value is NaN/inf ({error}), setting soft success to 0")
+            logger.warning(f"⚠️ QID {qid}: RMSE ({rmse}) is NaN/inf, setting soft success to 0")
         else:
-            soft_success_value = soft_success(error, tolerance)
+            soft_success_value = soft_success(rmse, rmse_tol)
             
-        efficiency = soft_success_value * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
-        
-        # Handle NaN values in efficiency calculation
-        if np.isnan(efficiency) or np.isinf(efficiency):
+        # Calculate efficiency metrics with division by zero protection
+        if cost <= 0:
             efficiency = 0.0
-            logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
-        
-        # Calculate hard efficiency using binary success instead of soft success
-        hard_efficiency = int(success) * (dummy["dummy_cost"] / cost) if cost > 0 else 0.0
-        
-        # Handle NaN values in hard efficiency calculation
-        if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
             hard_efficiency = 0.0
-            logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
+            logger.warning(f"⚠️ QID {qid}: Cost is {cost}, setting efficiencies to 0")
+        else:
+            efficiency = soft_success_value * (dummy_cost / cost)
+            hard_efficiency = float(success) * (dummy_cost / cost)
+            
+            # Handle NaN/inf values in efficiency calculations
+            if np.isnan(efficiency) or np.isinf(efficiency):
+                efficiency = 0.0
+                logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
+                
+            if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
+                hard_efficiency = 0.0
+                logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
         
+        # Accumulate metrics
         total_model_cost += cost
-        total_dummy_cost += dummy["dummy_cost"]
+        total_dummy_cost += dummy_cost
         success_cnt += int(success)
-        converged_valid += 1
         converged_cnt += int(converged)
-        # Always add error to total (including NaN/inf) for mean_error calculation
-        total_error += error
-        # Only add valid efficiency and soft_success values (NaN/inf already converted to 0)
+        
+        # Handle RMSE accumulation (use 0 for NaN/inf values in totals)
+        rmse_for_total = 0.0 if (np.isnan(rmse) or np.isinf(rmse)) else rmse
+        total_rmse += rmse_for_total
+        
         total_efficiency += efficiency
         total_hard_efficiency += hard_efficiency
         total_soft_success += soft_success_value
@@ -259,62 +284,68 @@ def evaluate(
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
             f"🆔 QID: {qid}\n"
-            f"🔄 Converged: {converged}\n"
-            f"🎯 Success: {success}\n"
+            f"🔄 Converged flag: {converged}\n"
+            f"🎯 Success (within tolerance): {success}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
             f"⚡ Efficiency: {efficiency:.3f}\n"
             f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
-            f"📉 Error (model vs. dummy): {error}\n"
+            f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
             f"📌 Dummy Parameters:\n{json.dumps(ref_iter, indent=2, cls=NumpyEncoder)}\n"
             f"------------------------------"
         )
 
-    # ---------- Summary ----------
-    success_rate = success_cnt / evaluated if evaluated else 0.0
-    converged_rate = converged_cnt / converged_valid if converged_valid else 0.0
-    # model_cost_eff = success_cnt / total_model_cost if total_model_cost else 0.0
-    # dummy_cost_eff = evaluated / total_dummy_cost if total_dummy_cost else 0.0
-    # relative_eff   = model_cost_eff / dummy_cost_eff if dummy_cost_eff else 0.0
-    mean_efficiency = total_efficiency / evaluated if evaluated else 0.0
-    mean_hard_efficiency = total_hard_efficiency / evaluated if evaluated else 0.0
-    mean_error = total_error / evaluated if evaluated else 0.0
-    mean_ss = total_soft_success / evaluated if evaluated else 0.0
+    # Calculate final metrics with division by zero protection
+    if evaluated == 0:
+        logger.warning("⚠️ No valid evaluations performed")
+        success_rate = converged_rate = mean_efficiency = 0.0
+        mean_hard_efficiency = mean_rmse = mean_ss = 0.0
+    else:
+        success_rate = success_cnt / evaluated
+        converged_rate = converged_cnt / evaluated
+        mean_efficiency = total_efficiency / evaluated
+        mean_hard_efficiency = total_hard_efficiency / evaluated
+        mean_rmse = total_rmse / evaluated
+        mean_ss = total_soft_success / evaluated
 
     metrics = {
-        "converged_rate (converge does not guarantee success)": converged_rate,
-        "success_rate": success_rate,
-        # "model_cost_efficiency": model_cost_eff,
-        # "dummy_cost_efficiency": dummy_cost_eff,
-        # "relative_cost_efficiency": f"{relative_eff:.3f}",
+        "success_rate": f"{success_rate:.3f}",
+        "converged_rate": f"{converged_rate:.3f}",
         "mean_efficiency": f"{mean_efficiency:.3f}",
         "mean_hard_efficiency": f"{mean_hard_efficiency:.3f}",
-        "mean_ss": f"{mean_ss:.3f}",
-        "mean_error (model vs. dummy)": f"{mean_error:.2e}",
-        "tolerance": f"{tolerance:.2e}",
+        "mean_soft_success": f"{mean_ss:.3f}",
+        "mean_rmse": f"{mean_rmse:.2e}",
+        "rmse_tolerance": f"{rmse_tol:.2e}",
+        "total_model_cost": total_model_cost,
+        "total_dummy_cost": total_dummy_cost,
     }
 
-    # for k in ["model_cost_efficiency", "dummy_cost_efficiency"]:
-    #     if k in metrics:
-    #         metrics[k] = f"{metrics[k]:.2e}"
-
-    logger.info("🧾 Evaluation summary:\n" + json.dumps(metrics, indent=2))
-
+    logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
     return metrics
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", default="2D_heat_transfer")
-    parser.add_argument("-t", "--task",    default="dx")
-    parser.add_argument("-m", "--model",   default="anthropic.claude-3-5-haiku-20241022-v1:0")
-    parser.add_argument("-z", "--zero_shot", action="store_true")
+    parser.add_argument("-d", "--dataset", default="heat_2d",
+                        help="Dataset name (should be 'heat_2d')")
+    parser.add_argument("-t", "--task", default="dx",
+                        choices=list(VALID_TASKS),
+                        help="Task: dx / error_threshold / relax / t_init")
+    parser.add_argument("-l", "--precision_level", default="medium",
+                        choices=list(VALID_PRECISION_LEVELS),
+                        help="Precision level for heat_2d dataset")
+    parser.add_argument("-m", "--model",
+                        default="anthropic.claude-3-5-haiku-20241022-v1:0")
+    parser.add_argument("-z", "--zero_shot", action="store_true",
+                        help="Use zero-shot flag to locate files")
     args = parser.parse_args()
 
     evaluate(
         dataset=args.dataset,
         task=args.task,
         model_name=args.model,
-        zero_shot=args.zero_shot
+        precision_level=args.precision_level,
+        zero_shot=args.zero_shot,
     )

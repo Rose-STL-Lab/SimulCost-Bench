@@ -28,7 +28,7 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, heat_1d, 2D_heat_transfer"
+    echo "                   Available: burgers_1d, euler_1d, heat_1d, heat_2d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -36,7 +36,7 @@ show_help() {
     echo "  burgers_1d: cfl, k, w (with cases: blast, double_shock, rarefaction, sin, sod)"
     echo "  euler_1d: cfl, beta, k, n_space (with precision levels: low, medium, high)"
     echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
-    echo "  2D_heat_transfer: dx, error_threshold (both modes), relax, t_init (zero-shot only)"
+    echo "  heat_2d: dx, error_threshold (both modes), relax, t_init (zero-shot only) (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -45,8 +45,8 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 -d burgers_1d"
-    echo "  $0 -d heat_1d -d 2D_heat_transfer"
-    echo "  $0 -d burgers_1d -d euler_1d -d heat_1d -d 2D_heat_transfer"
+    echo "  $0 -d heat_1d -d heat_2d"
+    echo "  $0 -d burgers_1d -d euler_1d -d heat_1d -d heat_2d"
 }
 
 # Parse command line arguments
@@ -137,14 +137,16 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
             
-        "2D_heat_transfer")
-            echo "📋 Running 2D Heat Transfer evaluation..."
+        "heat_2d")
+            echo "📋 Running Heat 2D evaluation..."
             # Define tasks and their corresponding modes
             declare -A task_modes
             task_modes["dx"]="-z "           # dx supports zero-shot and iterative
             task_modes["error_threshold"]="-z "  # error_threshold supports zero-shot and iterative  
             task_modes["relax"]="-z"         # relax only supports zero-shot
             task_modes["t_init"]="-z"        # t_init only supports zero-shot
+            
+            precision_levels=("low" "medium" "high")
             
             for task in "${!task_modes[@]}"; do
                 modes_str="${task_modes[$task]}"
@@ -158,15 +160,17 @@ for DATASET in "${DATASETS[@]}"; do
                 fi
                 
                 for mode in "${modes[@]}"; do
-                    echo "▶ Executing: python evaluation/heat_transfer/eval.py -m $MODEL -d 2D_heat_transfer -t $task $mode"
-                    python evaluation/heat_transfer/eval.py -m $MODEL -d 2D_heat_transfer -t $task $mode
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/heat_2d/eval.py -m $MODEL -d heat_2d -t $task -l $precision $mode"
+                        python evaluation/heat_2d/eval.py -m $MODEL -d heat_2d -t $task -l $precision $mode
+                    done
                 done
             done
             ;;
             
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, heat_1d, 2D_heat_transfer"
+            echo "Supported datasets: burgers_1d, euler_1d, heat_1d, heat_2d"
             exit 1
             ;;
     esac

@@ -1,6 +1,6 @@
 #!/bin/bash
 # model_inference_heat_2d.sh
-# Function: Execute 2D Heat Transfer model inference and evaluation in sequential order, stop on error; resume from failed command on next run
+# Function: Execute Heat 2D model inference and evaluation in sequential order, stop on error; resume from failed command on next run
 set -eE -o pipefail          # Exit immediately on any command or pipeline error, preserve ERR information
 
 RESUME_LOG="scripts/inference_eval/heat_2d_resume_progress.log"   # Log file for successful commands
@@ -30,6 +30,9 @@ task_modes["error_threshold"]="-z "  # error_threshold supports zero-shot and it
 task_modes["relax"]="-z"         # relax only supports zero-shot
 task_modes["t_init"]="-z"        # t_init only supports zero-shot
 
+# Precision levels for heat_2d
+precision_levels=("low" "medium" "high")
+
 # model_provider="bedrock"
 # models=(
 #  "anthropic.claude-3-5-haiku-20241022-v1:0"
@@ -54,24 +57,26 @@ models=(
 # )
 
 # ========= Main loop =========
-for task in "${!task_modes[@]}"; do
-  modes_str="${task_modes[$task]}"
-  
-  if [[ "$modes_str" == *" "* ]]; then
-    # Contains space, supports both modes
-    modes=("-z" "")
-  else
-    # Only supports one mode
-    modes=("$modes_str")
-  fi
-  
-  for mode in "${modes[@]}"; do
-    for model in "${models[@]}"; do
-      # 2D Heat Transfer has no case concept, run tasks directly
-      run_cmd "python inference/langchain_LLM.py -n 100 -p $model_provider -m $model -d 2D_heat_transfer -t $task $mode --resume"
-      run_cmd "python evaluation/heat_transfer/eval.py -m $model -d 2D_heat_transfer -t $task $mode"
+for precision in "${precision_levels[@]}"; do
+  for task in "${!task_modes[@]}"; do
+    modes_str="${task_modes[$task]}"
+    
+    if [[ "$modes_str" == *" "* ]]; then
+      # Contains space, supports both modes
+      modes=("-z" "")
+    else
+      # Only supports one mode
+      modes=("$modes_str")
+    fi
+    
+    for mode in "${modes[@]}"; do
+      for model in "${models[@]}"; do
+        # Heat 2D with precision levels
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d heat_2d -t $task -l $precision $mode --resume"
+        run_cmd "python evaluation/heat_2d/eval.py -m $model -d heat_2d -t $task -l $precision $mode"
+      done
     done
   done
 done
 
-echo "✅ All 2D Heat Transfer inference tasks completed successfully!"
+echo "✅ All Heat 2D inference tasks completed successfully!"

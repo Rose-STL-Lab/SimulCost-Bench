@@ -322,10 +322,6 @@ class ToolCallManager:
                 tool_reason = "[tool_reason was missing from model response, proceeding with simulation]"
 
             func = globals()[tool_name]
-            # if "heat_2d" in tool_name:
-            #     profile = f"p{profile}"
-            # else:
-            #     profile = f"{profile}"
 
             if tool_name in ["heat_1d_check_converge_cfl", "heat_1d_check_converge_n_space"]:
                 result = func(
