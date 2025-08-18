@@ -19,3 +19,4 @@ results_model_attempt
 *.txt
 outputs
 claude.md
+extracted_prompts

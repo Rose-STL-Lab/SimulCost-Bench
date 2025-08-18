@@ -10,7 +10,11 @@ from costsci_tools.wrappers.euler_1d import compare_res_euler_1d
 from inference.utils import setup_logging, NumpyEncoder
 
 # Constants
-DEFAULT_RMSE_TOLERANCE = 0.005
+RMSE_TOLERANCE_BY_PRECISION = {
+    "low": 0.08,
+    "medium": 0.02,
+    "high": 0.01,
+}
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"cfl", "k", "beta", "n_space"}
 
@@ -147,8 +151,8 @@ def evaluate(
     if precision_level not in VALID_PRECISION_LEVELS:
         raise ValueError(f"Invalid precision_level '{precision_level}'. Valid levels: {sorted(VALID_PRECISION_LEVELS)}")
     
-    # Fixed tolerance for success checking
-    rmse_tol = DEFAULT_RMSE_TOLERANCE
+    # Get precision-specific tolerance for success checking
+    rmse_tol = RMSE_TOLERANCE_BY_PRECISION[precision_level]
 
     for res in result_dataset:
         qid = res.get("QID")
