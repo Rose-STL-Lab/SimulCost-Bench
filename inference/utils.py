@@ -14,11 +14,11 @@ import pdb
 TOOL_NAME_KEYS = {
     "heat_1d_check_converge_cfl": ["n_space", "cfl"],
     "heat_1d_check_converge_n_space": ["n_space", "cfl"],
-    "heat_2d_check_converge_dx": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "heat_2d_check_converge_relax": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "heat_2d_check_converge_t_init": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "heat_2d_check_converge_error_threshold": ["current_dx", "current_relax", "current_t_init", "current_error_threshold"],
-    "burgers_1d_solve": ["current_cfl", "k", "w"],
+    "heat_2d_check_converge_dx": ["dx", "relax", "t_init", "error_threshold"],
+    "heat_2d_check_converge_relax": ["dx", "relax", "t_init", "error_threshold"],
+    "heat_2d_check_converge_t_init": ["dx", "relax", "t_init", "error_threshold"],
+    "heat_2d_check_converge_error_threshold": ["dx", "relax", "t_init", "error_threshold"],
+    "burgers_1d_solve": ["cfl", "k", "w"],
     "euler_1d_check_converge_cfl": ["cfl", "beta", "k", "n_space"],
     "euler_1d_check_converge_beta": ["cfl", "beta", "k", "n_space"],
     "euler_1d_check_converge_k": ["cfl", "beta", "k", "n_space"],
@@ -255,7 +255,7 @@ def find_json_robust(response: str):
             except:
                 # Extract parameters from tool_args string using regex
                 args_str = tool_args_match.group(1)
-                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "current_dx", "current_relax", "current_t_init", "current_error_threshold", "k", "w", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
+                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "dx", "relax", "t_init", "error_threshold", "k", "w", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
             
             return result
     except Exception:
@@ -324,33 +324,41 @@ class ToolCallManager:
             func = globals()[tool_name]
 
             if tool_name in ["heat_1d_check_converge_cfl", "heat_1d_check_converge_n_space"]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for heat_1d tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    n_space=fetch_param(tool_args, "n_space", "current_n_space"),
-                    cfl=fetch_param(tool_args, "cfl", "current_cfl"),
-                    tolerance=1e-4
+                    n_space=fetch_param(tool_args, "n_space"),
+                    cfl=fetch_param(tool_args, "cfl"),
+                    tolerance=tolerance
                 )
             elif tool_name in ["heat_2d_check_converge_dx", "heat_2d_check_converge_relax", "heat_2d_check_converge_t_init", "heat_2d_check_converge_error_threshold"]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for heat_2d tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
-                    current_dx=fetch_param(tool_args, "current_dx", "dx"),
-                    current_relax=fetch_param(tool_args, "current_relax", "relax"),
-                    current_t_init=fetch_param(tool_args, "current_t_init", "t_init", "T_init"),
-                    current_error_threshold=fetch_param(tool_args, "current_error_threshold", "error_threshold"),
-                    tolerance=1e-3
+                    dx=fetch_param(tool_args, "dx"),
+                    relax=fetch_param(tool_args, "relax"),
+                    t_init=fetch_param(tool_args, "t_init", "T_init"),
+                    error_threshold=fetch_param(tool_args, "error_threshold"),
+                    tolerance=tolerance
                 )
-            elif tool_name in ["burgers_1d_solve"]:
-                result = func(
-                    accumulated_cost=self.accumulated_cost,
-                    profile=profile,
-                    current_cfl=fetch_param(tool_args, "current_cfl", "cfl"),
-                    k=fetch_param(tool_args, "k"),
-                    w=fetch_param(tool_args, "w"),
-                    linf_tolerance=5e-2,
-                    rmse_tolerance=5e-3,
-                )
+            # elif tool_name in ["burgers_1d_solve"]:
+            #     result = func(
+            #         accumulated_cost=self.accumulated_cost,
+            #         profile=profile,
+            #         cfl=fetch_param(tool_args, "cfl"),
+            #         k=fetch_param(tool_args, "k"),
+            #         w=fetch_param(tool_args, "w"),
+            #         linf_tolerance=5e-2,
+            #         rmse_tolerance=5e-3,
+            #     )
             elif tool_name in ["euler_1d_check_converge_cfl", "euler_1d_check_converge_beta", "euler_1d_check_converge_k", "euler_1d_check_converge_n_space"]:
                 # Use tolerance_rmse from dataset - required field
                 if self.tolerance_rmse is None:
@@ -365,27 +373,30 @@ class ToolCallManager:
                     n_space=fetch_param(tool_args, "n_space"),
                     rmse_tolerance=tolerance
                 )
-            elif tool_name in [
-                "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
-                "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
-                "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
-            ]:
-                result = func(
-                    accumulated_cost=self.accumulated_cost,
-                    profile=profile,
-                    mesh_x=fetch_param(tool_args, "mesh_x"),
-                    mesh_y=fetch_param(tool_args, "mesh_y"),
-                    omega_u=fetch_param(tool_args, "omega_u"),
-                    omega_v=fetch_param(tool_args, "omega_v"),
-                    omega_p=fetch_param(tool_args, "omega_p"),
-                    diff_u_threshold=fetch_param(tool_args, "diff_u_threshold"),
-                    diff_v_threshold=fetch_param(tool_args, "diff_v_threshold"),
-                    res_iter_v_threshold=fetch_param(tool_args, "res_iter_v_threshold"),
-                    mass_tolerance=1e-4,
-                    u_rmse_tolerance=3e-2,
-                    v_rmse_tolerance=3e-2,
-                    p_rmse_tolerance=3e-2,
-                )
+            # elif tool_name in [
+            #     "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
+            #     "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
+            #     "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
+            # ]:
+            #     result = func(
+            #         accumulated_cost=self.accumulated_cost,
+            #         profile=profile,
+            #         mesh_x=fetch_param(tool_args, "mesh_x"),
+            #         mesh_y=fetch_param(tool_args, "mesh_y"),
+            #         omega_u=fetch_param(tool_args, "omega_u"),
+            #         omega_v=fetch_param(tool_args, "omega_v"),
+            #         omega_p=fetch_param(tool_args, "omega_p"),
+            #         diff_u_threshold=fetch_param(tool_args, "diff_u_threshold"),
+            #         diff_v_threshold=fetch_param(tool_args, "diff_v_threshold"),
+            #         res_iter_v_threshold=fetch_param(tool_args, "res_iter_v_threshold"),
+            #         mass_tolerance=1e-4,
+            #         u_rmse_tolerance=3e-2,
+            #         v_rmse_tolerance=3e-2,
+            #         p_rmse_tolerance=3e-2,
+            #     )
+            else:
+                # Critical else branch to handle unrecognized tool names
+                raise ValueError(f"Unrecognized tool name: '{tool_name}'. This tool is not supported by the current implementation (QID={self.qid})")
 
             prev_cost = self.accumulated_cost
             self.accumulated_cost = result['accumulated_cost']

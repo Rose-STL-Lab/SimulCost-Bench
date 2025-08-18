@@ -16,16 +16,16 @@ def burgers_1d_solve(
     *, 
     accumulated_cost: int,
     profile: str,
-    current_cfl: float,
+    cfl: float,
     k: float,
     w: float,
     linf_tolerance: float,
     rmse_tolerance: float,
 ):
-    print(f"\nRunning simulation with CFL = {current_cfl}")
-    refine_cfl = current_cfl / 2
+    print(f"\nRunning simulation with CFL = {cfl}")
+    refine_cfl = cfl / 2
 
-    current_cost = run_sim_burgers_1d(profile=profile, cfl=current_cfl, k=k, w=w)
+    current_cost = run_sim_burgers_1d(profile=profile, cfl=cfl, k=k, w=w)
     refine_cost  = run_sim_burgers_1d(profile=profile, cfl=refine_cfl,  k=k, w=w)
 
     accumulated_cost += current_cost
@@ -37,7 +37,7 @@ def burgers_1d_solve(
         linf_norm,
         rmse
     ) = compare_res_burgers_1d(
-        profile1=profile, cfl1=current_cfl, k1=k, w1=w,
+        profile1=profile, cfl1=cfl, k1=k, w1=w,
         profile2=profile, cfl2=refine_cfl, k2=k, w2=w,
         linf_tolerance=linf_tolerance, rmse_tolerance=rmse_tolerance
     )
