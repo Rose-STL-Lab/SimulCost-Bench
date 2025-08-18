@@ -228,25 +228,41 @@ class LLMAgentBase():
                     output_infos.append(json_dict.get(field, ""))
                 return output_infos
             
-            # Separate critical fields from tool_reason
-            critical_missing_fields = [field for field in missing_fields if field != 'tool_reason']
+            # Check if model wants to stop - if so, tool_name and tool_args are not critical
+            should_stop_value = json_dict.get('should_stop', False)
+            
+            # Separate critical fields based on whether the model wants to stop
+            if should_stop_value:
+                # When stopping, only should_stop is critical, tool_name and tool_args are optional
+                critical_missing_fields = [field for field in missing_fields if field not in ['tool_reason', 'tool_name', 'tool_args']]
+            else:
+                # When not stopping, tool_name and tool_args are critical
+                critical_missing_fields = [field for field in missing_fields if field != 'tool_reason']
+            
             tool_reason_missing = 'tool_reason' in missing_fields
             
-            # If we are not at the final attempt, continue retrying for any missing fields
-            if attempt < max_retries - 1:
+            # Check if we need to retry based on critical missing fields
+            if critical_missing_fields and attempt < max_retries - 1:
+                # We have critical missing fields and haven't reached max retries - retry
                 field_hints = []
                 for field in missing_fields:
                     if field == 'tool_reason':
                         field_hints.append("- tool_reason: Provide detailed reasoning (non-empty string)")
                     elif field == 'tool_name':
-                        field_hints.append("- tool_name: Use exact function name from documentation (non-empty string)")
+                        if not should_stop_value:  # Only require tool_name if not stopping
+                            field_hints.append("- tool_name: Use exact function name from documentation (non-empty string)")
                     elif field == 'tool_args':
-                        field_hints.append("- tool_args: Provide parameter dictionary (non-empty dict)")
+                        if not should_stop_value:  # Only require tool_args if not stopping
+                            field_hints.append("- tool_args: Provide parameter dictionary (non-empty dict)")
                     elif field == 'should_stop':
                         field_hints.append("- should_stop: Use true or false (boolean, not string)")
                 
                 field_hints_text = '\n'.join(field_hints)
-                retry_message = f"\n\nCRITICAL ERROR: Your response failed validation. Problems found:\n- Missing or empty fields: {missing_fields}\n\nFIELD REQUIREMENTS:\n{field_hints_text}\n\nYou MUST provide ALL required fields: {self.output_field}\nNO empty strings (\"\") are allowed.\nRespond with ONLY a valid JSON object containing all required fields."
+                
+                if should_stop_value:
+                    retry_message = f"\n\nCRITICAL ERROR: Your response failed validation. Problems found:\n- Missing or empty fields: {missing_fields}\n\nFIELD REQUIREMENTS:\n{field_hints_text}\n\nNote: Since should_stop is true, tool_name and tool_args are optional.\nRespond with ONLY a valid JSON object containing required fields."
+                else:
+                    retry_message = f"\n\nCRITICAL ERROR: Your response failed validation. Problems found:\n- Missing or empty fields: {missing_fields}\n\nFIELD REQUIREMENTS:\n{field_hints_text}\n\nYou MUST provide ALL required fields: {self.output_field}\nNO empty strings (\"\") are allowed.\nRespond with ONLY a valid JSON object containing all required fields."
                 
                 # Create new messages for retry (don't modify original)
                 retry_messages = messages.copy()
@@ -254,27 +270,32 @@ class LLMAgentBase():
                 retry_messages[-1]["content"] += retry_message
                 messages = retry_messages
                 continue
+            elif not critical_missing_fields:
+                # No critical fields missing - we can proceed immediately
+                if should_stop_value and ('tool_name' in missing_fields or 'tool_args' in missing_fields):
+                    # Model wants to stop and only tool_name/tool_args are missing - this is acceptable
+                    if self.logger:
+                        non_critical_missing = [f for f in missing_fields if f in ['tool_name', 'tool_args']]
+                        self.logger.info(f"Model chose to stop (should_stop=true). Non-critical missing fields {non_critical_missing} are acceptable.")
+                elif tool_reason_missing:
+                    # Only tool_reason missing - can proceed with simulation
+                    if self.logger:
+                        self.logger.info(f"Only tool_reason missing, but critical fields are present. Proceeding with simulation.")
+                
+                output_infos = []
+                for field in self.output_field:
+                    output_infos.append(json_dict.get(field, ""))
+                return output_infos
             
-            # We've reached the final attempt - decide how to handle remaining missing fields
-            if critical_missing_fields:
-                # Critical fields still missing after max retries - this should fail
-                if self.logger:
-                    self.logger.warning(f"Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}. Final parsed JSON: {json_dict}")
-                else:
-                    print(f"WARNING: Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}")
-                output_infos = []
-                for field in self.output_field:
-                    output_infos.append(json_dict.get(field, ""))
-                return output_infos
-            elif tool_reason_missing:
-                # Only tool_reason missing after max retries - can proceed with simulation
-                if self.logger:
-                    self.logger.info(f"tool_reason missing after {max_retries} attempts, but tool_name and tool_args are present. Proceeding with simulation.")
-                output_infos = []
-                for field in self.output_field:
-                    # Use empty string for tool_reason if missing, actual values for other fields
-                    output_infos.append(json_dict.get(field, ""))
-                return output_infos
+            # We've reached the final attempt with critical missing fields
+            if self.logger:
+                self.logger.warning(f"Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}. Final parsed JSON: {json_dict}")
+            else:
+                print(f"WARNING: Failed to get complete response after {max_retries} attempts. Critical missing fields: {critical_missing_fields}")
+            output_infos = []
+            for field in self.output_field:
+                output_infos.append(json_dict.get(field, ""))
+            return output_infos
 
         # If all retries failed, return empty strings for missing fields but log the issue
         if self.logger:
