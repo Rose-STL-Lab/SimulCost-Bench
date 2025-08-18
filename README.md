@@ -126,7 +126,7 @@ python dataset_gen/twoD_ns.py -t mesh_x -z
 - `-t`: Problem task type
 - `-z`: Enable zero-shot mode
 
-**Output:** Datasets are saved to: `data/euler_1d/{task}/{precision_level}/human_write/` directory 
+**Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
 
 ## 📄 Configure Model Providers
 

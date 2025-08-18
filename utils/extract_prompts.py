@@ -5,7 +5,7 @@ Extract and save prompt examples from SimulCost-Bench datasets.
 This script extracts prompt examples (system + user messages) from the dataset files
 and saves them in human-readable format for analysis and review.
 
-Supports heat_1d and euler_1d simulations with configurable precision levels and inference modes.
+Supports heat_1d, heat_2d, and euler_1d simulations with configurable precision levels and inference modes.
 """
 
 import json
@@ -20,7 +20,7 @@ def get_simulation_config(simulation: str) -> Dict[str, List[str]]:
     Get configuration for supported simulations.
     
     Args:
-        simulation: Name of the simulation (heat_1d or euler_1d)
+        simulation: Name of the simulation (heat_1d, heat_2d, or euler_1d)
         
     Returns:
         Dictionary containing precision levels and task types for the simulation
@@ -32,6 +32,10 @@ def get_simulation_config(simulation: str) -> Dict[str, List[str]]:
         "heat_1d": {
             "precision_levels": ["high", "low", "medium"],
             "tasks": ["cfl", "n_space"]
+        },
+        "heat_2d": {
+            "precision_levels": ["high", "low", "medium"],
+            "tasks": ["dx", "relax", "t_init", "error_threshold"]
         },
         "euler_1d": {
             "precision_levels": ["high", "low", "medium"], 
@@ -252,6 +256,7 @@ def main():
         epilog="""
 Examples:
   python extract_prompts.py -d heat_1d
+  python extract_prompts.py -d heat_2d
   python extract_prompts.py -d euler_1d --output ./prompts --qid 2
         """
     )
@@ -259,8 +264,8 @@ Examples:
     parser.add_argument(
         "-d", "--dataset", 
         required=True,
-        choices=["heat_1d", "euler_1d"],
-        help="Dataset to extract prompts from (heat_1d or euler_1d)"
+        choices=["heat_1d", "heat_2d", "euler_1d"],
+        help="Dataset to extract prompts from (heat_1d, heat_2d, or euler_1d)"
     )
     
     parser.add_argument(

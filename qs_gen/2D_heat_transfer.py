@@ -221,8 +221,8 @@ class TwoDHeatTransferQuestionGenerator:
         return "\n".join(question_lines)
     
     def _save_dataset(self, dataset: List[Dict], task: str, precision_level: str, zero_shot: bool) -> None:
-        """Save dataset to the new path format: data/heat_steady_2d/{task}/{precision_level}/"""
-        base_dir = Path("data") / "heat_steady_2d" / task / precision_level
+        """Save dataset to the new path format: data/heat_2d/{task}/{precision_level}/"""
+        base_dir = Path("data") / "heat_2d" / task / precision_level
         base_dir.mkdir(parents=True, exist_ok=True)
         
         filename = "zero_shot_questions.json" if zero_shot else "iterative_questions.json"
@@ -235,7 +235,7 @@ def main() -> None:
     """Generate all Heat Steady 2D questions for all tasks and precision levels"""
     print("HEAT STEADY 2D QUESTION GENERATOR")
     print("=" * 80)
-    print(f"Output directory: data/heat_steady_2d/{{task}}/{{precision_level}}/")
+    print(f"Output directory: data/heat_2d/{{task}}/{{precision_level}}/")
     print(f"Tasks: dx, relax, t_init, error_threshold")
     print(f"Precision levels: {list(PRECISION_LEVELS.keys())}")
     print(f"File types: iterative_questions.json, zero_shot_questions.json")

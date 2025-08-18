@@ -315,7 +315,7 @@ def main():
         print(f"\n📋 TASK: {task.upper()}")
         print("-" * 50)
         
-        task_dir = f"data/heat_steady_2d/{task}"
+        task_dir = f"data/heat_2d/{task}"
         
         # Get precision levels from the new structure
         precision_levels = []
@@ -332,7 +332,7 @@ def main():
             print(f"  🎯 {precision_level.upper()} precision:")
             
             # Create output directory for this precision level
-            out_dir = f"data/heat_steady_2d/human_write/{precision_level}"
+            out_dir = f"data/heat_2d/human_write/{precision_level}"
             os.makedirs(out_dir, exist_ok=True)
             
             for zflag in modes:
