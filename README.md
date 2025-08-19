@@ -294,8 +294,8 @@ After generating task-level results with `tabulate.py`, you can create simulatio
 # Aggregate task-level results to simulation-level summaries
 python evaluation/simul_sum.py -d heat_1d
 python evaluation/simul_sum.py -d heat_2d
-python evaluation/simul_sum.py -d euler_1d
 python evaluation/simul_sum.py -d burgers_1d
+python evaluation/simul_sum.py -d euler_1d
 ```
 
 **Parameters:**

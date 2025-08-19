@@ -145,6 +145,40 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
         writer.writerows(formatted_results)
 
 
+def write_simulation_csv_by_mode(results: List[Dict], base_output_file: Path) -> None:
+    """Write simulation-level results to CSV, split by inference mode into separate folders."""
+    # Group results by inference mode
+    mode_groups = {}
+    for result in results:
+        mode = result["Inference Mode"].lower().replace("-", "_")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(result)
+    
+    # Write each mode to its own folder
+    for mode, mode_results in mode_groups.items():
+        mode_dir = base_output_file.parent / mode
+        mode_file = mode_dir / base_output_file.name
+        write_simulation_csv(mode_results, mode_file)
+
+
+def write_simulation_excel_by_mode(results: List[Dict], base_output_file: Path) -> None:
+    """Write simulation-level results to Excel, split by inference mode into separate folders."""
+    # Group results by inference mode
+    mode_groups = {}
+    for result in results:
+        mode = result["Inference Mode"].lower().replace("-", "_")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(result)
+    
+    # Write each mode to its own folder
+    for mode, mode_results in mode_groups.items():
+        mode_dir = base_output_file.parent / mode
+        mode_file = mode_dir / base_output_file.name
+        write_simulation_excel(mode_results, mode_file)
+
+
 def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     """Write simulation-level results to Excel with beautiful formatting and visual separators."""
     if not results:
@@ -399,9 +433,14 @@ def main():
     write_simulation_csv(all_results, output_csv)
     write_simulation_excel(all_results, output_xlsx)
     
+    # Write outputs by inference mode
+    write_simulation_csv_by_mode(all_results, output_csv)
+    write_simulation_excel_by_mode(all_results, output_xlsx)
+    
     print(f"\n🎉 Simulation-level summaries generated:")
     print(f"   📊 CSV  : {output_csv}")
     print(f"   📈 Excel: {output_xlsx} (beautifully formatted with colors and visual separators)")
+    print(f"   Mode-specific files created in: {output_csv.parent}/zero_shot/ and {output_csv.parent}/iterative/")
     print(f"\n📋 Summary: Combined {len(all_results)} model results across {len(precision_levels)} precision levels")
 
 

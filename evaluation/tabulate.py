@@ -289,6 +289,40 @@ def write_csv(rows: List[Dict[str, str]], metric_cols: List[str], outfile: Path)
         writer.writerows(formatted_rows)
 
 
+def write_csv_by_mode(rows: List[Dict[str, str]], metric_cols: List[str], base_outfile: Path) -> None:
+    """Write rows to CSV, split by inference mode into separate folders."""
+    # Group rows by inference mode
+    mode_groups = {}
+    for row in rows:
+        mode = row["Inference Mode"].lower().replace("-", "_")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(row)
+    
+    # Write each mode to its own folder
+    for mode, mode_rows in mode_groups.items():
+        mode_dir = base_outfile.parent / mode
+        mode_file = mode_dir / base_outfile.name
+        write_csv(mode_rows, metric_cols, mode_file)
+
+
+def write_excel_by_mode(rows: List[Dict[str, str]], metric_cols: List[str], base_outfile: Path) -> None:
+    """Write rows to Excel, split by inference mode into separate folders."""
+    # Group rows by inference mode
+    mode_groups = {}
+    for row in rows:
+        mode = row["Inference Mode"].lower().replace("-", "_")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(row)
+    
+    # Write each mode to its own folder
+    for mode, mode_rows in mode_groups.items():
+        mode_dir = base_outfile.parent / mode
+        mode_file = mode_dir / base_outfile.name
+        write_excel(mode_rows, metric_cols, mode_file)
+
+
 def write_excel(
     rows: List[Dict[str, str]], metric_cols: List[str], outfile: Path
 ) -> None:
@@ -527,10 +561,15 @@ def main() -> None:
             # Write outputs
             write_csv(rows, metric_cols, csv_path)
             write_excel(rows, metric_cols, xlsx_path)
+            
+            # Write outputs by inference mode
+            write_csv_by_mode(rows, metric_cols, csv_path)
+            write_excel_by_mode(rows, metric_cols, xlsx_path)
 
             print(f"✅ Summary for {precision} precision saved:")
             print("   CSV  :", csv_path)
             print("   Excel:", xlsx_path, "(ready for humans ✨)")
+            print(f"   Mode-specific files created in: {csv_path.parent}/zero_shot/ and {csv_path.parent}/iterative/")
     else:
         # Original logic for other datasets
         rows, metric_cols = collect_rows(args.dataset, task_dirs)
@@ -556,10 +595,15 @@ def main() -> None:
         # Write outputs
         write_csv(rows, metric_cols, csv_path)
         write_excel(rows, metric_cols, xlsx_path)
+        
+        # Write outputs by inference mode
+        write_csv_by_mode(rows, metric_cols, csv_path)
+        write_excel_by_mode(rows, metric_cols, xlsx_path)
 
         print("✅ Summary saved:")
         print("   CSV  :", csv_path)
         print("   Excel:", xlsx_path, "(ready for humans ✨)")
+        print(f"   Mode-specific files created in: {csv_path.parent}/zero_shot/ and {csv_path.parent}/iterative/")
 
 
 if __name__ == "__main__":
