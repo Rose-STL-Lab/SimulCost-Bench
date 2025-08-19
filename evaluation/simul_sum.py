@@ -76,9 +76,12 @@ def aggregate_simulation_results(csv_file: Path, precision_level: str, dataset: 
         # Get sample counts for weighting
         weights = group['Number of Samples'].tolist()
         
+        # List of fields to exclude from aggregation
+        excluded_fields = {'converged_rate', 'mean_rmse', 'rmse_tolerance', 'total_dummy_cost', 'total_model_cost'}
+        
         # Aggregate numeric metrics
         for col in group.columns:
-            if col in ['Model', 'Task', 'Inference Mode', 'Number of Samples']:
+            if col in ['Model', 'Task', 'Inference Mode', 'Number of Samples'] or col in excluded_fields:
                 continue
                 
             # Extract numeric values and their corresponding weights
@@ -91,13 +94,8 @@ def aggregate_simulation_results(csv_file: Path, precision_level: str, dataset: 
                     numeric_weights.append(weights[idx])
             
             if numeric_values:
-                # For cost fields, use sum instead of weighted average
-                if col in ['total_dummy_cost', 'total_model_cost']:
-                    # These are cumulative metrics - sum across tasks
-                    agg_row[col] = sum(numeric_values)
-                else:
-                    # For rate/efficiency metrics, use weighted average
-                    agg_row[col] = weighted_average(numeric_values, numeric_weights)
+                # For rate/efficiency metrics, use weighted average
+                agg_row[col] = weighted_average(numeric_values, numeric_weights)
             else:
                 # If no numeric values, use the first non-empty value or 'nan'
                 non_empty_values = [v for v in group[col] if str(v).strip() and str(v) != 'nan']
@@ -116,8 +114,8 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
     # Determine column order (similar to tabulate.py)
     priority_cols = [
         'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
-        'converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 
-        'mean_hard_efficiency', 'mean_rmse', 'rmse_tolerance'
+        'success_rate', 'mean_soft_success', 'mean_efficiency', 
+        'mean_hard_efficiency'
     ]
     
     # Get all columns from results
@@ -133,7 +131,7 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
     formatted_results = []
     for result in results:
         formatted_result = result.copy()
-        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
                 formatted_result[metric] = f"{formatted_result[metric]:.2f}"
         formatted_results.append(formatted_result)
@@ -154,8 +152,8 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     # Determine column order
     priority_cols = [
         'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
-        'converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 
-        'mean_hard_efficiency', 'mean_rmse', 'rmse_tolerance'
+        'success_rate', 'mean_soft_success', 'mean_efficiency', 
+        'mean_hard_efficiency'
     ]
     
     # Get all columns from results
@@ -171,7 +169,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     formatted_results = []
     for result in results:
         formatted_result = result.copy()
-        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
                 formatted_result[metric] = f"{formatted_result[metric]:.2f}"
         formatted_results.append(formatted_result)
@@ -195,7 +193,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
         ws = wb.add_worksheet('Simulation Summary')
         writer.sheets['Simulation Summary'] = ws
         
-        # Simple formatting styles - no colors, just structure
+        # Formatting styles with color coding for inference modes
         header_fmt = wb.add_format({
             'bold': True,
             'border': 1,
@@ -208,10 +206,29 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
             'border': 1
         })
         
-        # Best performance highlighting - only bold
-        best_performance_fmt = wb.add_format({
+        # Iterative mode rows - light green background
+        iterative_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F5E8'  # Light green
+        })
+        
+        # Zero-shot mode rows - light blue background
+        zeroshot_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F0FF'  # Light blue
+        })
+        
+        # Best performance highlighting with color coding
+        best_iterative_fmt = wb.add_format({
             'bold': True,
-            'border': 1
+            'border': 1,
+            'bg_color': '#E8F5E8'  # Light green
+        })
+        
+        best_zeroshot_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#E8F0FF'  # Light blue
         })
         
         # Write header row with formatting
@@ -266,10 +283,19 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
             for i, col in enumerate(ordered_cols):
                 val = row[col]
                 
-                # Choose formatting: best performance gets bold, others use standard format
-                if is_best_performance and col in ['Model', 'mean_efficiency']:
-                    cell_fmt = best_performance_fmt
+                # Choose formatting based on inference mode and performance
+                if mode.lower() == 'iterative':
+                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                        cell_fmt = best_iterative_fmt
+                    else:
+                        cell_fmt = iterative_fmt
+                elif mode.lower() == 'zero-shot':
+                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                        cell_fmt = best_zeroshot_fmt
+                    else:
+                        cell_fmt = zeroshot_fmt
                 else:
+                    # Fallback to standard format
                     cell_fmt = standard_fmt
                 
                 # Write cell value
@@ -299,11 +325,17 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
                 max_len = max(df[col].astype(str).map(len).max(), len(col)) + 3
                 ws.set_column(idx, idx, min(max_len, 20))
         
-        # Add a simple note at the bottom
+        # Add a legend at the bottom
         legend_row = excel_row + 2
         legend_fmt = wb.add_format({'italic': True, 'font_size': 9})
-        ws.write(legend_row, 0, "Note: Best efficiency model in each precision/mode group shown in bold", legend_fmt)
-        ws.write(legend_row + 1, 0, "Blank rows separate precision levels and inference modes", legend_fmt)
+        iterative_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F5E8'})
+        zeroshot_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F0FF'})
+        
+        ws.write(legend_row, 0, "Legend:", legend_fmt)
+        ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
+        ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
+        ws.write(legend_row + 3, 0, "Best efficiency model in each precision/mode group shown in bold", legend_fmt)
+        ws.write(legend_row + 4, 0, "Blank rows separate precision levels and inference modes", legend_fmt)
 
 
 def main():

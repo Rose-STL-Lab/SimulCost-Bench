@@ -330,9 +330,34 @@ def write_excel(
         ws = wb.add_worksheet("Summary")
         writer.sheets["Summary"] = ws
 
-        # Formatting styles
+        # Formatting styles with color coding for inference modes
         header_fmt = wb.add_format({"bold": True})
         bold_fmt = wb.add_format({"bold": True})
+        
+        # Iterative mode rows - light green background
+        iterative_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F5E8'  # Light green
+        })
+        
+        # Zero-shot mode rows - light blue background
+        zeroshot_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F0FF'  # Light blue
+        })
+        
+        # Best performance highlighting with color coding
+        best_iterative_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#E8F5E8'  # Light green
+        })
+        
+        best_zeroshot_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#E8F0FF'  # Light blue
+        })
 
         # Write header row
         ws.write_row(0, 0, ordered_cols, header_fmt)
@@ -354,39 +379,57 @@ def write_excel(
 
             # Write row by row
             for _, row in subdf.iterrows():
-                # Regular write operations
-                ws.write(excel_row, col_idx["Model"], row["Model"])
-                ws.write(excel_row, col_idx["Task"], row["Task"])
-                ws.write(excel_row, col_idx["Inference Mode"], row["Inference Mode"])
-                ws.write_number(
-                    excel_row, col_idx["Number of Samples"], row["Number of Samples"]
-                )
-
-                # Other metric columns
-                for m in ordered_metrics:
-                    val = row[m]
-                    if val == 'nan':
-                        ws.write(excel_row, col_idx[m], 'nan')  # Write 'nan' as string
-                    else:
-                        ws.write(excel_row, col_idx[m], val)
-
+                # Determine formatting based on inference mode
+                inference_mode = row["Inference Mode"]
+                
                 # Bold formatting logic for highest efficiency (only when value is non-zero)
                 is_top_efficiency = (
                     max_efficiency is not None
                     and row.get("mean_efficiency", 0) == max_efficiency
                     and row.get("mean_efficiency", 0) != 0
                 )
+                
+                # Choose background color format based on inference mode only
+                if inference_mode.lower() == 'iterative':
+                    bg_fmt = iterative_fmt
+                elif inference_mode.lower() == 'zero-shot':
+                    bg_fmt = zeroshot_fmt
+                else:
+                    # Fallback to no format
+                    bg_fmt = None
 
+                # Write cells with background color formatting
+                ws.write(excel_row, col_idx["Model"], row["Model"], bg_fmt)
+                ws.write(excel_row, col_idx["Task"], row["Task"], bg_fmt)
+                ws.write(excel_row, col_idx["Inference Mode"], row["Inference Mode"], bg_fmt)
+                ws.write_number(
+                    excel_row, col_idx["Number of Samples"], row["Number of Samples"], bg_fmt
+                )
+
+                # Other metric columns
+                for m in ordered_metrics:
+                    val = row[m]
+                    if val == 'nan':
+                        ws.write(excel_row, col_idx[m], 'nan', bg_fmt)  # Write 'nan' as string
+                    else:
+                        ws.write(excel_row, col_idx[m], val, bg_fmt)
+
+                # Apply bold formatting ONLY to model name and efficiency for top performers
                 if is_top_efficiency:
-                    # Highlight the efficiency value in bold
-                    ws.write(
-                        excel_row,
-                        col_idx["mean_efficiency"],
-                        row["mean_efficiency"],
-                        bold_fmt,
-                    )
-                    # Also highlight the model name in bold
-                    ws.write(excel_row, col_idx["Model"], row["Model"], bold_fmt)
+                    # Choose bold format with appropriate background color
+                    if inference_mode.lower() == 'iterative':
+                        bold_fmt_with_bg = best_iterative_fmt
+                    elif inference_mode.lower() == 'zero-shot':
+                        bold_fmt_with_bg = best_zeroshot_fmt
+                    else:
+                        bold_fmt_with_bg = bold_fmt
+                    
+                    # Overwrite model name and efficiency with bold formatting
+                    ws.write(excel_row, col_idx["Model"], row["Model"], bold_fmt_with_bg)
+                    if "mean_efficiency" in col_idx:
+                        efficiency_val = row["mean_efficiency"]
+                        if efficiency_val != 'nan':
+                            ws.write(excel_row, col_idx["mean_efficiency"], efficiency_val, bold_fmt_with_bg)
 
                 excel_row += 1
 
@@ -396,6 +439,18 @@ def write_excel(
         # Auto filter + freeze header row
         ws.autofilter(0, 0, excel_row - 1, len(ordered_cols) - 1)
         ws.freeze_panes(1, 0)
+
+        # Add a legend at the bottom
+        legend_row = excel_row + 1
+        legend_fmt = wb.add_format({'italic': True, 'font_size': 9})
+        iterative_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F5E8'})
+        zeroshot_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F0FF'})
+        
+        ws.write(legend_row, 0, "Legend:", legend_fmt)
+        ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
+        ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
+        ws.write(legend_row + 3, 0, "Best efficiency model in each task/mode group shown in bold", legend_fmt)
+        ws.write(legend_row + 4, 0, "Blank rows separate task and inference mode groups", legend_fmt)
 
         # Auto-adjust column width
         for idx, col in enumerate(ordered_cols):
