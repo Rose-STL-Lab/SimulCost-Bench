@@ -33,7 +33,7 @@ show_help() {
     echo "  -h, --help       Show this help message"
     echo ""
     echo "Available datasets and their tasks:"
-    echo "  burgers_1d: cfl, k, w (with cases: blast, double_shock, rarefaction, sin, sod)"
+    echo "  burgers_1d: cfl, beta, k, n_space (with precision levels: low, medium, high)"
     echo "  euler_1d: cfl, beta, k, n_space (with precision levels: low, medium, high)"
     echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
     echo "  heat_2d: dx, error_threshold (both modes), relax, t_init (zero-shot only) (with precision levels: low, medium, high)"
@@ -91,15 +91,15 @@ for DATASET in "${DATASETS[@]}"; do
         case "$DATASET" in
         "burgers_1d")
             echo "📋 Running Burgers 1D evaluation..."
-            tasks=("cfl" "k" "w")
-            cases=("blast" "double_shock" "rarefaction" "sin" "sod")
+            tasks=("cfl" "beta" "k" "n_space")
+            precision_levels=("low" "medium" "high")
             modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
             
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
-                    for case in "${cases[@]}"; do
-                        echo "▶ Executing: python evaluation/burgers/eval.py -m $MODEL -d burgers_1d -t $task -c $case $mode"
-                        python evaluation/burgers/eval.py -m $MODEL -d burgers_1d -t $task -c $case $mode
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/burgers_1d/eval.py -m $MODEL -d burgers_1d -t $task -l $precision $mode"
+                        python evaluation/burgers_1d/eval.py -m $MODEL -d burgers_1d -t $task -l $precision $mode
                     done
                 done
             done

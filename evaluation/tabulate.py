@@ -171,18 +171,18 @@ def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) ->
     rows: List[Dict[str, str]] = []
     metric_names = set()
 
-    # ---------- burgers_1d, heat_1d, heat_2d and euler_1d (requires cross-case aggregation) ----------
-    if dataset in ["burgers_1d", "heat_1d", "heat_2d", "euler_1d"]:
+    # ---------- heat_1d, heat_2d, burgers_1d and euler_1d (requires cross-case aggregation) ----------
+    if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
         # key: (model, task, mode)  → {"num_samples": int, "metrics": [dict, ...]}
         agg: Dict[Tuple[str, str, str], Dict[str, object]] = {}
 
         for task in tasks:
             task_dir = base_root / task
-            # For heat_1d, heat_2d and euler_1d with precision levels, filter by precision_level
-            if dataset in ["heat_1d", "heat_2d", "euler_1d"] and precision_level:
+            # For heat_1d, heat_2d, burgers_1d and euler_1d with precision levels, filter by precision_level
+            if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"] and precision_level:
                 case_dirs = [p for p in task_dir.iterdir() if p.is_dir() and p.name == precision_level]
             else:
-                # Five case directories (for burgers_1d or all precision levels for heat_1d/heat_2d/euler_1d)
+                # All precision levels for heat_1d/heat_2d/burgers_1d/euler_1d
                 case_dirs = sorted(p for p in task_dir.iterdir() if p.is_dir())
             
             for case_dir in case_dirs:
@@ -503,8 +503,8 @@ def main() -> None:
             print(f"⚠️  No task subdirectories found in '{dataset_dir}'")
             return
 
-    # Special handling for heat_1d, heat_2d and euler_1d with precision levels
-    if args.dataset in ["heat_1d", "heat_2d", "euler_1d"]:
+    # Special handling for heat_1d, heat_2d, burgers_1d and euler_1d with precision levels
+    if args.dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
         precision_levels = ["high", "medium", "low"]
         for precision in precision_levels:
             # Collect rows for this precision level

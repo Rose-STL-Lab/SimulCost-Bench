@@ -18,7 +18,10 @@ TOOL_NAME_KEYS = {
     "heat_2d_check_converge_relax": ["dx", "relax", "t_init", "error_threshold"],
     "heat_2d_check_converge_t_init": ["dx", "relax", "t_init", "error_threshold"],
     "heat_2d_check_converge_error_threshold": ["dx", "relax", "t_init", "error_threshold"],
-    "burgers_1d_solve": ["cfl", "k", "w"],
+    "burgers_1d_check_converge_cfl": ["cfl", "beta", "k", "n_space"],
+    "burgers_1d_check_converge_beta": ["cfl", "beta", "k", "n_space"],
+    "burgers_1d_check_converge_k": ["cfl", "beta", "k", "n_space"],
+    "burgers_1d_check_converge_n_space": ["cfl", "beta", "k", "n_space"],
     "euler_1d_check_converge_cfl": ["cfl", "beta", "k", "n_space"],
     "euler_1d_check_converge_beta": ["cfl", "beta", "k", "n_space"],
     "euler_1d_check_converge_k": ["cfl", "beta", "k", "n_space"],
@@ -255,7 +258,7 @@ def find_json_robust(response: str):
             except:
                 # Extract parameters from tool_args string using regex
                 args_str = tool_args_match.group(1)
-                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "dx", "relax", "t_init", "error_threshold", "k", "w", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
+                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "dx", "relax", "t_init", "error_threshold", "k", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
             
             return result
     except Exception:
@@ -349,16 +352,20 @@ class ToolCallManager:
                     error_threshold=fetch_param(tool_args, "error_threshold"),
                     tolerance=tolerance
                 )
-            # elif tool_name in ["burgers_1d_solve"]:
-            #     result = func(
-            #         accumulated_cost=self.accumulated_cost,
-            #         profile=profile,
-            #         cfl=fetch_param(tool_args, "cfl"),
-            #         k=fetch_param(tool_args, "k"),
-            #         w=fetch_param(tool_args, "w"),
-            #         linf_tolerance=5e-2,
-            #         rmse_tolerance=5e-3,
-            #     )
+            elif tool_name in ["burgers_1d_check_converge_cfl", "burgers_1d_check_converge_beta", "burgers_1d_check_converge_k", "burgers_1d_check_converge_n_space"]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for burgers_1d tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    cfl=fetch_param(tool_args, "cfl"),
+                    beta=fetch_param(tool_args, "beta"),
+                    k=fetch_param(tool_args, "k"),
+                    n_space=fetch_param(tool_args, "n_space"),
+                    rmse_tolerance=tolerance
+                )
             elif tool_name in ["euler_1d_check_converge_cfl", "euler_1d_check_converge_beta", "euler_1d_check_converge_k", "euler_1d_check_converge_n_space"]:
                 # Use tolerance_rmse from dataset - required field
                 if self.tolerance_rmse is None:

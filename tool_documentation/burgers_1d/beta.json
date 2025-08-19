@@ -3,8 +3,8 @@
     "description": {
       "type": "function",
       "function": {
-        "name": "burgers_1d_check_converge_k",
-        "description": "Conduct a 1D Burgers PDE simulation and evaluate its spatial convergence for k task by doubling n_space. It returns {\"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"metrics1\": object, \"metrics2\": object}.",
+        "name": "burgers_1d_check_converge_beta",
+        "description": "Conduct a 1D Burgers PDE simulation and evaluate its spatial convergence for beta task by doubling n_space. It returns {\"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"metrics1\": object, \"metrics2\": object}.",
         "parameters": {
           "type": "object",
           "properties": {

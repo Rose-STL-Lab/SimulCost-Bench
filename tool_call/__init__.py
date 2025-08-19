@@ -13,7 +13,12 @@ from .twoD_heat_transfer.run_twoD_heat_transfer_PDE_exp import (
 )
 
 # Burgers 1D functions
-from .burgers_1d.run_oneD_burgers_PDE_exp import burgers_1d_solve
+from .burgers_1d.run_oneD_burgers_PDE_exp import (
+    burgers_1d_check_converge_cfl,
+    burgers_1d_check_converge_beta,
+    burgers_1d_check_converge_k,
+    burgers_1d_check_converge_n_space
+)
 
 # Euler 1D functions
 from .euler_1d.run_oneD_euler_PDE_exp import (
@@ -48,7 +53,10 @@ __all__ = [
     "heat_2d_check_converge_t_init",
 
     # Burgers 1D
-    "burgers_1d_solve",
+    "burgers_1d_check_converge_cfl",
+    "burgers_1d_check_converge_beta",
+    "burgers_1d_check_converge_k", 
+    "burgers_1d_check_converge_n_space",
     
     # Euler 1D
     "euler_1d_check_converge_cfl",

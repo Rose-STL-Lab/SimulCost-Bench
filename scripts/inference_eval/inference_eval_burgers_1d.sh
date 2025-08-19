@@ -23,8 +23,8 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
-tasks=("cfl" "k" "w")
-cases=("blast" "double_shock" "rarefaction" "sin" "sod")
+tasks=("cfl" "beta" "k" "n_space")
+precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 # model_provider="bedrock"
@@ -54,9 +54,9 @@ models=(
 for mode in "${modes[@]}"; do
   for task in "${tasks[@]}"; do
     for model in "${models[@]}"; do
-      for case in "${cases[@]}"; do
-        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d burgers_1d -t $task -c $case $mode --resume"
-        run_cmd "python evaluation/burgers/eval.py -m $model -d burgers_1d -t $task -c $case $mode"
+      for precision in "${precision_levels[@]}"; do
+        run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d burgers_1d -t $task -l $precision $mode --resume"
+        run_cmd "python evaluation/burgers_1d/eval.py -m $model -d burgers_1d -t $task -l $precision $mode"
       done
     done
   done

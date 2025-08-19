@@ -12,6 +12,7 @@ Usage
 python evaluation/simul_sum.py -d euler_1d
 python evaluation/simul_sum.py -d heat_1d
 python evaluation/simul_sum.py -d heat_2d
+python evaluation/simul_sum.py -d burgers_1d
 
 Output: Creates two files in eval_results/{dataset}/:
 - {dataset}_sum.csv (combined results with precision_level column)
@@ -344,7 +345,7 @@ def main():
     )
     parser.add_argument(
         "-d", "--dataset", required=True, 
-        help="Dataset name (e.g. heat_1d, heat_2d, euler_1d)"
+        help="Dataset name (e.g. heat_1d, heat_2d, burgers_1d, euler_1d)"
     )
     args = parser.parse_args()
     
@@ -358,8 +359,8 @@ def main():
         return
     
     # Currently only support datasets with precision levels
-    if args.dataset not in ["heat_1d", "heat_2d", "euler_1d"]:
-        print(f"❌ Currently only supports heat_1d, heat_2d and euler_1d datasets")
+    if args.dataset not in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
+        print(f"❌ Currently only supports heat_1d, heat_2d, burgers_1d and euler_1d datasets")
         return
     
     # Process each precision level and combine results

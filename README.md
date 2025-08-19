@@ -58,7 +58,8 @@ The table below summarizes the available tasks for each simulation type and indi
 | 2D Steady Heat Transfer  | `t_init`         | ❌ Only Zero-Shot   |
 | 1D Burgers               | `cfl`            | ✅ Supported        |
 | 1D Burgers               | `k`              | ✅ Supported (Compositional)  |
-| 1D Burgers               | `w`              | ✅ Supported (Compositional)  |
+| 1D Burgers               | `beta`           | ✅ Supported (Compositional)  |
+| 1D Burgers               | `n_space`        | ✅ Supported        |
 | 1D Euler                 | `cfl`            | ✅ Supported        |
 | 1D Euler                 | `beta`           | ✅ Supported (Compositional)  |
 | 1D Euler                 | `k`              | ✅ Supported (Compositional)  |
@@ -85,7 +86,7 @@ python qs_gen/1D_heat_transfer.py
 python qs_gen/2D_heat_transfer.py
 
 # Burgers 1D Equation with 2nd Order Roe Method
-python qs_gen/1D_burgers.py -t cfl -z
+python qs_gen/1D_burgers.py
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
 python qs_gen/1D_euler.py
@@ -93,12 +94,6 @@ python qs_gen/1D_euler.py
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python qs_gen/2D_ns.py -n 25 -t mesh_x -z
 ```
-
-<!-- **Parameters:**
-- `-n`: Number of examples to generate
-  - **Note for 2D Navier-Stokes**: This creates N profiles for EACH boundary condition (total: 1 + 4×N profiles)
-- `-t`: Problem task type (cfl, n_space, dx, mesh_x, omega_u, etc.)
-- `-z`: Enable zero-shot mode -->
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
 
@@ -113,7 +108,7 @@ python dataset_gen/oneD_heat_transfer.py
 python dataset_gen/twoD_heat_transfer.py
 
 # Burgers 1D Equation with 2nd Order Roe Method
-python dataset_gen/oneD_burgers.py -t cfl -z
+python dataset_gen/oneD_burgers.py
 
 # Euler 1D Equations with 2nd Order MUSCL-Roe Method
 python dataset_gen/oneD_euler.py
@@ -121,10 +116,6 @@ python dataset_gen/oneD_euler.py
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python dataset_gen/twoD_ns.py -t mesh_x -z
 ```
-
-**Parameters:**
-- `-t`: Problem task type
-- `-z`: Enable zero-shot mode
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
 
@@ -203,10 +194,10 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
 **📋 Available Datasets & Tasks:**
-- **Heat 1D**: `cfl`, `n_space` (precision levels: low, medium, high)
-- **Heat 2D**: `dx`, `error_threshold`, `relax`, `t_init` (precision levels: low, medium, high)
-- **Burgers 1D**: `cfl`, `k`, `w` (cases: blast, double_shock, rarefaction, sin, sod)
-- **Euler 1D**: `cfl`, `beta`, `k`, `n_space` (precision levels: low, medium, high)
+- **Heat 1D**: `cfl`, `n_space`
+- **Heat 2D**: `dx`, `error_threshold`, `relax`, `t_init`
+- **Burgers 1D**: `cfl`, `k`, `beta`, `n_space`
+- **Euler 1D**: `cfl`, `beta`, `k`, `n_space`
 - **2D Navier-Stokes**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
 
 **Parameters:**
@@ -215,8 +206,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - `-m`: Model name/identifier
 - `-d`: Dataset name
 - `-t`: Problem task type
-- `-c`: Case name (for burgers_1d only)
-- `-l`: Precision level (for heat_1d, heat_2d and euler_1d: low, medium, high; default: medium)
+- `-l`: Precision level
 - `-z`: Enable zero-shot mode
 - `--list-combinations`: Show all valid dataset-task combinations and exit
 
@@ -228,10 +218,8 @@ python inference/langchain_LLM.py --list-combinations
 The system automatically validates dataset-task compatibility and provides helpful error messages for invalid combinations.
 
 **Outputs:**
-- Results: `results_model_attempt/{dataset}/{task}/` (for most datasets)
-- Results: `results_model_attempt/{dataset}/{precision_level}/{task}/` (for heat_1d, heat_2d and euler_1d)
-- Logs: `log_model_tool_call/{dataset}/{task}/` (for most datasets) 
-- Logs: `log_model_tool_call/{dataset}/{precision_level}/{task}/` (for heat_1d, heat_2d and euler_1d)
+- Results: `results_model_attempt/{dataset}/{precision_level}/{task}/`
+- Logs: `log_model_tool_call/{dataset}/{precision_level}/{task}/`
 
 ## 🔄 Resume Functionality
 
@@ -273,20 +261,15 @@ Compute performance metrics and accuracy scores for model predictions.
 ```bash
 # Heat 1D
 python evaluation/heat_1d/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
-
-# Burgers 1D Equation with 2nd Order Roe Method
-python evaluation/burgers/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d burgers_1d -t cfl -c blast -z
-Cases: blast, double_shock, rarefaction, sin, sod
 ```
 **Parameters:**
 - `-m`: Model name/identifier
 - `-d`: Dataset name  
 - `-t`: Problem task type
-- `-c`: Case name (for burgers_1d only; euler_1d cases are handled automatically)
-- `-l`: Precision level (for heat_1d, heat_2d and euler_1d: low, medium, high; default: medium)
+- `-l`: Precision level (for heat_1d, heat_2d, burgers_1d and euler_1d: low, medium, high; default: medium)
 - `-z`: Enable zero-shot mode
 
-**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/` (most datasets) or `eval_results/{dataset}/{task}/{precision_level}/` (heat_1d, heat_2d and euler_1d) 
+**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/{precision_level}/`
 
 ## 🗂️ Tabulate Evaluation Results
 
@@ -312,10 +295,11 @@ After generating task-level results with `tabulate.py`, you can create simulatio
 python evaluation/simul_sum.py -d heat_1d
 python evaluation/simul_sum.py -d heat_2d
 python evaluation/simul_sum.py -d euler_1d
+python evaluation/simul_sum.py -d burgers_1d
 ```
 
 **Parameters:**
-- `-d`: Dataset name to aggregate results for (currently supports `heat_1d`, `heat_2d`, `euler_1d`)
+- `-d`: Dataset name to aggregate results
 
 **Functionality:**
 - Reads task-level CSV files generated by `tabulate.py`

@@ -556,7 +556,7 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 DATASET_TASK_MAP = {
     "heat_1d": ["cfl", "n_space"], 
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
-    "burgers_1d": ["cfl", "k", "w"],
+    "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
     "2D_ns": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
@@ -612,8 +612,8 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # For heat_1d, heat_2d and euler_1d, use precision_level in path structure but keep human_write directory
-    if dataset in ["heat_1d", "heat_2d", "euler_1d"]:
+    # For heat_1d, heat_2d, burgers_1d and euler_1d, use precision_level in path structure but keep human_write directory
+    if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
         result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
         log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
         dataset_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_dataset.json"
@@ -644,21 +644,21 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python inference/langchain_LLM.py -d heat_1d -t cfl -n 50 -l medium
+  python inference/langchain_LLM.py -d heat_1d -t cfl -l medium
   python inference/langchain_LLM.py -d 2D_ns -t mesh_x -z
   python inference/langchain_LLM.py -d euler_1d -t beta -z -l medium
+  python inference/langchain_LLM.py -d burgers_1d -t cfl -l medium
   python inference/langchain_LLM.py --list-combinations
 
 Available dataset-task combinations:
   heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
-  burgers_1d: cfl, k, w
+  burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   2D_ns: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold
         """
     )
-    parser.add_argument("-n", "--num_samples", type=int, default=2,
-                        help="How many samples to test (ignored for burgers_1d, heat_1d, heat_2d and euler_1d)")
+    # Removed -n parameter as it's not needed for new workflow
     parser.add_argument("-p", "--provider", default="gemini")
     parser.add_argument("-m", "--model_name", default="gemini-1.5-pro")
     parser.add_argument("-d", "--dataset", default="heat_1d",
@@ -712,11 +712,11 @@ Available dataset-task combinations:
 
     # Display dataset information
     logger.info(f"Dataset: {args.dataset}, Task: {args.task}, Mode: {'zero_shot' if zero_shot else 'iterative'}")
-    if args.dataset in ["heat_1d", "heat_2d", "euler_1d"]:
+    if args.dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
         logger.info(f"Precision level: {args.precision_level}")
     logger.info(f"Dataset file: {paths['dataset_file']}")
     logger.info(f"Total samples available in dataset: {len(dataset)}")
-    logger.info(f"Requested samples (-n): {args.num_samples}")
+    # Removed num_samples reference
 
     # Create file paths
     progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
@@ -727,10 +727,8 @@ Available dataset-task combinations:
         logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
     else:
         available_samples = len(dataset)
-        requested_samples = min(args.num_samples, available_samples)
-        if args.num_samples > available_samples:
-            logger.warning(f"Requested {args.num_samples} samples, but dataset only contains {available_samples} samples.")
-            logger.warning(f"Using all available {available_samples} samples instead.")
+        requested_samples = available_samples
+        logger.info(f"Using all available {available_samples} samples.")
 
     # Check resume state if resume flag is set
     resume_state = None
