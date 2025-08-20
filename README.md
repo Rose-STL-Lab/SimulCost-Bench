@@ -92,7 +92,7 @@ python qs_gen/1D_burgers.py
 python qs_gen/1D_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
-python qs_gen/2D_ns.py -n 25 -t mesh_x -z
+python qs_gen/2D_ns.py
 ```
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
