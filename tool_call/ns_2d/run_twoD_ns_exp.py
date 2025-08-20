@@ -35,8 +35,8 @@ def _refine_parameters(params, refine_param):
     refined_params = params.copy()
     
     refinement_rules = {
-        'mesh_x': lambda x: x + 25,
-        'mesh_y': lambda x: x + 10,
+        'mesh_x': lambda x: x * 2,
+        'mesh_y': lambda x: x * 2,
         'omega_u': lambda x: x + 0.1,
         'omega_v': lambda x: x + 0.1,
         'omega_p': lambda x: x + 0.1,

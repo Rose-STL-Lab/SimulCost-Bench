@@ -29,7 +29,7 @@ from .euler_1d.run_oneD_euler_PDE_exp import (
 )
 
 # NS Channel 2D functions
-from .ns_channel_2d.run_twoD_ns_channel_exp import (
+from .ns_2d.run_twoD_ns_exp import (
     ns_2d_check_converge_mesh_x,
     ns_2d_check_converge_mesh_y,
     ns_2d_check_converge_omega_u,

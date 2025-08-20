@@ -74,6 +74,9 @@ class TwoDNavierStokesQuestionGenerator:
         """Generate questions for all tasks and precision levels"""
         tasks = ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
                 "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+        # Tasks that support both iterative and zero-shot
+        iterative_supported_tasks = ["mesh_x", "mesh_y"]
+        
         total_files = 0
         total_questions = 0
         
@@ -95,17 +98,22 @@ class TwoDNavierStokesQuestionGenerator:
                 print(f"    V RMSE tolerance: {v_rmse_tol}")
                 print(f"    P RMSE tolerance: {p_rmse_tol}")
                 
-                # Generate iterative questions
-                dataset_iter = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=False)
-                self._save_dataset(dataset_iter, task=task, precision_level=precision_level, zero_shot=False)
+                # Generate iterative questions only for mesh_x and mesh_y
+                if task in iterative_supported_tasks:
+                    dataset_iter = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=False)
+                    self._save_dataset(dataset_iter, task=task, precision_level=precision_level, zero_shot=False)
+                    total_files += 1
+                    total_questions += len(dataset_iter)
+                    print(f"      Iterative: {len(dataset_iter):2d} questions")
+                else:
+                    print(f"      Iterative: Not supported for {task}")
                 
-                # Generate zero-shot questions  
+                # Generate zero-shot questions for all tasks
                 dataset_zero = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=True)
                 self._save_dataset(dataset_zero, task=task, precision_level=precision_level, zero_shot=True)
                 
-                total_files += 2
-                total_questions += len(dataset_iter) + len(dataset_zero)
-                print(f"      Iterative: {len(dataset_iter):2d} questions")
+                total_files += 1
+                total_questions += len(dataset_zero)
                 print(f"      Zero-shot: {len(dataset_zero):2d} questions")
         
         print("\n" + "=" * 80)
@@ -303,7 +311,9 @@ def main() -> None:
     print(f"Output directory: data/ns_channel_2d/{{task}}/{{precision_level}}/")
     print(f"Tasks: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold")
     print(f"Precision levels: {list(PRECISION_LEVELS.keys())}")
-    print(f"File types: iterative_questions.json, zero_shot_questions.json")
+    print(f"File types:")
+    print(f"  - iterative_questions.json (only for mesh_x and mesh_y)")
+    print(f"  - zero_shot_questions.json (for all tasks)")
     
     gen = TwoDNavierStokesQuestionGenerator()
     gen.generate_all_questions()
