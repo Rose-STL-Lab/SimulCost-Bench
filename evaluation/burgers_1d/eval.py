@@ -274,6 +274,7 @@ def evaluate(
             f"🆔 QID: {qid}\n"
             f"🔄 Converged flag: {converged}\n"
             f"🎯 Success (within tolerance): {success}\n"
+            f"🎯 Soft Success: {soft_success_value:.3f}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
             f"⚡ Efficiency: {efficiency:.3f}\n"
