@@ -271,7 +271,9 @@ def find_json_robust(response: str):
 
 class ToolCallManager:
     def __init__(self, base_logger: logging.Logger, qid: int,
-                 focused_parameters: List[str] = None, tolerance_rmse: float = None):
+                 focused_parameters: List[str] = None, tolerance_rmse: float = None,
+                 mass_tolerance: float = None, u_rmse_tolerance: float = None, 
+                 v_rmse_tolerance: float = None, p_rmse_tolerance: float = None):
         self.logger = LoggerAdapter(base_logger, {'qid': qid})
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
@@ -281,6 +283,11 @@ class ToolCallManager:
         self.cost_sequence  = [] 
         self.accumulated_cost = 0
         self.tolerance_rmse = tolerance_rmse
+        # NS_2D specific tolerances
+        self.mass_tolerance = mass_tolerance
+        self.u_rmse_tolerance = u_rmse_tolerance
+        self.v_rmse_tolerance = v_rmse_tolerance
+        self.p_rmse_tolerance = p_rmse_tolerance
 
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], profile: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
@@ -380,27 +387,31 @@ class ToolCallManager:
                     n_space=fetch_param(tool_args, "n_space"),
                     rmse_tolerance=tolerance
                 )
-            # elif tool_name in [
-            #     "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
-            #     "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
-            #     "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
-            # ]:
-            #     result = func(
-            #         accumulated_cost=self.accumulated_cost,
-            #         profile=profile,
-            #         mesh_x=fetch_param(tool_args, "mesh_x"),
-            #         mesh_y=fetch_param(tool_args, "mesh_y"),
-            #         omega_u=fetch_param(tool_args, "omega_u"),
-            #         omega_v=fetch_param(tool_args, "omega_v"),
-            #         omega_p=fetch_param(tool_args, "omega_p"),
-            #         diff_u_threshold=fetch_param(tool_args, "diff_u_threshold"),
-            #         diff_v_threshold=fetch_param(tool_args, "diff_v_threshold"),
-            #         res_iter_v_threshold=fetch_param(tool_args, "res_iter_v_threshold"),
-            #         mass_tolerance=1e-4,
-            #         u_rmse_tolerance=3e-2,
-            #         v_rmse_tolerance=3e-2,
-            #         p_rmse_tolerance=3e-2,
-            #     )
+            elif tool_name in [
+                "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
+                "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
+                "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
+            ]:
+                # Use ns_2d specific tolerance values from dataset - required fields
+                if None in [self.mass_tolerance, self.u_rmse_tolerance, self.v_rmse_tolerance, self.p_rmse_tolerance]:
+                    raise ValueError(f"All tolerance values (mass_tolerance, u_rmse_tolerance, v_rmse_tolerance, p_rmse_tolerance) are required for ns_2d tools but some were not provided in dataset (QID={self.qid})")
+                
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    mesh_x=fetch_param(tool_args, "mesh_x"),
+                    mesh_y=fetch_param(tool_args, "mesh_y"),
+                    omega_u=fetch_param(tool_args, "omega_u"),
+                    omega_v=fetch_param(tool_args, "omega_v"),
+                    omega_p=fetch_param(tool_args, "omega_p"),
+                    diff_u_threshold=fetch_param(tool_args, "diff_u_threshold"),
+                    diff_v_threshold=fetch_param(tool_args, "diff_v_threshold"),
+                    res_iter_v_threshold=fetch_param(tool_args, "res_iter_v_threshold"),
+                    mass_tolerance=self.mass_tolerance,
+                    u_rmse_tolerance=self.u_rmse_tolerance,
+                    v_rmse_tolerance=self.v_rmse_tolerance,
+                    p_rmse_tolerance=self.p_rmse_tolerance,
+                )
             else:
                 # Critical else branch to handle unrecognized tool names
                 raise ValueError(f"Unrecognized tool name: '{tool_name}'. This tool is not supported by the current implementation (QID={self.qid})")

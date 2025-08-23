@@ -366,7 +366,7 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
         try:
             result, tool_df = agent.forward(data)
             
-            # For euler_1d dataset, preserve additional fields from dataset
+            # Preserve additional fields from dataset
             if 'profile' in data:
                 result['profile'] = data['profile']
             if 'case' in data:
@@ -379,6 +379,17 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
                 result['precision_level'] = data['precision_level']
             if 'tolerance_rmse' in data:
                 result['tolerance_rmse'] = data['tolerance_rmse']
+            # NS_2D specific tolerances
+            if 'mass_tolerance' in data:
+                result['mass_tolerance'] = data['mass_tolerance']
+            if 'u_rmse_tolerance' in data:
+                result['u_rmse_tolerance'] = data['u_rmse_tolerance']
+            if 'v_rmse_tolerance' in data:
+                result['v_rmse_tolerance'] = data['v_rmse_tolerance']
+            if 'p_rmse_tolerance' in data:
+                result['p_rmse_tolerance'] = data['p_rmse_tolerance']
+            if 'aspect_ratio' in data:
+                result['aspect_ratio'] = data['aspect_ratio']
             
             all_results.append(result)
             all_tool_dfs.append(tool_df)
@@ -558,7 +569,7 @@ DATASET_TASK_MAP = {
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
-    "2D_ns": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
+    "ns_2d": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
 }
 
@@ -598,32 +609,29 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 precision_level: str = "medium") -> dict:
     """
     Automatically build all I/O paths based on dataset type.
+    All new datasets use precision_level in path structure.
 
     Parameters
     ----------
-    dataset : "heat_1d" / "burgers_1d" / "euler_1d" / ...
+    dataset : dataset name (e.g., "heat_1d", "burgers_1d", "euler_1d", "ns_2d", ...)
     task    : e.g. "cfl"
     flag    : "zero_shot" or "iterative"
     model_name : used for log/result files
-    precision_level : precision level for heat_1d and euler_1d ("low", "medium", "high")
+    precision_level : precision level for all datasets ("low", "medium", "high")
 
     Returns
     -------
     dict, keys include dataset_file / archive_file / log_file /
                    result_file / table_file / result_dir / log_dir
     """
-    # For heat_1d, heat_2d, burgers_1d and euler_1d, use precision_level in path structure but keep human_write directory
-    if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
-        result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
-        log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
-        dataset_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_dataset.json"
-        archive_file = f"data/{dataset}/human_write/{precision_level}/{task}_{flag}_agent.json"
-    else:
-        # Other datasets keep the old structure
-        result_dir = f"results_model_attempt/{dataset}/{task}"
-        log_dir    = f"log_model_tool_call/{dataset}/{task}"
-        dataset_file = f"data/{dataset}/human_write/{task}_{flag}_dataset.json"
-        archive_file = f"data/{dataset}/human_write/{task}_{flag}_agent.json"
+    # All datasets now use precision_level in path structure
+    # Handle dataset directory name mapping
+    data_dir_name = "ns_channel_2d" if dataset == "ns_2d" else dataset
+    
+    result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
+    log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
+    dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
+    archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_agent.json"
     
     # --------------------------------
     os.makedirs(result_dir, exist_ok=True)
@@ -645,7 +653,7 @@ def main():
         epilog="""
 Examples:
   python inference/langchain_LLM.py -d heat_1d -t cfl -l medium
-  python inference/langchain_LLM.py -d 2D_ns -t mesh_x -z
+  python inference/langchain_LLM.py -d ns_2d -t mesh_x -z -l medium
   python inference/langchain_LLM.py -d euler_1d -t beta -z -l medium
   python inference/langchain_LLM.py -d burgers_1d -t cfl -l medium
   python inference/langchain_LLM.py --list-combinations
@@ -655,7 +663,9 @@ Available dataset-task combinations:
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
   burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
-  2D_ns: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold
+  ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (use -l for precision_level: low/medium/high)
+
+Note: All datasets now use precision_level structure for better organization.
         """
     )
     # Removed -n parameter as it's not needed for new workflow
@@ -671,7 +681,7 @@ Available dataset-task combinations:
     parser.add_argument("-z", "--zero_shot", action="store_true")
     parser.add_argument("-l", "--precision_level", default="medium", 
                         choices=["low", "medium", "high"],
-                        help="Precision level for heat_1d, heat_2d and euler_1d datasets")
+                        help="Precision level for all datasets")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from previous progress file")
     parser.add_argument("--list-combinations", action="store_true",
@@ -712,8 +722,7 @@ Available dataset-task combinations:
 
     # Display dataset information
     logger.info(f"Dataset: {args.dataset}, Task: {args.task}, Mode: {'zero_shot' if zero_shot else 'iterative'}")
-    if args.dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
-        logger.info(f"Precision level: {args.precision_level}")
+    logger.info(f"Precision level: {args.precision_level}")
     logger.info(f"Dataset file: {paths['dataset_file']}")
     logger.info(f"Total samples available in dataset: {len(dataset)}")
     # Removed num_samples reference
@@ -721,14 +730,9 @@ Available dataset-task combinations:
     # Create file paths
     progress_file = f"{paths['log_dir']}/{flag}_{args.model_name}_progress.json"
     
-    # Determine requested sample count
-    if args.dataset in ["burgers_1d", "heat_1d", "heat_2d", "euler_1d"]:
-        requested_samples = len(dataset)
-        logger.info(f"{args.dataset} detected — evaluating ALL {len(dataset)} samples.")
-    else:
-        available_samples = len(dataset)
-        requested_samples = available_samples
-        logger.info(f"Using all available {available_samples} samples.")
+    # Determine requested sample count - all datasets now evaluate all samples
+    requested_samples = len(dataset)
+    logger.info(f"Evaluating ALL {len(dataset)} samples from {args.dataset} dataset.")
 
     # Check resume state if resume flag is set
     resume_state = None
@@ -749,12 +753,9 @@ Available dataset-task combinations:
         # Fresh start - prepare dataset
         logger.info(f"Starting fresh inference for {requested_samples} samples")
 
-    # Prepare dataset slice for processing
-    if args.dataset in ["burgers_1d", "heat_1d", "heat_2d", "euler_1d"]:
-        test_dataset = dataset
-    else:
-        test_dataset = dataset[:requested_samples]
-        logger.info(f"Processing {len(test_dataset)} / {len(dataset)} samples from dataset.")
+    # All datasets process all available samples
+    test_dataset = dataset
+    logger.info(f"Processing all {len(test_dataset)} samples from {args.dataset} dataset.")
     
     results, tool_df = parallel_inference(
         test_dataset, agent["code"], logger,
