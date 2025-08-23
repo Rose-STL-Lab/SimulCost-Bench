@@ -34,19 +34,30 @@ def _refine_parameters(params, refine_param):
     """Apply parameter refinement rules based on which parameter to refine."""
     refined_params = params.copy()
     
-    refinement_rules = {
-        'mesh_x': lambda x: x * 2,
-        'mesh_y': lambda x: x * 2,
-        'omega_u': lambda x: x + 0.1,
-        'omega_v': lambda x: x + 0.1,
-        'omega_p': lambda x: x + 0.1,
-        'diff_u_threshold': lambda x: x / 10,
-        'diff_v_threshold': lambda x: x / 10,
-        'res_iter_v_threshold': lambda x: x / 10,
-    }
+    # Calculate aspect ratio to maintain consistency
+    aspect_ratio = params['mesh_y'] / params['mesh_x']
     
-    if refine_param in refinement_rules:
-        refined_params[refine_param] = refinement_rules[refine_param](params[refine_param])
+    if refine_param == 'mesh_x':
+        # Refine mesh_x by factor of 2, maintain aspect ratio
+        refined_params['mesh_x'] = params['mesh_x'] * 2
+        refined_params['mesh_y'] = int(refined_params['mesh_x'] * aspect_ratio)
+    elif refine_param == 'mesh_y':
+        # Refine mesh_y by factor of 2, maintain aspect ratio  
+        refined_params['mesh_y'] = params['mesh_y'] * 2
+        refined_params['mesh_x'] = int(refined_params['mesh_y'] / aspect_ratio)
+    else:
+        # Standard refinement rules for other parameters
+        refinement_rules = {
+            'omega_u': lambda x: x + 0.1,
+            'omega_v': lambda x: x + 0.1,
+            'omega_p': lambda x: x + 0.1,
+            'diff_u_threshold': lambda x: x / 10,
+            'diff_v_threshold': lambda x: x / 10,
+            'res_iter_v_threshold': lambda x: x / 10,
+        }
+        
+        if refine_param in refinement_rules:
+            refined_params[refine_param] = refinement_rules[refine_param](params[refine_param])
     
     return refined_params
 
@@ -161,11 +172,11 @@ def ns_2d_check_converge_parameter(
 
 # Convenience functions for each parameter
 def ns_2d_check_converge_mesh_x(**kwargs):
-    """Check convergence by refining mesh_x (+25)."""
+    """Check convergence by refining mesh_x (*2, maintaining aspect ratio)."""
     return ns_2d_check_converge_parameter(refine_param='mesh_x', **kwargs)
 
 def ns_2d_check_converge_mesh_y(**kwargs):
-    """Check convergence by refining mesh_y (+10)."""
+    """Check convergence by refining mesh_y (*2, maintaining aspect ratio)."""
     return ns_2d_check_converge_parameter(refine_param='mesh_y', **kwargs)
 
 def ns_2d_check_converge_omega_u(**kwargs):

@@ -177,6 +177,7 @@ class TwoDNavierStokesQuestionGenerator:
                 "cost_history": cost_history,
                 "best_params": best_params,
                 "param_history": param_history,
+                "aspect_ratio": task_data.get("non_target_parameters", {}).get("aspect_ratio"),
                 "question": self._build_question_text(params, precision_level, precision_config),
             }
             

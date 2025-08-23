@@ -5,7 +5,7 @@ Extract and save prompt examples from SimulCost-Bench datasets.
 This script extracts prompt examples (system + user messages) from the dataset files
 and saves them in human-readable format for analysis and review.
 
-Supports heat_1d, heat_2d, and euler_1d simulations with configurable precision levels and inference modes.
+Supports heat_1d, heat_2d, euler_1d, burgers_1d, and ns_2d simulations with configurable precision levels and inference modes.
 """
 
 import json
@@ -20,7 +20,7 @@ def get_simulation_config(simulation: str) -> Dict[str, List[str]]:
     Get configuration for supported simulations.
     
     Args:
-        simulation: Name of the simulation (heat_1d, heat_2d, or euler_1d)
+        simulation: Name of the simulation (heat_1d, heat_2d, euler_1d, burgers_1d, or ns_2d)
         
     Returns:
         Dictionary containing precision levels and task types for the simulation
@@ -40,6 +40,15 @@ def get_simulation_config(simulation: str) -> Dict[str, List[str]]:
         "euler_1d": {
             "precision_levels": ["high", "low", "medium"], 
             "tasks": ["beta", "cfl", "k", "n_space"]
+        },
+        "burgers_1d": {
+            "precision_levels": ["high", "low", "medium"],
+            "tasks": ["beta", "cfl", "k", "n_space"]
+        },
+        "ns_2d": {
+            "precision_levels": ["high", "low", "medium"],
+            "tasks": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
+                     "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
         }
     }
     
@@ -63,7 +72,12 @@ def find_dataset_files(data_dir: Path, simulation: str) -> List[Tuple[str, str, 
     config = get_simulation_config(simulation)
     dataset_files = []
     
-    simulation_dir = data_dir / simulation / "human_write"
+    # Map user-friendly names to actual directory names
+    dir_mapping = {
+        "ns_2d": "ns_channel_2d"
+    }
+    actual_simulation = dir_mapping.get(simulation, simulation)
+    simulation_dir = data_dir / actual_simulation / "human_write"
     
     if not simulation_dir.exists():
         print(f"Warning: Directory {simulation_dir} does not exist")
@@ -82,34 +96,43 @@ def find_dataset_files(data_dir: Path, simulation: str) -> List[Tuple[str, str, 
             # Parse filename to extract task and inference mode
             # Expected format: {task}_{inference_mode}_dataset.json
             filename = file_path.stem  # Remove .json extension
-            parts = filename.split("_")
             
-            if len(parts) >= 3 and parts[-1] == "dataset":
-                # Handle different filename patterns
-                if "n_space" in filename:
-                    # Special handling for n_space task
-                    task = "n_space"
-                    if "zero_shot" in filename:
-                        inference_mode = "zero_shot"
-                    elif "iterative" in filename:
-                        inference_mode = "iterative"
-                    else:
-                        inference_mode = "unknown"
-                elif len(parts) == 4:  # e.g., "cfl_zero_shot_dataset"
-                    task = parts[0]
-                    inference_mode = "_".join(parts[1:-1])  # "zero_shot" or "iterative"
-                elif len(parts) == 3:  # e.g., "task_iterative_dataset"
-                    task = parts[0]
-                    inference_mode = parts[1]
+            if filename.endswith("_dataset"):
+                # Remove "_dataset" suffix
+                base_name = filename[:-8]  # Remove "_dataset"
+                
+                # Determine inference mode
+                if base_name.endswith("_zero_shot"):
+                    inference_mode = "zero_shot"
+                    task = base_name[:-10]  # Remove "_zero_shot"
+                elif base_name.endswith("_iterative"):
+                    inference_mode = "iterative"
+                    task = base_name[:-10]  # Remove "_iterative"
                 else:
-                    # For more complex patterns, try to identify task and inference mode
-                    task = parts[0]
-                    if "zero" in filename and "shot" in filename:
+                    # Fallback: try to split and identify
+                    parts = base_name.split("_")
+                    if "zero" in base_name and "shot" in base_name:
                         inference_mode = "zero_shot"
-                    elif "iterative" in filename:
+                        # Find where zero_shot starts
+                        zero_idx = None
+                        for i in range(len(parts) - 1):
+                            if parts[i] == "zero" and parts[i + 1] == "shot":
+                                zero_idx = i
+                                break
+                        task = "_".join(parts[:zero_idx]) if zero_idx else parts[0]
+                    elif "iterative" in base_name:
                         inference_mode = "iterative"
+                        # Find where iterative starts
+                        iter_idx = None
+                        for i, part in enumerate(parts):
+                            if part == "iterative":
+                                iter_idx = i
+                                break
+                        task = "_".join(parts[:iter_idx]) if iter_idx else parts[0]
                     else:
-                        inference_mode = "_".join(parts[1:-1])
+                        # Fallback
+                        task = parts[0]
+                        inference_mode = "_".join(parts[1:]) if len(parts) > 1 else "unknown"
                 
                 # Validate task is in expected tasks
                 if task in config["tasks"]:
@@ -258,14 +281,16 @@ Examples:
   python extract_prompts.py -d heat_1d
   python extract_prompts.py -d heat_2d
   python extract_prompts.py -d euler_1d --output ./prompts --qid 2
+  python extract_prompts.py -d burgers_1d
+  python extract_prompts.py -d ns_2d
         """
     )
     
     parser.add_argument(
         "-d", "--dataset", 
         required=True,
-        choices=["heat_1d", "heat_2d", "euler_1d"],
-        help="Dataset to extract prompts from (heat_1d, heat_2d, or euler_1d)"
+        choices=["heat_1d", "heat_2d", "euler_1d", "burgers_1d", "ns_2d"],
+        help="Dataset to extract prompts from"
     )
     
     parser.add_argument(

@@ -4,7 +4,7 @@
       "type": "function",
       "function": {
         "name": "ns_2d_check_converge_mesh_x",
-        "description": "Conduct a 2D Navier-Stokes channel flow simulation and evaluate mesh_x convergence by refining mesh_x (+25). Returns {\"refined_parameter\": str, \"current_value\": int, \"refined_value\": int, \"RMSE_u\": float, \"RMSE_v\": float, \"RMSE_p\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_num_steps\": int, \"refine_num_steps\": int, \"mass_conserved_current\": bool, \"mass_conserved_refined\": bool}.",
+        "description": "Conduct a 2D Navier-Stokes channel flow simulation and evaluate mesh_x convergence by refining mesh_x (*2, maintaining aspect ratio). Returns {\"refined_parameter\": str, \"current_value\": int, \"refined_value\": int, \"RMSE_u\": float, \"RMSE_v\": float, \"RMSE_p\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_num_steps\": int, \"refine_num_steps\": int, \"mass_conserved_current\": bool, \"mass_conserved_refined\": bool}.",
         "parameters": {
           "type": "object",
           "properties": {

@@ -114,7 +114,7 @@ python dataset_gen/oneD_burgers.py
 python dataset_gen/oneD_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
-python dataset_gen/twoD_ns.py -t mesh_x -z
+python dataset_gen/twoD_ns.py
 ```
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
