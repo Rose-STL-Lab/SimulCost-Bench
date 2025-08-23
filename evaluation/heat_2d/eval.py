@@ -48,16 +48,9 @@ def soft_success_multi(d_list, epsilon_list):
     return np.mean(ss_values)  # Arithmetic mean
 
 
-def get_reference_params(dummy: Dict, task: str) -> Dict:
+def get_reference_params(dummy: Dict) -> Dict:
     """Extract reference parameters from the dummy data"""
-    if task == "relax":
-        optimal_val = dummy["optimal_relaxation_factor"]
-        return next(p for p in dummy["param_history"] if p["relax"] == optimal_val)
-    elif task == "t_init":
-        optimal_val = dummy["optimal_initial_temperature"]
-        return next(p for p in dummy["param_history"] if p.get("T_init") == optimal_val or p.get("t_init") == optimal_val)
-    else:
-        return dummy["best_params"]
+    return dummy["best_params"]
 
 
 def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None, alt_name2: str = None):
@@ -213,11 +206,11 @@ def evaluate(
             rmse = float('inf')
             
             # --------- Select reference parameter set ---------
-            ref_iter = get_reference_params(dummy, task)
+            ref_iter = get_reference_params(dummy)
             
         else:
             # --------- Select reference parameter set ---------
-            ref_iter = get_reference_params(dummy, task)
+            ref_iter = get_reference_params(dummy)
 
             try:
                 success, rmse = compare_res_heat_steady_2d(
