@@ -5,43 +5,33 @@ The `scripts/` directory contains automated scripts for streamlined execution of
 ## 📁 Directory Structure
 ```
 scripts/
-├── ds_gen/           # Dataset generation scripts
-│   └── ds_gen_all.sh
 ├── inference_eval/   # Model inference and evaluation scripts
-│   ├── inference_eval_all.sh
+│   ├── eval_all.sh
 │   ├── inference_eval_burgers_1d.sh
 │   ├── inference_eval_euler_1d.sh
 │   ├── inference_eval_heat_1d.sh
-│   └── inference_eval_heat_2d.sh
-├── qs_gen/          # Question generation scripts
-│   ├── qs_gen_burgers_1d.sh
-│   ├── qs_gen_euler_1d.sh
-│   ├── qs_gen_heat_1d.sh
-│   └── qs_gen_heat_2d.sh
+│   ├── inference_eval_heat_2d.sh
+│   ├── inference_eval_ns_2d.sh
+│   └── *.log        # Progress tracking logs
 └── list_custom_models.py  # List available custom models
 ```
 
 ## 🔧 Quick Start
 
-### 1. Generate Questions for Specific Tasks
+### Run Inference + Evaluation Pipeline
 ```bash
-# Generate questions for specific tasks
-bash scripts/qs_gen/qs_gen_heat_1d.sh
-```
-
-### 2. Generate All Datasets
-```bash
-# Generate datasets for all tasks and modes
-bash scripts/ds_gen/ds_gen_all.sh
-```
-
-### 2. Run Complete Inference + Evaluation Pipeline
-```bash
-# Execute all inference and evaluation tasks
-bash scripts/inference_eval/inference_eval_all.sh
-
-# Or run individual problem types
+# Run inference and evaluation for individual problem types
 bash scripts/inference_eval/inference_eval_heat_1d.sh
+bash scripts/inference_eval/inference_eval_heat_2d.sh
+bash scripts/inference_eval/inference_eval_burgers_1d.sh
+bash scripts/inference_eval/inference_eval_euler_1d.sh
+bash scripts/inference_eval/inference_eval_ns_2d.sh
+```
+
+### Run Evaluation Only
+```bash
+# Run evaluation on existing inference results (no inference)
+bash scripts/inference_eval/eval_all.sh
 ```
 
 ## ⚙️ Switching Model Providers

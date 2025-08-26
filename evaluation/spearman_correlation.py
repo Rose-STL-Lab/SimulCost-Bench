@@ -80,6 +80,7 @@ class SpearmanCorrelationAnalyzer:
         
         # Storage for analysis results
         self.correlation_results = {}
+        self.individual_model_results = {}
         
     def _discover_available_datasets(self) -> List[str]:
         """
@@ -309,6 +310,149 @@ class SpearmanCorrelationAnalyzer:
         self.correlation_results = results
         return results
     
+    def analyze_individual_model_correlations(self, zero_shot_df: pd.DataFrame, 
+                                            iterative_df: pd.DataFrame) -> Dict:
+        """
+        Perform Spearman correlation analysis for each individual model.
+        
+        Parameters
+        ----------
+        zero_shot_df : pd.DataFrame
+            Zero-shot evaluation results
+        iterative_df : pd.DataFrame
+            Iterative evaluation results
+            
+        Returns
+        -------
+        Dict
+            Individual model correlation results
+        """
+        individual_results = {}
+        
+        print("\n🔍 Computing individual model correlations...")
+        
+        # Get unique models across all datasets
+        zero_shot_models = set(zero_shot_df['Model'].unique())
+        iterative_models = set(iterative_df['Model'].unique())
+        common_models = zero_shot_models.intersection(iterative_models)
+        
+        print(f"Found {len(common_models)} models with both zero-shot and iterative data")
+        
+        for model_name in sorted(common_models):
+            print(f"\n📊 Analyzing model: {model_name}")
+            
+            # Filter data for this specific model
+            model_zero_shot = zero_shot_df[zero_shot_df['Model'] == model_name]
+            model_iterative = iterative_df[iterative_df['Model'] == model_name]
+            
+            model_results = {}
+            
+            for precision_level in PRECISION_LEVELS:
+                if precision_level == 'overall':
+                    # For overall, use all precision levels for this model
+                    paired_data = self.prepare_individual_model_data(
+                        model_zero_shot, model_iterative, model_name, None
+                    )
+                else:
+                    paired_data = self.prepare_individual_model_data(
+                        model_zero_shot, model_iterative, model_name, precision_level
+                    )
+                
+                if paired_data is None or len(paired_data) == 0:
+                    print(f"  No data for {precision_level} precision level")
+                    continue
+                
+                # Compute correlations for each metric
+                level_results = {}
+                for metric in METRICS_TO_ANALYZE:
+                    correlation, p_value, n_samples = self.compute_spearman_correlation(paired_data, metric)
+                    
+                    level_results[metric] = {
+                        'correlation': correlation,
+                        'p_value': p_value,
+                        'n_samples': n_samples,
+                        'significance': '***' if p_value < 0.001 else '**' if p_value < 0.01 else '*' if p_value < 0.05 else 'ns'
+                    }
+                    
+                    if not np.isnan(correlation):
+                        print(f"  {precision_level}-{metric}: ρ = {correlation:.3f} (p = {p_value:.3f}, n = {n_samples})")
+                
+                model_results[precision_level] = level_results
+            
+            individual_results[model_name] = model_results
+        
+        self.individual_model_results = individual_results
+        return individual_results
+    
+    def prepare_individual_model_data(self, model_zero_shot: pd.DataFrame, 
+                                    model_iterative: pd.DataFrame,
+                                    model_name: str,
+                                    precision_level: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """
+        Prepare paired data for a specific model's correlation analysis.
+        
+        Parameters
+        ----------
+        model_zero_shot : pd.DataFrame
+            Zero-shot results for specific model
+        model_iterative : pd.DataFrame
+            Iterative results for specific model
+        model_name : str
+            Name of the model being analyzed
+        precision_level : Optional[str]
+            Specific precision level to filter, or None for all data
+            
+        Returns
+        -------
+        Optional[pd.DataFrame]
+            Paired data for the specific model, or None if insufficient data
+        """
+        # Filter by precision level if specified
+        if precision_level and precision_level != 'overall':
+            zero_shot_filtered = model_zero_shot[model_zero_shot['Precision Level'] == precision_level].copy()
+            iterative_filtered = model_iterative[model_iterative['Precision Level'] == precision_level].copy()
+        else:
+            zero_shot_filtered = model_zero_shot.copy()
+            iterative_filtered = model_iterative.copy()
+        
+        # For individual model analysis, we merge on Dataset (if present) and Precision Level
+        merge_cols = []
+        if 'Dataset' in zero_shot_filtered.columns:
+            merge_cols.append('Dataset')
+        if 'Precision Level' in zero_shot_filtered.columns and precision_level != 'overall':
+            merge_cols.append('Precision Level')
+        
+        # If no merge columns, we aggregate all data for this model
+        if not merge_cols:
+            # Aggregate metrics across all data points for this model
+            zero_shot_agg = zero_shot_filtered[METRICS_TO_ANALYZE].mean().to_frame().T
+            iterative_agg = iterative_filtered[METRICS_TO_ANALYZE].mean().to_frame().T
+            
+            # Add suffixes for correlation calculation
+            for metric in METRICS_TO_ANALYZE:
+                zero_shot_agg[f"{metric}_zero_shot"] = zero_shot_agg[metric]
+                iterative_agg[f"{metric}_iterative"] = iterative_agg[metric]
+            
+            # Combine data
+            paired_data = pd.concat([
+                zero_shot_agg[[f"{metric}_zero_shot" for metric in METRICS_TO_ANALYZE]],
+                iterative_agg[[f"{metric}_iterative" for metric in METRICS_TO_ANALYZE]]
+            ], axis=1)
+        else:
+            # Merge on available columns
+            paired_data = pd.merge(
+                zero_shot_filtered[merge_cols + METRICS_TO_ANALYZE],
+                iterative_filtered[merge_cols + METRICS_TO_ANALYZE],
+                on=merge_cols,
+                suffixes=('_zero_shot', '_iterative'),
+                how='inner'
+            )
+        
+        if len(paired_data) == 0:
+            return None
+            
+        return paired_data
+    
     def save_correlation_summary(self) -> None:
         """Save correlation summary to CSV and Excel files only."""
         summary_data = []
@@ -342,6 +486,115 @@ class SpearmanCorrelationAnalyzer:
         
         # Skip detailed data generation as requested
         print(f"ℹ Detailed paired data generation skipped (only essential files saved)")
+    
+    def save_individual_model_summary(self) -> None:
+        """Save individual model correlation summary to CSV and Excel files."""
+        if not self.individual_model_results:
+            print("⚠ No individual model results available for summary generation")
+            return
+        
+        summary_data = []
+        
+        for model_name, model_results in self.individual_model_results.items():
+            for precision_level, metrics in model_results.items():
+                for metric, stats in metrics.items():
+                    summary_data.append({
+                        'Model': model_name,
+                        'Precision_Level': precision_level,
+                        'Metric': metric,
+                        'Spearman_rho': stats['correlation'],
+                        'P_Value': stats['p_value'],
+                        'N_Samples': stats['n_samples'],
+                        'Significance': stats['significance']
+                    })
+        
+        if not summary_data:
+            print("⚠ No individual model data to save")
+            return
+        
+        summary_df = pd.DataFrame(summary_data)
+        
+        # Save to CSV
+        individual_summary_path = self.output_path / "individual_model_correlation_summary.csv"
+        summary_df.to_csv(individual_summary_path, index=False, float_format='%.4f')
+        print(f"✓ Individual model correlation summary saved: {individual_summary_path}")
+        
+        # Save to Excel with formatting
+        try:
+            individual_excel_path = self.output_path / "individual_model_correlation_summary.xlsx"
+            with pd.ExcelWriter(individual_excel_path, engine='openpyxl') as writer:
+                summary_df.to_excel(writer, sheet_name='Individual Model Correlations', index=False, float_format='%.4f')
+                
+                # Also create a pivot table view for easier reading
+                pivot_df = summary_df.pivot_table(
+                    values='Spearman_rho', 
+                    index=['Model', 'Precision_Level'], 
+                    columns='Metric',
+                    fill_value=np.nan
+                )
+                pivot_df.to_excel(writer, sheet_name='Pivot View - Correlations')
+                
+                # Create significance pivot table
+                significance_pivot = summary_df.pivot_table(
+                    values='Significance', 
+                    index=['Model', 'Precision_Level'], 
+                    columns='Metric',
+                    aggfunc='first',
+                    fill_value='ns'
+                )
+                significance_pivot.to_excel(writer, sheet_name='Pivot View - Significance')
+                
+            print(f"✓ Individual model correlation summary Excel saved: {individual_excel_path}")
+        except ImportError:
+            print("⚠ openpyxl not available, skipping Excel export for individual models")
+        
+        # Also create a summary statistics table
+        self._create_individual_model_summary_stats(summary_df)
+    
+    def _create_individual_model_summary_stats(self, summary_df: pd.DataFrame) -> None:
+        """Create summary statistics for individual models."""
+        print("\n📊 Creating individual model summary statistics...")
+        
+        # Calculate summary statistics per model
+        model_stats = []
+        
+        for model in summary_df['Model'].unique():
+            model_data = summary_df[summary_df['Model'] == model]
+            
+            # Remove NaN correlations for calculation
+            valid_correlations = model_data['Spearman_rho'].dropna()
+            
+            if len(valid_correlations) > 0:
+                stats = {
+                    'Model': model,
+                    'Valid_Correlations': len(valid_correlations),
+                    'Mean_Correlation': valid_correlations.mean(),
+                    'Median_Correlation': valid_correlations.median(),
+                    'Std_Correlation': valid_correlations.std(),
+                    'Min_Correlation': valid_correlations.min(),
+                    'Max_Correlation': valid_correlations.max(),
+                    'Significant_Correlations': len(model_data[model_data['Significance'].isin(['*', '**', '***'])]),
+                    'Strong_Correlations': len(model_data[abs(model_data['Spearman_rho']) >= 0.7]),
+                    'Moderate_Correlations': len(model_data[(abs(model_data['Spearman_rho']) >= 0.5) & (abs(model_data['Spearman_rho']) < 0.7)])
+                }
+                model_stats.append(stats)
+        
+        if model_stats:
+            stats_df = pd.DataFrame(model_stats)
+            
+            # Save model statistics to CSV
+            stats_path = self.output_path / "individual_model_statistics.csv"
+            stats_df.to_csv(stats_path, index=False, float_format='%.4f')
+            print(f"✓ Individual model statistics saved: {stats_path}")
+            
+            # Save to Excel if available
+            try:
+                stats_excel_path = self.output_path / "individual_model_statistics.xlsx"
+                with pd.ExcelWriter(stats_excel_path, engine='openpyxl') as writer:
+                    stats_df.to_excel(writer, sheet_name='Model Statistics', index=False, float_format='%.4f')
+                print(f"✓ Individual model statistics Excel saved: {stats_excel_path}")
+            except ImportError:
+                pass
     
     def create_correlation_heatmap(self) -> None:
         """Create and save correlation heatmap visualization."""
@@ -410,6 +663,98 @@ class SpearmanCorrelationAnalyzer:
         
         print(f"✓ Correlation heatmap saved: {heatmap_path}")
     
+    def create_individual_model_heatmaps(self) -> None:
+        """Create and save correlation heatmaps for each individual model."""
+        if not self.individual_model_results:
+            print("⚠ No individual model results available for heatmap generation")
+            return
+        
+        # Create subdirectory for individual model heatmaps
+        individual_heatmaps_dir = self.output_path / "individual_model_heatmaps"
+        individual_heatmaps_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"\n🎨 Creating individual model heatmaps...")
+        
+        for model_name, model_results in self.individual_model_results.items():
+            # Prepare correlation matrix for this model
+            correlation_matrix = []
+            precision_labels = []
+            
+            for precision_level in PRECISION_LEVELS:
+                if precision_level in model_results:
+                    correlations = []
+                    for metric in METRICS_TO_ANALYZE:
+                        if metric in model_results[precision_level]:
+                            corr_value = model_results[precision_level][metric]['correlation']
+                            correlations.append(corr_value)
+                        else:
+                            correlations.append(np.nan)
+                    correlation_matrix.append(correlations)
+                    precision_labels.append(precision_level.capitalize())
+            
+            if not correlation_matrix:
+                print(f"⚠ No correlation data available for model {model_name}")
+                continue
+            
+            correlation_matrix = np.array(correlation_matrix)
+            
+            # Create heatmap for this specific model
+            plt.figure(figsize=(12, 8))
+            ax = plt.subplot(111)
+            
+            # Plot heatmap
+            im = ax.imshow(correlation_matrix, cmap='RdYlBu_r', aspect='auto', 
+                          vmin=-1, vmax=1)
+            
+            # Set ticks and labels
+            ax.set_xticks(range(len(METRICS_TO_ANALYZE)))
+            ax.set_yticks(range(len(precision_labels)))
+            ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
+            ax.set_yticklabels(precision_labels)
+            
+            # Rotate x-axis labels for better readability
+            plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+            
+            # Add correlation values as text
+            for i in range(len(precision_labels)):
+                for j in range(len(METRICS_TO_ANALYZE)):
+                    if i < len(correlation_matrix) and j < len(correlation_matrix[i]):
+                        corr_value = correlation_matrix[i, j]
+                        if not np.isnan(corr_value):
+                            precision_level = PRECISION_LEVELS[i]
+                            metric = METRICS_TO_ANALYZE[j]
+                            if (precision_level in model_results and 
+                                metric in model_results[precision_level]):
+                                significance = model_results[precision_level][metric]['significance']
+                                text = f"{corr_value:.3f}\n{significance}"
+                                ax.text(j, i, text, ha="center", va="center", 
+                                       color="white" if abs(corr_value) > 0.5 else "black",
+                                       fontsize=10, fontweight='bold')
+            
+            # Add colorbar
+            cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+            cbar.set_label('Spearman Correlation Coefficient', rotation=270, labelpad=20)
+            
+            # Set titles and labels
+            dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
+            plt.title(f'Zero-shot vs Iterative Performance Correlations\nModel: {model_name} | Dataset(s): {dataset_title}', 
+                     fontsize=16, fontweight='bold', pad=20)
+            ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
+            ax.set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
+            
+            # Adjust layout
+            plt.tight_layout()
+            
+            # Save plot with model name in filename
+            safe_model_name = model_name.replace('/', '_').replace('\\', '_').replace(':', '_')
+            heatmap_path = individual_heatmaps_dir / f"{safe_model_name}_correlation_heatmap.png"
+            plt.savefig(heatmap_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"✓ Individual heatmap saved for {model_name}: {heatmap_path}")
+        
+        print(f"✓ All individual model heatmaps saved in: {individual_heatmaps_dir}")
+    
     def print_summary_report(self) -> None:
         """Print a comprehensive summary report to console."""
         dataset_title = ', '.join([d.upper() for d in self.datasets])
@@ -451,6 +796,58 @@ class SpearmanCorrelationAnalyzer:
         print("Legend: *** p<0.001, ** p<0.01, * p<0.05, ns = not significant")
         print(f"Results saved in: {self.output_path}")
         print(f"{'='*70}")
+    
+    def print_individual_model_summary(self) -> None:
+        """Print a summary report for individual model correlations."""
+        if not self.individual_model_results:
+            return
+        
+        dataset_title = ', '.join([d.upper() for d in self.datasets])
+        print(f"\n{'='*70}")
+        print(f"INDIVIDUAL MODEL CORRELATION ANALYSIS SUMMARY")
+        print(f"Dataset(s): {dataset_title}")
+        print(f"{'='*70}")
+        
+        for model_name, model_results in self.individual_model_results.items():
+            print(f"\n🤖 MODEL: {model_name}")
+            print("-" * 60)
+            
+            for precision_level in PRECISION_LEVELS:
+                if precision_level not in model_results:
+                    continue
+                    
+                print(f"\n📈 {precision_level.upper()} PRECISION LEVEL:")
+                print("-" * 40)
+                
+                for metric in METRICS_TO_ANALYZE:
+                    if metric not in model_results[precision_level]:
+                        continue
+                        
+                    stats = model_results[precision_level][metric]
+                    correlation = stats['correlation']
+                    p_value = stats['p_value']
+                    n_samples = stats['n_samples']
+                    significance = stats['significance']
+                    
+                    # Interpretation
+                    if np.isnan(correlation):
+                        interpretation = "Insufficient data"
+                    elif abs(correlation) >= 0.7:
+                        interpretation = "Strong correlation"
+                    elif abs(correlation) >= 0.5:
+                        interpretation = "Moderate correlation"
+                    elif abs(correlation) >= 0.3:
+                        interpretation = "Weak correlation"
+                    else:
+                        interpretation = "Very weak correlation"
+                    
+                    print(f"  {metric:20s}: ρ = {correlation:6.3f} {significance:3s} "
+                          f"(p = {p_value:.3f}, n = {n_samples:2d}) - {interpretation}")
+        
+        print(f"\n{'='*70}")
+        print("Legend: *** p<0.001, ** p<0.01, * p<0.05, ns = not significant")
+        print(f"Individual model results saved in: {self.output_path}")
+        print(f"{'='*70}")
 
 
 def main():
@@ -463,11 +860,19 @@ Examples:
   python evaluation/spearman_correlation.py              # Analyze all available datasets
   python evaluation/spearman_correlation.py -d euler_1d  # Analyze specific dataset
   python evaluation/spearman_correlation.py -d heat_1d
+  python evaluation/spearman_correlation.py -i                   # Include individual model analysis
 
 Output files (essential files only):
   - eval_results/spearman_correlation/{dataset}/correlation_summary.csv
   - eval_results/spearman_correlation/{dataset}/correlation_summary.xlsx
   - eval_results/spearman_correlation/{dataset}/correlation_heatmap.png
+  
+Additional files when using -i (--individual-models):
+  - eval_results/spearman_correlation/{dataset}/individual_model_correlation_summary.csv
+  - eval_results/spearman_correlation/{dataset}/individual_model_correlation_summary.xlsx
+  - eval_results/spearman_correlation/{dataset}/individual_model_statistics.csv
+  - eval_results/spearman_correlation/{dataset}/individual_model_statistics.xlsx
+  - eval_results/spearman_correlation/{dataset}/individual_model_heatmaps/{model}_correlation_heatmap.png
         """
     )
     
@@ -475,6 +880,12 @@ Output files (essential files only):
         '-d', '--dataset',
         required=False,
         help='Dataset name (e.g., euler_1d, heat_1d, burgers_1d). If not specified, analyzes all available datasets.'
+    )
+    
+    parser.add_argument(
+        '-i', '--individual-models',
+        action='store_true',
+        help='Also perform individual model correlation analysis (in addition to overall analysis)'
     )
     
     args = parser.parse_args()
@@ -497,8 +908,19 @@ Output files (essential files only):
         analyzer.save_correlation_summary()
         analyzer.create_correlation_heatmap()
         
+        # Perform individual model analysis if requested
+        if args.individual_models:
+            print(f"\n🚀 Starting individual model correlation analysis...")
+            analyzer.analyze_individual_model_correlations(zero_shot_df, iterative_df)
+            analyzer.save_individual_model_summary()
+            analyzer.create_individual_model_heatmaps()
+        
         # Print summary
         analyzer.print_summary_report()
+        
+        # Print individual model summary if available
+        if hasattr(analyzer, 'individual_model_results') and analyzer.individual_model_results:
+            analyzer.print_individual_model_summary()
         
         print(f"\n✅ Analysis completed successfully!")
         

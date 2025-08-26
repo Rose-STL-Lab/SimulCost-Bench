@@ -213,7 +213,7 @@ def evaluate(
             ref_iter = get_reference_params(dummy)
 
             try:
-                success, rmse = compare_res_heat_steady_2d(
+                success, _, _, rmse = compare_res_heat_steady_2d(
                     profile1=dummy["profile"],
                     dx1=get_required_param(last_iter, "dx", "current_dx"),
                     relax1=get_required_param(last_iter, "relax", "current_relax"),
@@ -224,7 +224,7 @@ def evaluate(
                     relax2=get_required_param(ref_iter, "relax", "current_relax"),
                     error_threshold2=get_required_param(ref_iter, "error_threshold", "current_error_threshold"),
                     t_init2=get_required_param(ref_iter, "t_init", "current_t_init", "T_init"),
-                    tolerance=rmse_tol,
+                    rmse_tolerance=rmse_tol,
                 )
                 
             except Exception as e:
