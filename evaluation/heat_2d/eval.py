@@ -285,6 +285,7 @@ def evaluate(
             f"⚡ Efficiency: {efficiency:.3f}\n"
             f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
             f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
+            f"📏 RMSE Tolerance: {rmse_tol:.3e}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
             f"📌 Dummy Parameters:\n{json.dumps(ref_iter, indent=2, cls=NumpyEncoder)}\n"
             f"------------------------------"
