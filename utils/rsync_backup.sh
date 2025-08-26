@@ -6,7 +6,8 @@ LOG_FILE="utils/rsync_backup.log"
 # 写入日志函数
 log_message() {
     local DATE=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$DATE] $1" >> "$LOG_FILE"
+    local MESSAGE="[$DATE] $1"
+    echo "$MESSAGE" | tee -a "$LOG_FILE"
 }
 
 # 错误处理函数
@@ -27,7 +28,7 @@ sync_directory() {
         error_exit "Source directory $source_dir does not exist."
     fi
     
-    rsync -av --progress "$source_dir" "$target_dir" >> "$LOG_FILE" 2>&1
+    rsync -av --progress "$source_dir" "$target_dir" 2>&1 | tee -a "$LOG_FILE"
     if [ $? -ne 0 ]; then
         error_exit "rsync failed for $source_dir to $target_dir."
     fi
