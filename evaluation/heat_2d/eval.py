@@ -11,9 +11,9 @@ from inference.utils import setup_logging, NumpyEncoder
 
 # Constants
 RMSE_TOLERANCE_BY_PRECISION = {
-    "low": 0.05,     # Relaxed convergence criteria
-    "medium": 0.005, # Moderate convergence criteria  
-    "high": 0.0005,   # Most stringent convergence criteria
+    "low": 0.005,     # Relaxed convergence criteria
+    "medium": 0.0005, # Moderate convergence criteria  
+    "high": 0.0003,   # Most stringent convergence criteria
 }
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"dx", "error_threshold", "relax", "t_init"}
