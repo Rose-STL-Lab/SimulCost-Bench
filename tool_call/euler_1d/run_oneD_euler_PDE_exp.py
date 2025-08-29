@@ -23,6 +23,31 @@ def euler_1d_check_converge_cfl(
     rmse_tolerance: float,
 ):
     """Check convergence by refining CFL (halving it) while keeping other parameters fixed."""
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
     print(f"\nRunning CFL convergence test with CFL = {cfl}")
     refine_cfl = cfl / 2
 
@@ -63,6 +88,31 @@ def euler_1d_check_converge_n_space(
     rmse_tolerance: float,
 ):
     """Check convergence by refining n_space (doubling it) while keeping other parameters fixed."""
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
     print(f"\nRunning n_space convergence test with n_space = {n_space}")
     refine_n_space = n_space * 2
 
@@ -103,6 +153,31 @@ def euler_1d_check_converge_beta(
     rmse_tolerance: float,
 ):
     """Check convergence by refining n_space (doubling it) for beta task while keeping other parameters fixed."""
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
     print(f"\nRunning beta convergence test with beta = {beta}, n_space = {n_space}")
     refine_n_space = n_space * 2
 
@@ -143,6 +218,31 @@ def euler_1d_check_converge_k(
     rmse_tolerance: float,
 ):
     """Check convergence by refining n_space (doubling it) for k task while keeping other parameters fixed."""
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high RMSE and cost.")
+        return {
+            "RMSE": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+            "The cost of the solver simulating the environment": int(1e9),
+            "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": int(1e9),
+            "metrics1": {},
+            "metrics2": {}
+        }
+    
     print(f"\nRunning k convergence test with k = {k}, n_space = {n_space}")
     refine_n_space = n_space * 2
 

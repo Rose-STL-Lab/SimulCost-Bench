@@ -2,6 +2,23 @@ from costsci_tools.wrappers.heat_1d import run_sim_heat_1d, compare_res_heat_1d
 
 def heat_1d_check_converge_n_space(*, accumulated_cost: int, profile: str,
                            n_space: int, cfl: float, tolerance: float):
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high error and cost.")
+        return {
+            "spatial_l2_error": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high error and cost.")
+        return {
+            "spatial_l2_error": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+        }
+    
     # Fix the CFL for the n_space searching
     print(f"\nRunning simulation with n_space = {n_space}")
     refine = n_space * 2
@@ -29,6 +46,23 @@ def heat_1d_check_converge_n_space(*, accumulated_cost: int, profile: str,
 
 def heat_1d_check_converge_cfl(*, accumulated_cost: int, profile: str,
                            n_space: int, cfl: float, tolerance: float):
+    # Handle invalid parameter values
+    if cfl <= 0:
+        print(f"\nInvalid CFL value: {cfl} <= 0. Returning high error and cost.")
+        return {
+            "cfl_l2_error": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+        }
+    
+    if n_space <= 0 or not isinstance(n_space, int):
+        print(f"\nInvalid n_space value: {n_space}. Must be a positive integer. Returning high error and cost.")
+        return {
+            "cfl_l2_error": 1e10,
+            "is_converged": False,
+            "accumulated_cost": accumulated_cost + int(1e9),
+        }
+    
     # Fix the CFL for the n_space searching
     print(f"\nRunning simulation with cfl = {cfl}")
     refine = cfl / 2

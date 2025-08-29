@@ -56,16 +56,28 @@ def get_reference_params(dummy: Dict) -> Dict:
 
 
 def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None):
-    """Strict parameter fetching - no defaults, raise error if missing"""
+    """Strict parameter fetching with validation - no defaults, raise error if missing or invalid"""
     if param_name in param_dict:
-        return param_dict[param_name]
+        value = param_dict[param_name]
     elif alt_name and alt_name in param_dict:
-        return param_dict[alt_name]
+        value = param_dict[alt_name]
     else:
         available_keys = list(param_dict.keys())
         raise KeyError(
             f"Required parameter '{param_name}' not found. "
             f"Available keys: {available_keys}"
+        )
+    
+    # Validate parameter values - raise exceptions to trigger existing error handling
+    if param_name in ["cfl", "current_cfl"] or (alt_name and alt_name in ["cfl", "current_cfl"]):
+        if value <= 0:
+            raise ValueError(f"Invalid CFL value: {value} <= 0")
+    
+    if param_name == "n_space" or (alt_name and alt_name == "n_space"):
+        if value <= 0 or not isinstance(value, int):
+            raise ValueError(f"Invalid n_space value: {value}. Must be a positive integer")
+    
+    return value
         )
 
 
