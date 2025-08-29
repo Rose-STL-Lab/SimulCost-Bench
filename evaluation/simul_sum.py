@@ -115,7 +115,7 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
     # Determine column order (similar to tabulate.py)
     priority_cols = [
         'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
-        'success_rate', 'mean_soft_success', 'mean_efficiency', 
+        'success_rate', 'mean_soft_success', 'mean_soft_efficiency', 
         'mean_hard_efficiency'
     ]
     
@@ -132,7 +132,7 @@ def write_simulation_csv(results: List[Dict], output_file: Path) -> None:
     formatted_results = []
     for result in results:
         formatted_result = result.copy()
-        for metric in ['success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
                 formatted_result[metric] = f"{formatted_result[metric]:.2f}"
         formatted_results.append(formatted_result)
@@ -187,7 +187,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     # Determine column order
     priority_cols = [
         'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
-        'success_rate', 'mean_soft_success', 'mean_efficiency', 
+        'success_rate', 'mean_soft_success', 'mean_soft_efficiency', 
         'mean_hard_efficiency'
     ]
     
@@ -204,7 +204,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     formatted_results = []
     for result in results:
         formatted_result = result.copy()
-        for metric in ['success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
                 formatted_result[metric] = f"{formatted_result[metric]:.2f}"
         formatted_results.append(formatted_result)
@@ -213,7 +213,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     df = pd.DataFrame(formatted_results)[ordered_cols]
     
     # Convert numeric columns
-    for col in ['mean_efficiency', 'mean_hard_efficiency']:
+    for col in ['mean_soft_efficiency', 'mean_hard_efficiency']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
     
@@ -295,23 +295,23 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
                 excel_row += 1
             current_mode = mode
             
-            # Find best efficiency within current precision/mode group for highlighting
+            # Find best hard efficiency within current precision/mode group for highlighting
             same_group = df_sorted[
                 (df_sorted['Precision Level'] == precision) & 
                 (df_sorted['Inference Mode'] == mode)
             ]
-            max_efficiency = None
-            if 'mean_efficiency' in same_group.columns:
-                numeric_efficiencies = same_group['mean_efficiency'][same_group['mean_efficiency'] != 'nan']
+            max_hard_efficiency = None
+            if 'mean_hard_efficiency' in same_group.columns:
+                numeric_efficiencies = same_group['mean_hard_efficiency'][same_group['mean_hard_efficiency'] != 'nan']
                 if len(numeric_efficiencies) > 0:
-                    max_efficiency = numeric_efficiencies.max()
+                    max_hard_efficiency = numeric_efficiencies.max()
             
             # Check if this is the best performing model in this group
             is_best_performance = (
-                max_efficiency is not None
-                and row.get('mean_efficiency', 0) == max_efficiency
-                and row.get('mean_efficiency', 0) != 0
-                and row.get('mean_efficiency', 0) != 'nan'
+                max_hard_efficiency is not None
+                and row.get('mean_hard_efficiency', 0) == max_hard_efficiency
+                and row.get('mean_hard_efficiency', 0) != 0
+                and row.get('mean_hard_efficiency', 0) != 'nan'
             )
             
             # Write each cell with appropriate formatting
@@ -320,12 +320,12 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
                 
                 # Choose formatting based on inference mode and performance
                 if mode.lower() == 'iterative':
-                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                    if is_best_performance and col in ['Model', 'mean_hard_efficiency']:
                         cell_fmt = best_iterative_fmt
                     else:
                         cell_fmt = iterative_fmt
                 elif mode.lower() == 'zero-shot':
-                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                    if is_best_performance and col in ['Model', 'mean_hard_efficiency']:
                         cell_fmt = best_zeroshot_fmt
                     else:
                         cell_fmt = zeroshot_fmt
@@ -369,7 +369,7 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
         ws.write(legend_row, 0, "Legend:", legend_fmt)
         ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
         ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
-        ws.write(legend_row + 3, 0, "Best efficiency model in each precision/mode group shown in bold", legend_fmt)
+        ws.write(legend_row + 3, 0, "Best hard efficiency model in each precision/mode group shown in bold", legend_fmt)
         ws.write(legend_row + 4, 0, "Blank rows separate precision levels and inference modes", legend_fmt)
 
 

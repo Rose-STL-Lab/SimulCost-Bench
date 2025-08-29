@@ -48,7 +48,7 @@ PRIORITY_METRICS = [
     "converged_rate",
     "success_rate",
     "mean_soft_success",
-    "mean_efficiency",
+    "mean_soft_efficiency",
     "mean_hard_efficiency",
     "mean_rmse",
     "rmse_tolerance",
@@ -277,7 +277,7 @@ def write_csv(rows: List[Dict[str, str]], metric_cols: List[str], outfile: Path)
     formatted_rows = []
     for row in rows:
         formatted_row = row.copy()
-        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_row and isinstance(formatted_row[metric], (int, float)):
                 formatted_row[metric] = f"{formatted_row[metric]:.2f}"
         formatted_rows.append(formatted_row)
@@ -342,7 +342,7 @@ def write_excel(
     formatted_rows = []
     for row in rows:
         formatted_row = row.copy()
-        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_efficiency', 'mean_hard_efficiency']:
+        for metric in ['converged_rate', 'success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']:
             if metric in formatted_row and isinstance(formatted_row[metric], (int, float)):
                 formatted_row[metric] = f"{formatted_row[metric]:.2f}"
         formatted_rows.append(formatted_row)
@@ -350,7 +350,7 @@ def write_excel(
     df = pd.DataFrame(formatted_rows)[ordered_cols]
 
     # Convert to numeric for easier comparison
-    for col in ("mean_efficiency", "mean_hard_efficiency"):
+    for col in ("mean_soft_efficiency", "mean_hard_efficiency"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -404,10 +404,10 @@ def write_excel(
             df.sort_values(["Task", "Inference Mode"])
             .groupby(["Task", "Inference Mode"], sort=False)
         ):
-            # Maximum efficiency within group (may be empty)
-            max_efficiency = (
-                subdf["mean_efficiency"][subdf["mean_efficiency"] != 'nan'].max()
-                if "mean_efficiency" in subdf and len(subdf["mean_efficiency"][subdf["mean_efficiency"] != 'nan']) > 0
+            # Maximum hard efficiency within group (may be empty)
+            max_hard_efficiency = (
+                subdf["mean_hard_efficiency"][subdf["mean_hard_efficiency"] != 'nan'].max()
+                if "mean_hard_efficiency" in subdf and len(subdf["mean_hard_efficiency"][subdf["mean_hard_efficiency"] != 'nan']) > 0
                 else None
             )
 
@@ -416,11 +416,11 @@ def write_excel(
                 # Determine formatting based on inference mode
                 inference_mode = row["Inference Mode"]
                 
-                # Bold formatting logic for highest efficiency (only when value is non-zero)
-                is_top_efficiency = (
-                    max_efficiency is not None
-                    and row.get("mean_efficiency", 0) == max_efficiency
-                    and row.get("mean_efficiency", 0) != 0
+                # Bold formatting logic for highest hard efficiency (only when value is non-zero)
+                is_top_hard_efficiency = (
+                    max_hard_efficiency is not None
+                    and row.get("mean_hard_efficiency", 0) == max_hard_efficiency
+                    and row.get("mean_hard_efficiency", 0) != 0
                 )
                 
                 # Choose background color format based on inference mode only
@@ -448,8 +448,8 @@ def write_excel(
                     else:
                         ws.write(excel_row, col_idx[m], val, bg_fmt)
 
-                # Apply bold formatting ONLY to model name and efficiency for top performers
-                if is_top_efficiency:
+                # Apply bold formatting ONLY to model name and hard efficiency for top performers
+                if is_top_hard_efficiency:
                     # Choose bold format with appropriate background color
                     if inference_mode.lower() == 'iterative':
                         bold_fmt_with_bg = best_iterative_fmt
@@ -458,12 +458,12 @@ def write_excel(
                     else:
                         bold_fmt_with_bg = bold_fmt
                     
-                    # Overwrite model name and efficiency with bold formatting
+                    # Overwrite model name and hard efficiency with bold formatting
                     ws.write(excel_row, col_idx["Model"], row["Model"], bold_fmt_with_bg)
-                    if "mean_efficiency" in col_idx:
-                        efficiency_val = row["mean_efficiency"]
-                        if efficiency_val != 'nan':
-                            ws.write(excel_row, col_idx["mean_efficiency"], efficiency_val, bold_fmt_with_bg)
+                    if "mean_hard_efficiency" in col_idx:
+                        hard_efficiency_val = row["mean_hard_efficiency"]
+                        if hard_efficiency_val != 'nan':
+                            ws.write(excel_row, col_idx["mean_hard_efficiency"], hard_efficiency_val, bold_fmt_with_bg)
 
                 excel_row += 1
 
@@ -483,7 +483,7 @@ def write_excel(
         ws.write(legend_row, 0, "Legend:", legend_fmt)
         ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
         ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
-        ws.write(legend_row + 3, 0, "Best efficiency model in each task/mode group shown in bold", legend_fmt)
+        ws.write(legend_row + 3, 0, "Best hard efficiency model in each task/mode group shown in bold", legend_fmt)
         ws.write(legend_row + 4, 0, "Blank rows separate task and inference mode groups", legend_fmt)
 
         # Auto-adjust column width
