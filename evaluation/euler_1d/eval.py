@@ -78,7 +78,6 @@ def get_required_param(param_dict: Dict, param_name: str, alt_name: str = None):
             raise ValueError(f"Invalid n_space value: {value}. Must be a positive integer")
     
     return value
-        )
 
 
 def evaluate(
