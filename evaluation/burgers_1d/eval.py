@@ -288,7 +288,7 @@ def evaluate(
             f"🎯 Soft Success: {soft_success_value:.3f}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
-            f"⚡ Efficiency: {efficiency:.3f}\n"
+            f"⚡ Soft Efficiency: {efficiency:.3f}\n"
             f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
             f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
             f"📏 RMSE Tolerance: {rmse_tol:.3e}\n"
