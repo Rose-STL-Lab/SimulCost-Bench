@@ -567,8 +567,8 @@ class EffectSizeAnalyzer:
         ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
         ax.set_yticklabels(precision_labels)
         
-        # Rotate x-axis labels for better readability
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        # Set x-axis labels to horizontal for better readability
+        plt.setp(ax.get_xticklabels(), rotation=0, ha="center")
         
         # Add Cohen's d values as text with interpretations
         for i in range(len(precision_labels)):

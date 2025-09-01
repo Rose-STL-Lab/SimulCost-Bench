@@ -41,7 +41,7 @@ log_message "Starting rsync operations."
 
 sync_directory "log_model_tool_call/" "/data/leo_work_new/log_model_tool_call/"
 sync_directory "results_model_attempt/" "/data/leo_work_new/results_model_attempt/"
-sync_directory "eval_results/" "/data/leo_work_new/eval_results/"
+# sync_directory "eval_results/" "/data/leo_work_new/eval_results/"
 sync_directory "sim_res/" "/data/leo_work_new/sim_res/"
 
 log_message "Rsync operations completed successfully."
