@@ -10,9 +10,9 @@ of model rankings across inference paradigms.
 
 Usage
 -----
-python evaluation/spearman_correlation.py              # Analyze all available datasets
-python evaluation/spearman_correlation.py -d euler_1d  # Analyze specific dataset
-python evaluation/spearman_correlation.py -d heat_1d
+python evaluation/stats_utils/spearman_correlation.py              # Analyze all available datasets
+python evaluation/stats_utils/spearman_correlation.py -d euler_1d  # Analyze specific dataset
+python evaluation/stats_utils/spearman_correlation.py -d heat_1d
 
 Output: Creates analysis results with only essential files:
 - correlation_summary.csv: Numerical correlation coefficients and p-values
@@ -42,7 +42,9 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 # Configuration constants
-METRICS_TO_ANALYZE = ['success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']
+METRICS_TO_ANALYZE = ['success_rate', 'mean_hard_efficiency']
+# Temporarily commenting out soft metrics for focused analysis
+# METRICS_TO_ANALYZE = ['success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']
 PRECISION_LEVELS = ['low', 'medium', 'high', 'overall']
 INFERENCE_MODES = ['Zero-shot', 'Iterative']
 
@@ -73,9 +75,9 @@ class SpearmanCorrelationAnalyzer:
         
         # Create output directory
         if len(self.datasets) == 1:
-            self.output_path = Path(f"eval_results/spearman_correlation/{self.datasets[0]}")
+            self.output_path = Path(f"eval_results/stats/spearman_correlation/{self.datasets[0]}")
         else:
-            self.output_path = Path("eval_results/spearman_correlation/multi_dataset")
+            self.output_path = Path("eval_results/stats/spearman_correlation/multi_dataset")
         self.output_path.mkdir(parents=True, exist_ok=True)
         
         # Storage for analysis results
@@ -95,7 +97,7 @@ class SpearmanCorrelationAnalyzer:
         available_datasets = []
         
         for dataset_path in eval_results_path.iterdir():
-            if dataset_path.is_dir() and dataset_path.name != "spearman_correlation":
+            if dataset_path.is_dir() and dataset_path.name != "stats":
                 dataset_name = dataset_path.name
                 zero_shot_path = dataset_path / "zero_shot" / f"{dataset_name}_sum.csv"
                 iterative_path = dataset_path / "iterative" / f"{dataset_name}_sum.csv"
@@ -629,8 +631,8 @@ class SpearmanCorrelationAnalyzer:
         ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
         ax.set_yticklabels(precision_labels)
         
-        # Rotate x-axis labels for better readability
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        # Keep x-axis labels horizontal for better readability
+        plt.setp(ax.get_xticklabels(), rotation=0, ha="center")
         
         # Add correlation values as text
         for i in range(len(precision_labels)):
@@ -848,6 +850,160 @@ class SpearmanCorrelationAnalyzer:
         print("Legend: *** p<0.001, ** p<0.01, * p<0.05, ns = not significant")
         print(f"Individual model results saved in: {self.output_path}")
         print(f"{'='*70}")
+    
+    def generate_correlation_report(self) -> None:
+        """Generate a comprehensive correlation analysis report."""
+        report_path = self.output_path / "spearman_correlation_report.txt"
+        
+        dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write("="*80 + "\n")
+            f.write("SPEARMAN CORRELATION ANALYSIS REPORT\n")
+            f.write(f"Dataset(s): {dataset_title}\n")
+            f.write("="*80 + "\n\n")
+            
+            # Executive Summary
+            f.write("EXECUTIVE SUMMARY\n")
+            f.write("-"*50 + "\n")
+            f.write("This report analyzes the Spearman rank correlation between zero-shot and\n")
+            f.write("iterative model performance across different precision levels and metrics.\n")
+            f.write("Higher correlations indicate more consistent model rankings between the\n")
+            f.write("two inference approaches.\n\n")
+            
+            # Summary statistics
+            strong_correlations = []
+            moderate_correlations = []
+            weak_correlations = []
+            
+            for precision_level, metrics in self.correlation_results.items():
+                for metric, stats in metrics.items():
+                    correlation = stats['correlation']
+                    if not np.isnan(correlation):
+                        abs_corr = abs(correlation)
+                        corr_info = (precision_level, metric, correlation, stats['p_value'], stats['significance'])
+                        
+                        if abs_corr >= 0.7:
+                            strong_correlations.append(corr_info)
+                        elif abs_corr >= 0.4:
+                            moderate_correlations.append(corr_info)
+                        else:
+                            weak_correlations.append(corr_info)
+            
+            f.write(f"• Strong correlations (|ρ| ≥ 0.7): {len(strong_correlations)} cases\n")
+            f.write(f"• Moderate correlations (|ρ| ≥ 0.4): {len(moderate_correlations)} cases\n")
+            f.write(f"• Weak correlations (|ρ| < 0.4): {len(weak_correlations)} cases\n\n")
+            
+            # Detailed findings by precision level
+            f.write("DETAILED FINDINGS\n")
+            f.write("-"*50 + "\n")
+            
+            for precision_level in PRECISION_LEVELS:
+                if precision_level not in self.correlation_results:
+                    continue
+                    
+                f.write(f"\n{precision_level.upper()} PRECISION LEVEL:\n")
+                f.write("-"*40 + "\n")
+                
+                precision_results = self.correlation_results[precision_level]
+                for metric, stats in precision_results.items():
+                    correlation = stats['correlation']
+                    p_value = stats['p_value']
+                    n_samples = stats['n_samples']
+                    significance = stats['significance']
+                    
+                    # Interpret correlation strength
+                    if np.isnan(correlation):
+                        interpretation = "Insufficient data"
+                    else:
+                        abs_corr = abs(correlation)
+                        direction = "positive" if correlation > 0 else "negative"
+                        
+                        if abs_corr >= 0.7:
+                            strength = "strong"
+                        elif abs_corr >= 0.5:
+                            strength = "moderate"
+                        elif abs_corr >= 0.3:
+                            strength = "weak"
+                        else:
+                            strength = "very weak"
+                        
+                        interpretation = f"{strength} {direction} correlation"
+                    
+                    f.write(f"  {metric}:\n")
+                    f.write(f"    • Correlation: ρ = {correlation:.3f}\n")
+                    f.write(f"    • Interpretation: {interpretation}\n")
+                    f.write(f"    • Statistical significance: {significance} (p = {p_value:.4f})\n")
+                    f.write(f"    • Sample size: n = {n_samples}\n")
+                    f.write("\n")
+            
+            # Practical implications
+            f.write("PRACTICAL IMPLICATIONS\n")
+            f.write("-"*50 + "\n")
+            
+            if strong_correlations:
+                strong_correlations.sort(key=lambda x: abs(x[2]), reverse=True)
+                f.write("STRONG CORRELATIONS indicate consistent model rankings:\n")
+                for precision, metric, corr, p_val, sig in strong_correlations[:5]:
+                    f.write(f"• {precision.capitalize()}/{metric}: ρ = {corr:.3f} {sig}\n")
+                f.write("  → Zero-shot and iterative approaches rank models similarly\n")
+                f.write("  → Model selection can be based on either approach\n\n")
+            
+            if weak_correlations:
+                f.write("WEAK CORRELATIONS suggest different model rankings:\n")
+                weak_sorted = sorted(weak_correlations, key=lambda x: abs(x[2]))
+                for precision, metric, corr, p_val, sig in weak_sorted[:3]:
+                    f.write(f"• {precision.capitalize()}/{metric}: ρ = {corr:.3f} {sig}\n")
+                f.write("  → Model rankings differ significantly between approaches\n")
+                f.write("  → Consider evaluation approach when selecting models\n\n")
+            
+            # Recommendations
+            f.write("RECOMMENDATIONS\n")
+            f.write("-"*50 + "\n")
+            
+            # Analyze precision level patterns
+            precision_avg_corrs = {}
+            for precision_level in ['low', 'medium', 'high']:
+                if precision_level in self.correlation_results:
+                    corrs = [stats['correlation'] for stats in self.correlation_results[precision_level].values()
+                            if not np.isnan(stats['correlation'])]
+                    if corrs:
+                        precision_avg_corrs[precision_level] = np.mean([abs(c) for c in corrs])
+            
+            if len(precision_avg_corrs) >= 2:
+                best_precision = max(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
+                worst_precision = min(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
+                
+                f.write("Based on correlation analysis:\n\n")
+                f.write(f"1. Most consistent model rankings: {best_precision.upper()} precision\n")
+                f.write(f"   (Average |correlation| = {precision_avg_corrs[best_precision]:.3f})\n")
+                f.write(f"   → Reliable to use either zero-shot or iterative for model selection\n\n")
+                
+                f.write(f"2. Least consistent model rankings: {worst_precision.upper()} precision\n")
+                f.write(f"   (Average |correlation| = {precision_avg_corrs[worst_precision]:.3f})\n")
+                f.write(f"   → Choose evaluation approach carefully for model selection\n\n")
+            
+            # Find most reliable metrics
+            metric_avg_corrs = {}
+            for metric in METRICS_TO_ANALYZE:
+                corrs = []
+                for precision_level in self.correlation_results.values():
+                    if metric in precision_level and not np.isnan(precision_level[metric]['correlation']):
+                        corrs.append(abs(precision_level[metric]['correlation']))
+                if corrs:
+                    metric_avg_corrs[metric] = np.mean(corrs)
+            
+            if metric_avg_corrs:
+                sorted_metrics = sorted(metric_avg_corrs.items(), key=lambda x: x[1], reverse=True)
+                f.write("3. Most consistent metrics across precision levels:\n")
+                for metric, avg_corr in sorted_metrics[:3]:
+                    f.write(f"   • {metric}: average |correlation| = {avg_corr:.3f}\n")
+            
+            f.write("\n" + "="*80 + "\n")
+            f.write("End of Report\n")
+            f.write("="*80 + "\n")
+        
+        print(f"✓ Spearman correlation report saved: {report_path}")
 
 
 def main():
@@ -857,22 +1013,22 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python evaluation/spearman_correlation.py              # Analyze all available datasets
-  python evaluation/spearman_correlation.py -d euler_1d  # Analyze specific dataset
-  python evaluation/spearman_correlation.py -d heat_1d
-  python evaluation/spearman_correlation.py -i                   # Include individual model analysis
+  python evaluation/stats_utils/spearman_correlation.py              # Analyze all available datasets
+  python evaluation/stats_utils/spearman_correlation.py -d euler_1d  # Analyze specific dataset
+  python evaluation/stats_utils/spearman_correlation.py -d heat_1d
+  python evaluation/stats_utils/spearman_correlation.py -i                   # Include individual model analysis
 
 Output files (essential files only):
-  - eval_results/spearman_correlation/{dataset}/correlation_summary.csv
-  - eval_results/spearman_correlation/{dataset}/correlation_summary.xlsx
-  - eval_results/spearman_correlation/{dataset}/correlation_heatmap.png
+  - eval_results/stats/spearman_correlation/{dataset}/correlation_summary.csv
+  - eval_results/stats/spearman_correlation/{dataset}/correlation_summary.xlsx
+  - eval_results/stats/spearman_correlation/{dataset}/correlation_heatmap.png
   
 Additional files when using -i (--individual-models):
-  - eval_results/spearman_correlation/{dataset}/individual_model_correlation_summary.csv
-  - eval_results/spearman_correlation/{dataset}/individual_model_correlation_summary.xlsx
-  - eval_results/spearman_correlation/{dataset}/individual_model_statistics.csv
-  - eval_results/spearman_correlation/{dataset}/individual_model_statistics.xlsx
-  - eval_results/spearman_correlation/{dataset}/individual_model_heatmaps/{model}_correlation_heatmap.png
+  - eval_results/stats/spearman_correlation/{dataset}/individual_model_correlation_summary.csv
+  - eval_results/stats/spearman_correlation/{dataset}/individual_model_correlation_summary.xlsx
+  - eval_results/stats/spearman_correlation/{dataset}/individual_model_statistics.csv
+  - eval_results/stats/spearman_correlation/{dataset}/individual_model_statistics.xlsx
+  - eval_results/stats/spearman_correlation/{dataset}/individual_model_heatmaps/{model}_correlation_heatmap.png
         """
     )
     
@@ -907,6 +1063,7 @@ Additional files when using -i (--individual-models):
         # Save results (only essential files)
         analyzer.save_correlation_summary()
         analyzer.create_correlation_heatmap()
+        analyzer.generate_correlation_report()
         
         # Perform individual model analysis if requested
         if args.individual_models:
