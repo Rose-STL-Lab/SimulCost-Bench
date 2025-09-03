@@ -37,50 +37,6 @@ TOOL_NAME_KEYS = {
     "ns_2d_check_converge_parameter": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
 }
 
-def extract_parameters_regex(response_text: str, required_keys: List[str]) -> Dict[str, Any]:
-    """
-    Extract parameters using rule-based regex methods from response text.
-    
-    Args:
-        response_text: The raw response text from the model
-        required_keys: List of parameter keys to extract
-    
-    Returns:
-        Dictionary with extracted parameters, or empty dict if extraction fails
-    """
-    import re
-    
-    params = {}
-    
-    # Try to extract parameters from the response text
-    for key in required_keys:
-        # Look for the key in various formats within the response
-        key_patterns = [
-            # Match "key": "value" or "key": value 
-            rf'["\']?{key}["\']?\s*:\s*["\']?([0-9.]+)["\']?',
-            # Match key: "value" or key: value
-            rf'{key}\s*:\s*["\']?([0-9.]+)["\']?',
-            # Match key = value
-            rf'{key}\s*=\s*["\']?([0-9.]+)["\']?',
-            # More flexible: key followed by any non-letter chars then number
-            rf'{key}[^a-zA-Z]*?([0-9.]+)'
-        ]
-        
-        for key_pattern in key_patterns:
-            key_matches = re.findall(key_pattern, response_text, re.IGNORECASE)
-            if key_matches:
-                try:
-                    # Use the first match found
-                    value = key_matches[0]
-                    if key == "n_space":
-                        params[key] = int(float(value))
-                    else:
-                        params[key] = float(value)
-                    break
-                except ValueError:
-                    continue
-    
-    return params
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -147,16 +103,6 @@ def save_result(dataset: List[Dict], filename: str):
     with open(filename, "w") as f:
         json.dump(dataset, f, indent=4, cls=NumpyEncoder)
 
-def find_json(response: str) -> Dict[str, Any]:
-    try:
-        
-        start_idx = response.find('{')
-        end_idx = response.rfind('}') + 1
-        response = response[start_idx:end_idx]
-        return json.loads(response)
-    except Exception as e:
-        error_msg = f"Error in find_json: {str(e)}"
-        return {"error": error_msg}
 
 def find_json_robust(response: str):
     """
@@ -164,7 +110,10 @@ def find_json_robust(response: str):
     Prioritizes extracting the first complete JSON object.
     """
     import json
-    import re
+    
+    # Input validation
+    if not response or not isinstance(response, str):
+        return {"error": "Invalid input: response is empty or not a string"}
     
     # Strategy 1: Extract first complete JSON object with proper brace matching
     try:
@@ -190,29 +139,10 @@ def find_json_robust(response: str):
                         pass
                     # Reset for next potential JSON object
                     start_idx = -1
-                    brace_count = 0
     except Exception:
         pass
     
-    # Strategy 2: Try multiple JSON boundaries (first occurrence vs last occurrence)
-    try:
-        # Try first { to first complete }
-        start_idx = response.find('{')
-        if start_idx != -1:
-            brace_count = 0
-            for i in range(start_idx, len(response)):
-                if response[i] == '{':
-                    brace_count += 1
-                elif response[i] == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        json_str = response[start_idx:i+1]
-                        obj = json.loads(json_str)
-                        return obj
-    except Exception:
-        pass
-    
-    # Strategy 3: Original method (first { to last })
+    # Strategy 2: Simple boundary matching (first { to last })
     try:
         start_idx = response.find('{')
         end_idx = response.rfind('}') + 1
@@ -223,7 +153,7 @@ def find_json_robust(response: str):
     except Exception:
         pass
     
-    # Strategy 4: Try to extract JSON from each line separately
+    # Strategy 3: Try to extract JSON from each line separately
     try:
         lines = response.strip().split('\n')
         for line in lines:
@@ -235,32 +165,6 @@ def find_json_robust(response: str):
                         return obj
                 except json.JSONDecodeError:
                     continue
-    except Exception:
-        pass
-    
-    # Strategy 5: Regex-based parameter extraction as last resort
-    try:
-        # Extract key fields using regex when JSON parsing completely fails
-        tool_name_match = re.search(r'"tool_name"\s*:\s*"([^"]+)"', response)
-        tool_args_match = re.search(r'"tool_args"\s*:\s*(\{[^}]+\})', response)
-        tool_reason_match = re.search(r'"tool_reason"\s*:\s*"([^"]*)"', response)
-        should_stop_match = re.search(r'"should_stop"\s*:\s*(true|false)', response)
-        
-        if tool_name_match and tool_args_match:
-            result = {
-                "tool_name": tool_name_match.group(1),
-                "tool_reason": tool_reason_match.group(1) if tool_reason_match else "",
-                "should_stop": should_stop_match.group(1) == "true" if should_stop_match else False
-            }
-            # Try to parse tool_args as JSON
-            try:
-                result["tool_args"] = json.loads(tool_args_match.group(1))
-            except:
-                # Extract parameters from tool_args string using regex
-                args_str = tool_args_match.group(1)
-                result["tool_args"] = extract_parameters_regex(args_str, ["n_space", "cfl", "dx", "relax", "t_init", "error_threshold", "k", "beta", "mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"])
-            
-            return result
     except Exception:
         pass
     
@@ -302,9 +206,6 @@ class ToolCallManager:
                     indent=2
                 )
             )
-
-            if tool_args and not isinstance(tool_args, dict):
-                tool_args = extract_parameters_regex(tool_args, TOOL_NAME_KEYS[tool_name])
 
             # Check for validation issues and provide detailed error messages
             validation_errors = []
