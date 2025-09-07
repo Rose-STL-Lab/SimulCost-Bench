@@ -7,7 +7,7 @@ Integrate your own models into SimulCost-Bench with support for single-model or 
 ### Single Model Testing
 1. Implement your model class with `invoke()` method
 2. Configure `.env` file with model parameters
-3. Run inference: `python inference/langchain_LLM.py -p custom_model -m any_name -d heat_1d -t cfl -l medium -z`
+3. Run inference with your model name: `python inference/langchain_LLM.py -p custom_model -m your_model_name -d heat_1d -t cfl -l medium -z`
 
 ### Multiple Models Testing  
 1. Create JSON configuration file: `configs/custom_models.json`
@@ -16,34 +16,20 @@ Integrate your own models into SimulCost-Bench with support for single-model or 
 
 ## 📋 Configuration Options
 
-**Two configuration methods available:**
-
 ### Method 1: JSON Configuration (Recommended)
-**Best for:** Multiple models, production workflows, team collaboration
-
 ```json
 {
   "custom_models": {
-    "qwen3_8b": {
+    "model_name": {
       "custom_code": "/path/to/custom_inference.py",
-      "model_path": "/data/models/Qwen3-8B",
-      "custom_class": "Qwen3",
-      "description": "Qwen3 8B parameter model"
-    },
-    "llama3_7b": {
-      "custom_code": "/path/to/custom_inference.py",
-      "model_path": "/data/models/Llama3-7B",
-      "custom_class": "Llama3",
-      "description": "Llama3 7B instruction-tuned model"
+      "model_path": "/path/to/model",
+      "custom_class": "ModelClass"
     }
   }
 }
 ```
 
 ### Method 2: Environment Variables
-**Best for:** Single model testing, quick experiments
-
-Set in your `.env` file:
 ```ini
 custom_code="/path/to/custom_inference.py"
 model_path="/path/to/your/model"
@@ -52,128 +38,51 @@ custom_class="CustomModel"
 
 ## Required Implementation
 
-Your custom model class must implement the following interface:
-
-### Class Structure
 ```python
 class CustomModel:
     def __init__(self, model_path: str):
-        """
-        Initialize your custom model.
-        
-        Args:
-            model_path (str): Path to your model files/weights
-        """
         self.model_path = model_path
         # Load your model here
-        # Example: self.model = load_model(model_path)
     
     def invoke(self, messages: list[dict]) -> str:
-        """
-        Perform inference on the given messages.
-        
-        Args:
-            messages (list[dict]): List of message dictionaries
-                Each message should have the format:
-                {"role": "system|user|assistant", "content": "message content"}
-        """
-        # Your inference logic here
-        # Process the messages and generate a response
-        
+        # Process messages and generate response
         return response
 ```
 
-### Message Format
-
-The `invoke()` method receives messages in the following format:
-
+**Message format:**
 ```python
-messages = [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "Hello, how are you?"},
-    {"role": "assistant", "content": "I'm doing well, thank you!"},
-    {"role": "user", "content": "What's the weather like?"}
-]
+[{"role": "system|user|assistant", "content": "message content"}]
 ```
 
-## 🛠️ Implementation Guide
+## 🛠️ Configuration Parameters
 
-### Configuration Parameters
-
-- **`custom_code`**: Path to your Python file containing the model class
-- **`model_path`**: Path to your model files, weights, or configuration directory  
-- **`custom_class`**: Exact name of the class that implements the interface
-- **`description`**: *(Optional)* Human-readable description for documentation
+- **`custom_code`**: Path to Python file with model class
+- **`model_path`**: Path to model files/weights
+- **`custom_class`**: Class name implementing the interface
+- **`description`**: *(Optional)* Model description
 
 ## Example Implementation
-
-Here's a complete example of `custom_inference.py`:
 
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class Qwen3:
     def __init__(self, model_path: str):
-        """
-        Initialize your custom model.
-        
-        Args:
-            model_path (str): Path to your model files/weights
-        """
         self.model_path = model_path
-        
-        # Load the tokenizer and the model
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype="auto",
-            device_map="auto"
+            model_path, torch_dtype="auto", device_map="auto"
         )
     
     def invoke(self, messages: list[dict]) -> str:
-        """
-        Perform inference on the given messages.
-        
-        Args:
-            messages (list[dict]): List of message dictionaries
-                Each message should have the format:
-                {"role": "system|user|assistant", "content": "message content"}
-        """
-        print("================================================")
-        print("Messages:", messages)
-        print("================================================")
-
-        # Prepare the model input        
         text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=False  # Switches between thinking and non-thinking modes. Default is True.
+            messages, tokenize=False, add_generation_prompt=True
         )
-        
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-
-        # Conduct text completion
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=32768
-        )
-        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
-        
-        # Parsing thinking content
-        try:
-            # rindex finding 151668 (</think>)
-            index = len(output_ids) - output_ids[::-1].index(151668)
-        except ValueError:
-            index = 0
-        
-        # thinking_content = self.tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
-        response = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
-
-        # print("thinking content:", thinking_content)
-        print("Qwen3 Response:", response)
-        
-        return response
+        generated_ids = self.model.generate(**model_inputs, max_new_tokens=32768)
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+        response = self.tokenizer.decode(output_ids, skip_special_tokens=True)
+        return response.strip()
 ```
 
 ## 🧰 Utilities
@@ -183,79 +92,25 @@ class Qwen3:
 python scripts/list_custom_models.py
 ```
 
-### Batch Testing Multiple Models
-```bash
-# Edit model list in scripts/inference_eval/inference_eval_heat_1d.sh
-model_provider="custom_model"
-models=(
- "qwen3_8b"
- "qwen3_32b"
- "qwen3_235b_a22b"
-)
-
-# Run batch test
-bash scripts/inference_eval/inference_eval_heat_1d.sh
-```
-
 ## ⚡ Usage Examples
 
-### Single Model (Environment Variables)
+### Single Model
 ```bash
-# 1. Set up .env file
-echo 'custom_code="/path/to/custom_inference.py"' >> .env
-echo 'model_path="/data/models/Qwen3-8B"' >> .env  
-echo 'custom_class="Qwen3"' >> .env
-
-# 2. Run inference
-python inference/langchain_LLM.py -p custom_model -m any_name -d heat_1d -t cfl -l medium -z
+# Configure .env and run
+python inference/langchain_LLM.py -p custom_model -m your_model_name -d heat_1d -t cfl -l medium -z
 ```
 
-### Multiple Models (JSON Configuration)
-```bash  
-# 1. Create JSON config with multiple models
-# configs/custom_models.json (see example above)
-
-# 2. Run batch inference
+### Multiple Models
+```bash
+# Configure JSON and run batch
 bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
-<!-- ```python
-<!-- ## Testing Your Implementation
+## 🔧 Notes
 
-Before using your custom model, test it locally:
-
-```python
-# test_custom_model.py
-from custom_inference import CustomModel
-
-# Initialize your model
-model = CustomModel("/path/to/your/model")
-
-# Test with sample messages
-test_messages = [
-    {"role": "user", "content": "Hello, test message"}
-]
-
-# Get response
-response = model.invoke(test_messages)
-print(response)
-``` -->
-
-## 🔧 Advanced Features
-
-### Configuration Priority
-1. **JSON Configuration** (highest priority) - When `configs/custom_models.json` exists
-2. **Environment Variables** (fallback) - When JSON config is missing or model not found
-
-### Error Handling
-- **Model not found in JSON**: Explicit error with available model list
-- **JSON malformed**: Automatic fallback to environment variables  
-- **Missing configuration**: Clear error messages with resolution steps
-
-### Development Tips
-- Use `description` field in JSON for team collaboration
-- Group related models by naming convention (e.g., `qwen3_8b`, `qwen3_32b`)
-- Test single models with `.env` before adding to JSON config
+- JSON configuration has priority over environment variables
+- Test with `.env` before adding to JSON config
+- Use consistent naming conventions for related models
 
 ## 💬 Code is cheap, show me your prompt
 
