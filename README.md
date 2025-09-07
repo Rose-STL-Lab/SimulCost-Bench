@@ -4,17 +4,17 @@ A comprehensive benchmark for evaluating Large Language Models (LLMs) on computa
 
 ## 📚 Table of Contents
 
-- [Environment Setup](#-environment-setup)
-- [Tasks and Zero-Shot Support](#-tasks-and-zero-shot-support)
-- [Generate Questions](#️-generate-questions)
-- [Generate Benchmark Datasets](#-generate-benchmark-datasets)
-- [Configure Model Providers](#-configure-env-file-for-model-providers)
-- [Run Inference](#-run-inference)
-- [Resume Functionality](#-resume-functionality)
-- [Evaluate Performance](#-evaluate-models-performance)
-- [Tabulate Results](#️-tabulate-evaluation-results)
-- [Supported Models](#-supported-models)
-- [Script Usage Guide](#️-script-usage-guide)
+- [Environment Setup](#📦-environment-setup)
+- [Tasks and Zero-Shot Support](#📋-tasks-and-zero-shot-support)
+- [Generate Questions](#🕵️-generate-questions)
+- [Generate Benchmark Datasets](#🚀-generate-benchmark-datasets)
+- [Configure Model Providers](#📄-configure-model-providers)
+- [Run Inference](#🧠-run-inference)
+- [Resume Functionality](#🔄-resume-functionality)
+- [Evaluate Performance](#📊-evaluate-models-performance)
+- [Tabulate Results](#🗂️-tabulate-evaluation-results)
+- [Evaluated Models](#🤖-evaluated-models)
+- [Script Usage Guide](#🛠️-script-usage-guide)
 
 ## 📦 Environment Setup
 
@@ -326,6 +326,6 @@ python evaluation/simul_sum.py -d ns_transient_2d
 
 ## 🛠️ Script Usage Guide
 
-The `scripts/` directory contains automated scripts for streamlined execution of common workflows including question generation, dataset generation, and inference + evaluation pipelines.
+The `scripts/` directory contains automated scripts for streamlined execution of common workflows including inference + evaluation pipelines.
 
 For detailed usage instructions and examples, see the [Script Usage Guide](scripts/README.md).
