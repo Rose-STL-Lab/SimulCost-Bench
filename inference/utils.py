@@ -34,7 +34,10 @@ TOOL_NAME_KEYS = {
     "ns_2d_check_converge_diff_u_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
     "ns_2d_check_converge_diff_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
     "ns_2d_check_converge_res_iter_v_threshold": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
-    "ns_2d_check_converge_parameter": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    "ns_transient_2d_check_converge_resolution": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
+    "ns_transient_2d_check_converge_cfl": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
+    "ns_transient_2d_check_converge_relaxation_factor": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
+    "ns_transient_2d_check_converge_residual_threshold": ["resolution", "cfl", "relaxation_factor", "residual_threshold"]
 }
 
 
@@ -177,7 +180,8 @@ class ToolCallManager:
     def __init__(self, base_logger: logging.Logger, qid: int,
                  focused_parameters: List[str] = None, tolerance_rmse: float = None,
                  mass_tolerance: float = None, u_rmse_tolerance: float = None, 
-                 v_rmse_tolerance: float = None, p_rmse_tolerance: float = None):
+                 v_rmse_tolerance: float = None, p_rmse_tolerance: float = None,
+                 norm_rmse_tolerance: float = None):
         self.logger = LoggerAdapter(base_logger, {'qid': qid})
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
@@ -192,6 +196,8 @@ class ToolCallManager:
         self.u_rmse_tolerance = u_rmse_tolerance
         self.v_rmse_tolerance = v_rmse_tolerance
         self.p_rmse_tolerance = p_rmse_tolerance
+        # NS_Transient_2D specific tolerance
+        self.norm_rmse_tolerance = norm_rmse_tolerance
 
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], profile: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
@@ -291,7 +297,7 @@ class ToolCallManager:
             elif tool_name in [
                 "ns_2d_check_converge_mesh_x", "ns_2d_check_converge_mesh_y", "ns_2d_check_converge_omega_u", 
                 "ns_2d_check_converge_omega_v", "ns_2d_check_converge_omega_p", "ns_2d_check_converge_diff_u_threshold", 
-                "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold", "ns_2d_check_converge_parameter"
+                "ns_2d_check_converge_diff_v_threshold", "ns_2d_check_converge_res_iter_v_threshold"
             ]:
                 # Use ns_2d specific tolerance values from dataset - required fields
                 if None in [self.mass_tolerance, self.u_rmse_tolerance, self.v_rmse_tolerance, self.p_rmse_tolerance]:
@@ -312,6 +318,23 @@ class ToolCallManager:
                     u_rmse_tolerance=self.u_rmse_tolerance,
                     v_rmse_tolerance=self.v_rmse_tolerance,
                     p_rmse_tolerance=self.p_rmse_tolerance,
+                )
+            elif tool_name in [
+                "ns_transient_2d_check_converge_resolution", "ns_transient_2d_check_converge_cfl", 
+                "ns_transient_2d_check_converge_relaxation_factor", "ns_transient_2d_check_converge_residual_threshold"
+            ]:
+                # Use norm_rmse_tolerance from dataset - required field
+                if self.norm_rmse_tolerance is None:
+                    raise ValueError(f"norm_rmse_tolerance is required for ns_transient_2d tools but was not provided in dataset (QID={self.qid})")
+                
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    resolution=fetch_param(tool_args, "resolution"),
+                    cfl=fetch_param(tool_args, "cfl"),
+                    relaxation_factor=fetch_param(tool_args, "relaxation_factor"),
+                    residual_threshold=fetch_param(tool_args, "residual_threshold"),
+                    norm_rmse_tolerance=self.norm_rmse_tolerance,
                 )
             else:
                 # Critical else branch to handle unrecognized tool names

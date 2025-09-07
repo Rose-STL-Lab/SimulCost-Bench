@@ -66,12 +66,16 @@ The table below summarizes the available tasks for each simulation type and indi
 | 1D Euler                 | `n_space`        | ✅ Supported        |
 | 2D Navier-Stokes Channel| `mesh_x`         | ✅ Supported        |
 | 2D Navier-Stokes Channel| `mesh_y`         | ✅ Supported        |
-| 2D Navier-Stokes Channel| `omega_u`        | ✅ Supported        |
-| 2D Navier-Stokes Channel| `omega_v`        | ✅ Supported        |
-| 2D Navier-Stokes Channel| `omega_p`        | ✅ Supported        |
-| 2D Navier-Stokes Channel| `diff_u_threshold` | ✅ Supported      |
-| 2D Navier-Stokes Channel| `diff_v_threshold` | ✅ Supported      |
-| 2D Navier-Stokes Channel| `res_iter_v_threshold` | ✅ Supported  |
+| 2D Navier-Stokes Channel| `omega_u`        | ❌ Only Zero-Shot   |
+| 2D Navier-Stokes Channel| `omega_v`        | ❌ Only Zero-Shot   |
+| 2D Navier-Stokes Channel| `omega_p`        | ❌ Only Zero-Shot   |
+| 2D Navier-Stokes Channel| `diff_u_threshold` | ❌ Only Zero-Shot |
+| 2D Navier-Stokes Channel| `diff_v_threshold` | ❌ Only Zero-Shot |
+| 2D Navier-Stokes Channel| `res_iter_v_threshold` | ❌ Only Zero-Shot |
+| 2D Navier-Stokes Transient| `resolution`   | ✅ Supported        |
+| 2D Navier-Stokes Transient| `cfl`          | ✅ Supported        |
+| 2D Navier-Stokes Transient| `relaxation_factor` | ❌ Only Zero-Shot |
+| 2D Navier-Stokes Transient| `residual_threshold` | ❌ Only Zero-Shot |
 
 
 <!-- ## 🧐 Human Written Version -->
@@ -93,6 +97,9 @@ python qs_gen/1D_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python qs_gen/2D_ns.py
+
+# 2D Navier-Stokes Transient Flow with Taichi Framework
+python qs_gen/2D_ns_transient.py
 ```
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
@@ -115,6 +122,9 @@ python dataset_gen/oneD_euler.py
 
 # 2D Navier-Stokes Channel Flow with SIMPLE Algorithm
 python dataset_gen/twoD_ns.py
+
+# 2D Navier-Stokes Transient Flow with Taichi Framework
+python dataset_gen/twoD_ns_transient.py
 ```
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
@@ -198,7 +208,8 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - **Heat 2D**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `beta`, `n_space`
 - **Euler 1D**: `cfl`, `beta`, `k`, `n_space`
-- **2D Navier-Stokes**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
+- **2D Navier-Stokes Channel**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
+- **2D Navier-Stokes Transient**: `resolution`, `cfl`, `relaxation_factor`, `residual_threshold`
 
 **Parameters:**
 - `-n`: Number of samples to test
@@ -259,7 +270,7 @@ python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl 
 
 Compute performance metrics and accuracy scores for model predictions.
 ```bash
-# Heat 1D
+# Example (Heat 1D)
 python evaluation/heat_1d/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
 ```
 **Parameters:**
@@ -280,6 +291,7 @@ python evaluation/tabulate.py -d heat_2d
 python evaluation/tabulate.py -d burgers_1d
 python evaluation/tabulate.py -d euler_1d
 python evaluation/tabulate.py -d ns_2d
+python evaluation/tabulate.py -d ns_transient_2d
 ```
 
 **Parameters:**
@@ -298,6 +310,7 @@ python evaluation/simul_sum.py -d heat_2d
 python evaluation/simul_sum.py -d burgers_1d
 python evaluation/simul_sum.py -d euler_1d
 python evaluation/simul_sum.py -d ns_2d
+python evaluation/simul_sum.py -d ns_transient_2d
 ```
 
 **Parameters:**

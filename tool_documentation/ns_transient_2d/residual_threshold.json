@@ -1,0 +1,23 @@
+{
+  "run_twoD_ns_transient": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "ns_transient_2d_check_converge_residual_threshold",
+        "description": "Conduct a 2D transient Navier-Stokes simulation and evaluate residual_threshold convergence by refining residual_threshold (*0.1). Returns {\"refined_parameter\": str, \"current_value\": float, \"refined_value\": float, \"norm_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_num_steps\": int, \"refine_num_steps\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "resolution": { "type": "integer", "description": "Grid resolution for the simulation" },
+            "cfl": { "type": "number", "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping" },
+            "relaxation_factor": { "type": "number", "description": "Relaxation factor for iterative solver" },
+            "residual_threshold": { "type": "number", "description": "Convergence threshold for residual" }
+          },
+          "required": [
+            "resolution", "cfl", "relaxation_factor", "residual_threshold"
+          ]
+        }
+      }
+    }
+  }
+}

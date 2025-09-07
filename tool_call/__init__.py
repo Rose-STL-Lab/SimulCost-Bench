@@ -41,6 +41,15 @@ from .ns_2d.run_twoD_ns_exp import (
     ns_2d_check_converge_parameter
 )
 
+# NS Transient 2D functions
+from .ns_transient_2d.run_twoD_ns_transient import (
+    ns_transient_2d_check_converge_resolution,
+    ns_transient_2d_check_converge_cfl,
+    ns_transient_2d_check_converge_relaxation_factor,
+    ns_transient_2d_check_converge_residual_threshold,
+    ns_transient_2d_check_converge_parameter
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -74,4 +83,11 @@ __all__ = [
     "ns_2d_check_converge_diff_v_threshold",
     "ns_2d_check_converge_res_iter_v_threshold",
     "ns_2d_check_converge_parameter",
+    
+    # NS transient 2D
+    "ns_transient_2d_check_converge_resolution",
+    "ns_transient_2d_check_converge_cfl",
+    "ns_transient_2d_check_converge_relaxation_factor",
+    "ns_transient_2d_check_converge_residual_threshold",
+    "ns_transient_2d_check_converge_parameter",
 ]

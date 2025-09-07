@@ -11,8 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Model list (modify this list as needed)
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+#   "anthropic.claude-3-5-haiku-20241022-v1:0"
+#   "anthropic.claude-3-5-sonnet-20240620-v1:0"
   "anthropic.claude-3-7-sonnet-20250219-v1:0"
   "mistral.mistral-large-2402-v1:0"
   "meta.llama3-70b-instruct-v1:0"
@@ -28,7 +28,7 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, heat_1d, heat_2d, ns_2d"
+    echo "                   Available: burgers_1d, euler_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -38,6 +38,7 @@ show_help() {
     echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
     echo "  heat_2d: dx, error_threshold (both modes), relax, t_init (zero-shot only) (with precision levels: low, medium, high)"
     echo "  ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (with precision levels: low, medium, high)"
+    echo "  ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -47,7 +48,7 @@ show_help() {
     echo "Examples:"
     echo "  $0 -d burgers_1d"
     echo "  $0 -d heat_1d -d heat_2d"
-    echo "  $0 -d burgers_1d -d euler_1d -d heat_1d -d heat_2d -d ns_2d"
+    echo "  $0 -d burgers_1d -d euler_1d -d heat_1d -d heat_2d -d ns_2d -d ns_transient_2d"
 }
 
 # Parse command line arguments
@@ -173,10 +174,18 @@ for DATASET in "${DATASETS[@]}"; do
             echo "📋 Running NS 2D evaluation..."
             tasks=("mesh_x" "mesh_y" "omega_u" "omega_v" "omega_p" "diff_u_threshold" "diff_v_threshold" "res_iter_v_threshold")
             precision_levels=("low" "medium" "high")
-            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
             
-            for mode in "${modes[@]}"; do
-                for task in "${tasks[@]}"; do
+            for task in "${tasks[@]}"; do
+                # Determine which modes to use for each task
+                if [[ "$task" == "mesh_x" || "$task" == "mesh_y" ]]; then
+                    # These tasks support both modes
+                    task_modes=("-z" "")
+                else
+                    # Other tasks only support zero-shot mode
+                    task_modes=("-z")
+                fi
+                
+                for mode in "${task_modes[@]}"; do
                     for precision in "${precision_levels[@]}"; do
                         echo "▶ Executing: python evaluation/ns_2d/eval.py -m $MODEL -d ns_2d -t $task -l $precision $mode"
                         python evaluation/ns_2d/eval.py -m $MODEL -d ns_2d -t $task -l $precision $mode
@@ -185,9 +194,33 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
             
+        "ns_transient_2d")
+            echo "📋 Running NS Transient 2D evaluation..."
+            tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+            precision_levels=("low" "medium" "high")
+            
+            for task in "${tasks[@]}"; do
+                # Determine which modes to use for each task
+                if [[ "$task" == "relaxation_factor" || "$task" == "residual_threshold" ]]; then
+                    # These tasks only support zero-shot mode
+                    task_modes=("-z")
+                else
+                    # Other tasks support both modes
+                    task_modes=("-z" "")
+                fi
+                
+                for mode in "${task_modes[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d -t $task -l $precision $mode"
+                        python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+            
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, heat_1d, heat_2d, ns_2d"
+            echo "Supported datasets: burgers_1d, euler_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
             exit 1
             ;;
     esac

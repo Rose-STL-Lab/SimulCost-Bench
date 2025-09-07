@@ -388,6 +388,9 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
                 result['v_rmse_tolerance'] = data['v_rmse_tolerance']
             if 'p_rmse_tolerance' in data:
                 result['p_rmse_tolerance'] = data['p_rmse_tolerance']
+            # NS_Transient_2D specific tolerance
+            if 'norm_rmse_tolerance' in data:
+                result['norm_rmse_tolerance'] = data['norm_rmse_tolerance']
             if 'aspect_ratio' in data:
                 result['aspect_ratio'] = data['aspect_ratio']
             
