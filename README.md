@@ -4,17 +4,17 @@ A comprehensive benchmark for evaluating Large Language Models (LLMs) on computa
 
 ## 📚 Table of Contents
 
-- [Environment Setup](#📦-environment-setup)
-- [Tasks and Zero-Shot Support](#📋-tasks-and-zero-shot-support)
-- [Generate Questions](#🕵️-generate-questions)
-- [Generate Benchmark Datasets](#🚀-generate-benchmark-datasets)
-- [Configure Model Providers](#📄-configure-model-providers)
-- [Run Inference](#🧠-run-inference)
-- [Resume Functionality](#🔄-resume-functionality)
-- [Evaluate Performance](#📊-evaluate-models-performance)
-- [Tabulate Results](#🗂️-tabulate-evaluation-results)
-- [Evaluated Models](#🤖-evaluated-models)
-- [Script Usage Guide](#🛠️-script-usage-guide)
+- [Environment Setup](#-environment-setup)
+- [Tasks and Zero-Shot Support](#-tasks-and-zero-shot-support)
+- [Generate Questions](#️-generate-questions)
+- [Generate Benchmark Datasets](#-generate-benchmark-datasets)
+- [Configure Model Providers](#-configure-model-providers)
+- [Run Inference](#-run-inference)
+- [Resume Functionality](#-resume-functionality)
+- [Evaluate Performance](#-evaluate-models-performance)
+- [Tabulate Results](#️-tabulate-evaluation-results)
+- [Evaluated Models](#-evaluated-models)
+- [Script Usage Guide](#️-script-usage-guide)
 
 ## 📦 Environment Setup
 
