@@ -164,92 +164,58 @@ def merge_metrics(metrics_list: List[Dict[str, str]]) -> Dict[str, float]:
 def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) -> Tuple[List[Dict[str, str]], List[str]]:
     """
     Gather all rows (one per log file) and union of metric columns.
-    Special handling for burgers_1d: aggregate 5 cases by (model, task, mode).
-    For heat_1d and euler_1d: if precision_level is specified, only process that precision level.
+    All datasets now support precision levels with cross-case aggregation.
+    If precision_level is specified, only process that precision level.
     """
     base_root = Path("eval_results") / dataset
     rows: List[Dict[str, str]] = []
     metric_names = set()
 
-    # ---------- heat_1d, heat_2d, burgers_1d and euler_1d (requires cross-case aggregation) ----------
-    if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
-        # key: (model, task, mode)  → {"num_samples": int, "metrics": [dict, ...]}
-        agg: Dict[Tuple[str, str, str], Dict[str, object]] = {}
+    # key: (model, task, mode)  → {"num_samples": int, "metrics": [dict, ...]}
+    agg: Dict[Tuple[str, str, str], Dict[str, object]] = {}
 
-        for task in tasks:
-            task_dir = base_root / task
-            # For heat_1d, heat_2d, burgers_1d and euler_1d with precision levels, filter by precision_level
-            if dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"] and precision_level:
-                case_dirs = [p for p in task_dir.iterdir() if p.is_dir() and p.name == precision_level]
-            else:
-                # All precision levels for heat_1d/heat_2d/burgers_1d/euler_1d
-                case_dirs = sorted(p for p in task_dir.iterdir() if p.is_dir())
-            
-            for case_dir in case_dirs:
-                for log_path in sorted(case_dir.glob("*.log")):
-                    fname = log_path.stem
-                    MODE_RE = re.compile(r"^(iterative|zero_shot)_(.+)$")
-                    match = MODE_RE.match(fname)
-                    if not match:
-                        raise ValueError(f"Unrecognized log filename: {fname}")
-                    mode_key, model = match.groups()
-                    mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
-
-                    result = parse_log(log_path)
-                    if result is None:
-                        continue
-                    num_samples, metrics = result
-                    metric_names.update(metrics.keys())
-
-                    key = (model, task, mode)
-                    bucket = agg.setdefault(
-                        key, {"num_samples": 0, "metrics_list": []}
-                    )
-                    bucket["num_samples"] += num_samples
-                    bucket["metrics_list"].append(metrics)
-
-        # Convert aggregated results to rows
-        for (model, task, mode), info in agg.items():
-            merged_metrics = merge_metrics(info["metrics_list"])  # Average values
-            row = {
-                "Model": model,
-                "Task": task,
-                "Inference Mode": mode,
-                "Number of Samples": info["num_samples"],
-                **merged_metrics,
-            }
-            rows.append(row)
-
-        metric_columns = sorted(metric_names)
-        return rows, metric_columns
-
-    # ---------- Other datasets: original flat structure ----------
     for task in tasks:
         task_dir = base_root / task
-        for log_path in sorted(task_dir.glob("*.log")):
-            fname = log_path.stem  # e.g. iterative_anthropic.xxx
-            MODE_RE = re.compile(r"^(iterative|zero_shot)_(.+)$")
+        # Filter by precision_level if specified, otherwise process all precision levels
+        if precision_level:
+            case_dirs = [p for p in task_dir.iterdir() if p.is_dir() and p.name == precision_level]
+        else:
+            case_dirs = sorted(p for p in task_dir.iterdir() if p.is_dir())
+        
+        for case_dir in case_dirs:
+            for log_path in sorted(case_dir.glob("*.log")):
+                fname = log_path.stem
+                MODE_RE = re.compile(r"^(iterative|zero_shot)_(.+)$")
+                match = MODE_RE.match(fname)
+                if not match:
+                    raise ValueError(f"Unrecognized log filename: {fname}")
+                mode_key, model = match.groups()
+                mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
 
-            match = MODE_RE.match(fname)
-            if not match:
-                raise ValueError(f"Unrecognized log filename: {fname}")
-            mode_key, model = match.groups()
-            mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
+                result = parse_log(log_path)
+                if result is None:
+                    continue
+                num_samples, metrics = result
+                metric_names.update(metrics.keys())
 
-            result = parse_log(log_path)
-            if result is None:
-                continue
-            num_samples, metrics = result
+                key = (model, task, mode)
+                bucket = agg.setdefault(
+                    key, {"num_samples": 0, "metrics_list": []}
+                )
+                bucket["num_samples"] += num_samples
+                bucket["metrics_list"].append(metrics)
 
-            row = {
-                "Model": model,
-                "Task": task,
-                "Inference Mode": mode,
-                "Number of Samples": num_samples,
-                **metrics,
-            }
-            rows.append(row)
-            metric_names.update(metrics.keys())
+    # Convert aggregated results to rows
+    for (model, task, mode), info in agg.items():
+        merged_metrics = merge_metrics(info["metrics_list"])  # Average values
+        row = {
+            "Model": model,
+            "Task": task,
+            "Inference Mode": mode,
+            "Number of Samples": info["num_samples"],
+            **merged_metrics,
+        }
+        rows.append(row)
 
     metric_columns = sorted(metric_names)
     return rows, metric_columns
@@ -537,60 +503,25 @@ def main() -> None:
             print(f"⚠️  No task subdirectories found in '{dataset_dir}'")
             return
 
-    # Special handling for heat_1d, heat_2d, burgers_1d and euler_1d with precision levels
-    if args.dataset in ["heat_1d", "heat_2d", "burgers_1d", "euler_1d"]:
-        precision_levels = ["high", "medium", "low"]
-        for precision in precision_levels:
-            # Collect rows for this precision level
-            rows, metric_cols = collect_rows(args.dataset, task_dirs, precision_level=precision)
-            if not rows:
-                print(f"⚠️  No .log files found for precision level '{precision}' - skipping.")
-                continue
-
-            # Output filenames with precision level
-            if args.task:
-                default_prefix = (
-                    (dataset_dir / args.task) / f"{args.dataset}_{args.task}_{precision}_summary"
-                )
-            else:
-                default_prefix = dataset_dir / f"{args.dataset}_{precision}_summary"
-
-            csv_path = Path(args.csv_output.replace('.csv', f'_{precision}.csv')) if args.csv_output else default_prefix.with_suffix(".csv")
-            xlsx_path = Path(args.xlsx_output.replace('.xlsx', f'_{precision}.xlsx')) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
-
-            # Write outputs
-            write_csv(rows, metric_cols, csv_path)
-            write_excel(rows, metric_cols, xlsx_path)
-            
-            # Write outputs by inference mode
-            write_csv_by_mode(rows, metric_cols, csv_path)
-            write_excel_by_mode(rows, metric_cols, xlsx_path)
-
-            print(f"✅ Summary for {precision} precision saved:")
-            print("   CSV  :", csv_path)
-            print("   Excel:", xlsx_path, "(ready for humans ✨)")
-            print(f"   Mode-specific files created in: {csv_path.parent}/zero_shot/ and {csv_path.parent}/iterative/")
-    else:
-        # Original logic for other datasets
-        rows, metric_cols = collect_rows(args.dataset, task_dirs)
+    # All datasets now support precision levels
+    precision_levels = ["high", "medium", "low"]
+    for precision in precision_levels:
+        # Collect rows for this precision level
+        rows, metric_cols = collect_rows(args.dataset, task_dirs, precision_level=precision)
         if not rows:
-            print("⚠️  No .log files found - nothing to parse.")
-            return
+            print(f"⚠️  No .log files found for precision level '{precision}' - skipping.")
+            continue
 
-        # Output filenames
+        # Output filenames with precision level
         if args.task:
             default_prefix = (
-                (dataset_dir / args.task) / f"{args.dataset}_{args.task}_summary"
+                (dataset_dir / args.task) / f"{args.dataset}_{args.task}_{precision}_summary"
             )
         else:
-            default_prefix = dataset_dir / f"{args.dataset}_summary"
+            default_prefix = dataset_dir / f"{args.dataset}_{precision}_summary"
 
-        csv_path = Path(args.csv_output) if args.csv_output else default_prefix.with_suffix(
-            ".csv"
-        )
-        xlsx_path = Path(
-            args.xlsx_output
-        ) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
+        csv_path = Path(args.csv_output.replace('.csv', f'_{precision}.csv')) if args.csv_output else default_prefix.with_suffix(".csv")
+        xlsx_path = Path(args.xlsx_output.replace('.xlsx', f'_{precision}.xlsx')) if args.xlsx_output else default_prefix.with_suffix(".xlsx")
 
         # Write outputs
         write_csv(rows, metric_cols, csv_path)
@@ -600,7 +531,7 @@ def main() -> None:
         write_csv_by_mode(rows, metric_cols, csv_path)
         write_excel_by_mode(rows, metric_cols, xlsx_path)
 
-        print("✅ Summary saved:")
+        print(f"✅ Summary for {precision} precision saved:")
         print("   CSV  :", csv_path)
         print("   Excel:", xlsx_path, "(ready for humans ✨)")
         print(f"   Mode-specific files created in: {csv_path.parent}/zero_shot/ and {csv_path.parent}/iterative/")

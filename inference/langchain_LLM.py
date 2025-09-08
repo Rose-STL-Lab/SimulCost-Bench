@@ -573,7 +573,8 @@ DATASET_TASK_MAP = {
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
     "ns_2d": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", 
-              "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+              "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
+    "ns_transient_2d": ["resolution", "cfl", "relaxation_factor", "residual_threshold"]
 }
 
 # Generate all valid tasks for choices
