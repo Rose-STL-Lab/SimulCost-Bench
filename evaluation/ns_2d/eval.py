@@ -48,10 +48,25 @@ def load_profile_config(profile: str) -> Dict:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
+    # Check for required parameters and raise error if missing
+    required_params = ['length', 'breadth', 'boundary_condition']
+    missing_params = []
+    
+    for param in required_params:
+        if param not in config:
+            missing_params.append(param)
+    
+    if missing_params:
+        available_keys = list(config.keys())
+        raise KeyError(
+            f"Required parameters missing from profile '{profile}': {missing_params}. "
+            f"Available keys: {available_keys}"
+        )
+    
     return {
-        'length': config.get('length', 20.0),
-        'breadth': config.get('breadth', 1.0), 
-        'boundary_condition': config.get('boundary_condition', 'channel_flow')
+        'length': config['length'],
+        'breadth': config['breadth'], 
+        'boundary_condition': config['boundary_condition']
     }
 
 def soft_success(d, epsilon):

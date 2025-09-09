@@ -38,15 +38,31 @@ def load_profile_config(profile: str) -> Dict:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
+    # Check for required parameters and raise error if missing
+    required_params = ['boundary_condition', 'reynolds_num', 'vorticity_confinement', 
+                      'total_runtime', 'no_dye', 'cpu', 'visualization', 'advection_scheme']
+    missing_params = []
+    
+    for param in required_params:
+        if param not in config:
+            missing_params.append(param)
+    
+    if missing_params:
+        available_keys = list(config.keys())
+        raise KeyError(
+            f"Required parameters missing from profile '{profile}': {missing_params}. "
+            f"Available keys: {available_keys}"
+        )
+    
     return {
-        'boundary_condition': config.get('boundary_condition', 1),
-        'reynolds_num': config.get('reynolds_num', 1000.0),
-        'vorticity_confinement': config.get('vorticity_confinement', 0.0),
-        'total_runtime': config.get('total_runtime', 1.0),
-        'no_dye': config.get('no_dye', False),
-        'cpu': config.get('cpu', False),
-        'visualization': config.get('visualization', 0),
-        'advection_scheme': config.get('advection_scheme', 'cip')
+        'boundary_condition': config['boundary_condition'],
+        'reynolds_num': config['reynolds_num'],
+        'vorticity_confinement': config['vorticity_confinement'],
+        'total_runtime': config['total_runtime'],
+        'no_dye': config['no_dye'],
+        'cpu': config['cpu'],
+        'visualization': config['visualization'],
+        'advection_scheme': config['advection_scheme']
     }
 
 def soft_success(d, epsilon):
