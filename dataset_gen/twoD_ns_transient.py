@@ -347,8 +347,8 @@ def main():
             for zflag in modes:
                 flag = "zero_shot" if zflag else "iterative"
                 
-                # Skip iterative mode for tasks other than resolution (only resolution supports iterative mode)
-                if not zflag and task not in ["resolution"]:
+                # Skip iterative mode for tasks other than resolution and cfl
+                if not zflag and task not in ["resolution", "cfl"]:
                     continue
                     
                 question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
