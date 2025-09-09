@@ -6,7 +6,8 @@ The `scripts/` directory contains automated scripts for streamlined execution of
 ```
 scripts/
 ├── inference_eval/   # Model inference and evaluation scripts
-│   ├── eval_all.sh
+│   ├── eval_all.sh             # Strict evaluation (fails on missing files)
+│   ├── eval_all_partial.sh     # Partial evaluation (skips missing files)
 │   ├── inference_eval_burgers_1d.sh
 │   ├── inference_eval_euler_1d.sh
 │   ├── inference_eval_heat_1d.sh
@@ -33,7 +34,17 @@ bash scripts/inference_eval/inference_eval_ns_transient_2d.sh
 ### Run Evaluation Only
 ```bash
 # Run evaluation on existing inference results (no inference)
-bash scripts/inference_eval/eval_all.sh
+
+# Strict mode: Fails immediately if any result files are missing
+bash scripts/inference_eval/eval_all.sh -d <dataset>
+
+# Partial mode: Skips missing result files and continues evaluation
+bash scripts/inference_eval/eval_all_partial.sh -d <dataset>
+
+# Examples:
+bash scripts/inference_eval/eval_all.sh -d ns_2d                    # Strict evaluation
+bash scripts/inference_eval/eval_all_partial.sh -d ns_2d           # Skip missing files
+bash scripts/inference_eval/eval_all_partial.sh -d burgers_1d -d euler_1d  # Multiple datasets
 ```
 
 ## ⚙️ Switching Model Providers
