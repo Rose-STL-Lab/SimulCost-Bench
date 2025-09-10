@@ -101,14 +101,9 @@ def ns_transient_2d_check_converge_parameter(
         resolution=base_params['resolution'],
         reynolds_num=reynolds_num,
         cfl=base_params['cfl'],
-        advection_scheme=advection_scheme,
-        vorticity_confinement=vorticity_confinement,
         relaxation_factor=base_params['relaxation_factor'],
         residual_threshold=base_params['residual_threshold'],
-        total_runtime=total_runtime,
-        no_dye=no_dye,
-        cpu=cpu,
-        visualization=visualization
+        total_runtime=total_runtime
     )
     
     # Run refined simulation (convergence checking does not increase cost)
@@ -118,14 +113,9 @@ def ns_transient_2d_check_converge_parameter(
         resolution=refined_params['resolution'],
         reynolds_num=reynolds_num,
         cfl=refined_params['cfl'],
-        advection_scheme=advection_scheme,
-        vorticity_confinement=vorticity_confinement,
         relaxation_factor=refined_params['relaxation_factor'],
         residual_threshold=refined_params['residual_threshold'],
-        total_runtime=total_runtime,
-        no_dye=no_dye,
-        cpu=cpu,
-        visualization=visualization
+        total_runtime=total_runtime
     )
 
     accumulated_cost += current_cost
@@ -137,27 +127,17 @@ def ns_transient_2d_check_converge_parameter(
         resolution1=base_params['resolution'], 
         reynolds_num1=reynolds_num, 
         cfl1=base_params['cfl'], 
-        advection_scheme1=advection_scheme, 
-        vorticity_confinement1=vorticity_confinement, 
         relaxation_factor1=base_params['relaxation_factor'], 
         residual_threshold1=base_params['residual_threshold'], 
         total_runtime1=total_runtime, 
-        no_dye1=no_dye, 
-        cpu1=cpu, 
-        visualization1=visualization,
         profile2=profile, 
         boundary_condition2=boundary_condition, 
         resolution2=refined_params['resolution'], 
         reynolds_num2=reynolds_num, 
         cfl2=refined_params['cfl'], 
-        advection_scheme2=advection_scheme, 
-        vorticity_confinement2=vorticity_confinement, 
         relaxation_factor2=refined_params['relaxation_factor'], 
         residual_threshold2=refined_params['residual_threshold'], 
-        total_runtime2=total_runtime, 
-        no_dye2=no_dye, 
-        cpu2=cpu, 
-        visualization2=visualization,
+        total_runtime2=total_runtime,
         norm_rmse_tolerance=norm_rmse_tolerance
     )
 
