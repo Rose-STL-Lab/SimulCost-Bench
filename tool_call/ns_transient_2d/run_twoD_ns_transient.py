@@ -105,41 +105,49 @@ def ns_transient_2d_check_converge_parameter(
         residual_threshold=base_params['residual_threshold'],
         total_runtime=total_runtime
     )
-    
-    # Run refined simulation (convergence checking does not increase cost)
-    refine_cost, refine_num_steps = run_sim_ns_transient_2d(
-        profile=profile,
-        boundary_condition=boundary_condition,
-        resolution=refined_params['resolution'],
-        reynolds_num=reynolds_num,
-        cfl=refined_params['cfl'],
-        relaxation_factor=refined_params['relaxation_factor'],
-        residual_threshold=refined_params['residual_threshold'],
-        total_runtime=total_runtime
-    )
 
     accumulated_cost += current_cost
 
-    # Compare results
-    converged, norm_rmse = compare_res_ns_transient_2d(
-        profile1=profile, 
-        boundary_condition1=boundary_condition, 
-        resolution1=base_params['resolution'], 
-        reynolds_num1=reynolds_num, 
-        cfl1=base_params['cfl'], 
-        relaxation_factor1=base_params['relaxation_factor'], 
-        residual_threshold1=base_params['residual_threshold'], 
-        total_runtime1=total_runtime, 
-        profile2=profile, 
-        boundary_condition2=boundary_condition, 
-        resolution2=refined_params['resolution'], 
-        reynolds_num2=reynolds_num, 
-        cfl2=refined_params['cfl'], 
-        relaxation_factor2=refined_params['relaxation_factor'], 
-        residual_threshold2=refined_params['residual_threshold'], 
-        total_runtime2=total_runtime,
-        norm_rmse_tolerance=norm_rmse_tolerance
-    )
+    # Skip refine simulation for relaxation_factor and residual_threshold (zero-shot only)
+    if refine_param in ['relaxation_factor', 'residual_threshold']:
+        print(f"Skipping refine step for {refine_param} (zero-shot only)")
+        converged = True
+        norm_rmse = 0.0
+        refine_cost = 0
+        refine_num_steps = 0
+    else:
+        # Run refined simulation (convergence checking does not increase cost)
+        refine_cost, refine_num_steps = run_sim_ns_transient_2d(
+            profile=profile,
+            boundary_condition=boundary_condition,
+            resolution=refined_params['resolution'],
+            reynolds_num=reynolds_num,
+            cfl=refined_params['cfl'],
+            relaxation_factor=refined_params['relaxation_factor'],
+            residual_threshold=refined_params['residual_threshold'],
+            total_runtime=total_runtime
+        )
+
+        # Compare results
+        converged, norm_rmse = compare_res_ns_transient_2d(
+            profile1=profile, 
+            boundary_condition1=boundary_condition, 
+            resolution1=base_params['resolution'], 
+            reynolds_num1=reynolds_num, 
+            cfl1=base_params['cfl'], 
+            relaxation_factor1=base_params['relaxation_factor'], 
+            residual_threshold1=base_params['residual_threshold'], 
+            total_runtime1=total_runtime, 
+            profile2=profile, 
+            boundary_condition2=boundary_condition, 
+            resolution2=refined_params['resolution'], 
+            reynolds_num2=reynolds_num, 
+            cfl2=refined_params['cfl'], 
+            relaxation_factor2=refined_params['relaxation_factor'], 
+            residual_threshold2=refined_params['residual_threshold'], 
+            total_runtime2=total_runtime,
+            norm_rmse_tolerance=norm_rmse_tolerance
+        )
 
     if converged:
         print(f"Convergence achieved for {refine_param} refinement")

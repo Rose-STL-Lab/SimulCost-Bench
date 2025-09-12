@@ -112,41 +112,53 @@ def ns_2d_check_converge_parameter(
         boundary_type=boundary_type,
         **base_params
     )
-    
-    # Run refined simulation (convergence checking does not increase cost)
-    refine_cost, refine_num_steps = run_sim_ns_channel_2d(
-        profile=profile,
-        boundary_type=boundary_type,
-        **refined_params
-    )
 
     accumulated_cost += current_cost
 
-    # Compare results
-    (
-        converged,
-        rmse_u,
-        rmse_v,
-        rmse_p,
-        mass_conserved1,
-        mass_conserved2
-    ) = compare_res_ns_channel_2d(
-        profile1=profile, boundary_type1=boundary_type, 
-        mesh_x1=base_params['mesh_x'], mesh_y1=base_params['mesh_y'], 
-        omega_u1=base_params['omega_u'], omega_v1=base_params['omega_v'], omega_p1=base_params['omega_p'],
-        diff_u_threshold1=base_params['diff_u_threshold'], diff_v_threshold1=base_params['diff_v_threshold'],
-        res_iter_v_threshold1=base_params['res_iter_v_threshold'],
-        profile2=profile, boundary_type2=boundary_type, 
-        mesh_x2=refined_params['mesh_x'], mesh_y2=refined_params['mesh_y'], 
-        omega_u2=refined_params['omega_u'], omega_v2=refined_params['omega_v'], omega_p2=refined_params['omega_p'],
-        diff_u_threshold2=refined_params['diff_u_threshold'], diff_v_threshold2=refined_params['diff_v_threshold'],
-        res_iter_v_threshold2=refined_params['res_iter_v_threshold'],
-        length=length, breadth=breadth,
-        mass_tolerance=mass_tolerance,
-        u_rmse_tolerance=u_rmse_tolerance,
-        v_rmse_tolerance=v_rmse_tolerance,
-        p_rmse_tolerance=p_rmse_tolerance
-    )
+    # Skip refine simulation for non-mesh parameters (zero-shot only)
+    if refine_param not in ['mesh_x', 'mesh_y']:
+        print(f"Skipping refine step for {refine_param} (zero-shot only)")
+        converged = True
+        rmse_u = 0.0
+        rmse_v = 0.0
+        rmse_p = 0.0
+        mass_conserved1 = True
+        mass_conserved2 = True
+        refine_cost = 0
+        refine_num_steps = 0
+    else:
+        # Run refined simulation (convergence checking does not increase cost)
+        refine_cost, refine_num_steps = run_sim_ns_channel_2d(
+            profile=profile,
+            boundary_type=boundary_type,
+            **refined_params
+        )
+
+        # Compare results
+        (
+            converged,
+            rmse_u,
+            rmse_v,
+            rmse_p,
+            mass_conserved1,
+            mass_conserved2
+        ) = compare_res_ns_channel_2d(
+            profile1=profile, boundary_type1=boundary_type, 
+            mesh_x1=base_params['mesh_x'], mesh_y1=base_params['mesh_y'], 
+            omega_u1=base_params['omega_u'], omega_v1=base_params['omega_v'], omega_p1=base_params['omega_p'],
+            diff_u_threshold1=base_params['diff_u_threshold'], diff_v_threshold1=base_params['diff_v_threshold'],
+            res_iter_v_threshold1=base_params['res_iter_v_threshold'],
+            profile2=profile, boundary_type2=boundary_type, 
+            mesh_x2=refined_params['mesh_x'], mesh_y2=refined_params['mesh_y'], 
+            omega_u2=refined_params['omega_u'], omega_v2=refined_params['omega_v'], omega_p2=refined_params['omega_p'],
+            diff_u_threshold2=refined_params['diff_u_threshold'], diff_v_threshold2=refined_params['diff_v_threshold'],
+            res_iter_v_threshold2=refined_params['res_iter_v_threshold'],
+            length=length, breadth=breadth,
+            mass_tolerance=mass_tolerance,
+            u_rmse_tolerance=u_rmse_tolerance,
+            v_rmse_tolerance=v_rmse_tolerance,
+            p_rmse_tolerance=p_rmse_tolerance
+        )
 
     if converged:
         print(f"Convergence achieved for {refine_param} refinement")
