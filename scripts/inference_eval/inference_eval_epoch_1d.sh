@@ -44,7 +44,7 @@ models=(
 
 # model_provider="openai"
 # models=(
-#   "gpt-4o-mini"
+#   "gpt-5-2025-08-07"
 # )
 
 # ========= Main loop =========
