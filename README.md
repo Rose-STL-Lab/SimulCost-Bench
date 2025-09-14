@@ -76,6 +76,11 @@ The table below summarizes the available tasks for each simulation type and indi
 | 2D Navier-Stokes Transient| `cfl`          | ✅ Supported        |
 | 2D Navier-Stokes Transient| `relaxation_factor` | ❌ Only Zero-Shot |
 | 2D Navier-Stokes Transient| `residual_threshold` | ❌ Only Zero-Shot |
+| 1D EPOCH PIC             | `nx`           | ✅ Supported        |
+| 1D EPOCH PIC             | `npart`        | ✅ Supported        |
+| 1D EPOCH PIC             | `dt_multiplier` | ✅ Supported (Compositional) |
+| 1D EPOCH PIC             | `field_order`  | ✅ Supported (Compositional) |
+| 1D EPOCH PIC             | `particle_order` | ✅ Supported (Compositional) |
 
 
 <!-- ## 🧐 Human Written Version -->
@@ -100,6 +105,9 @@ python qs_gen/2D_ns.py
 
 # 2D Navier-Stokes Transient Flow with Taichi Framework
 python qs_gen/2D_ns_transient.py
+
+# 1D EPOCH Particle-in-Cell Simulation
+python qs_gen/1D_epoch.py
 ```
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
@@ -125,6 +133,9 @@ python dataset_gen/twoD_ns.py
 
 # 2D Navier-Stokes Transient Flow with Taichi Framework
 python dataset_gen/twoD_ns_transient.py
+
+# 1D EPOCH Particle-in-Cell Simulation
+python dataset_gen/oneD_epoch.py
 ```
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
@@ -210,6 +221,7 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - **Euler 1D**: `cfl`, `beta`, `k`, `n_space`
 - **2D Navier-Stokes Channel**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
 - **2D Navier-Stokes Transient**: `resolution`, `cfl`, `relaxation_factor`, `residual_threshold`
+- **1D EPOCH PIC**: `dt_multiplier`, `nx`, `npart`, `field_order`, `particle_order`
 
 **Parameters:**
 - `-p`: LLM provider (`openai`, `gemini`, `bedrock`, `custom_model`)
@@ -273,6 +285,7 @@ python evaluation/tabulate.py -d burgers_1d
 python evaluation/tabulate.py -d euler_1d
 python evaluation/tabulate.py -d ns_2d
 python evaluation/tabulate.py -d ns_transient_2d
+python evaluation/tabulate.py -d epoch_1d
 ```
 
 **Parameters:**

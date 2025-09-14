@@ -1,0 +1,22 @@
+{
+  "run_oneD_epoch": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "epoch_1d_check_converge_npart",
+        "description": "Conduct a 1D EPOCH PIC simulation and evaluate its particle convergence for npart task by multiplying npart by 1.2. It returns {\"L2_error\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nx": { "type": "integer", "description": "Number of grid cells in x-direction" },
+            "dt_multiplier": { "type": "float", "description": "Time step multiplier" },
+            "npart": { "type": "integer", "description": "Number of particles per cell" },
+            "field_order": { "type": "integer", "description": "Field interpolation order" },
+            "particle_order": { "type": "integer", "description": "Particle shape function order" }
+          },
+          "required": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"]
+        }
+      }
+    }
+  }
+}

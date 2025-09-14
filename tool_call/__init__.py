@@ -22,10 +22,19 @@ from .burgers_1d.run_oneD_burgers_PDE_exp import (
 
 # Euler 1D functions
 from .euler_1d.run_oneD_euler_PDE_exp import (
-    euler_1d_check_converge_cfl, 
-    euler_1d_check_converge_beta, 
-    euler_1d_check_converge_k, 
+    euler_1d_check_converge_cfl,
+    euler_1d_check_converge_beta,
+    euler_1d_check_converge_k,
     euler_1d_check_converge_n_space
+)
+
+# EPOCH 1D functions
+from .epoch_1d.run_oneD_epoch import (
+    epoch_1d_check_converge_nx,
+    epoch_1d_check_converge_npart,
+    epoch_1d_check_converge_dt_multiplier,
+    epoch_1d_check_converge_field_order,
+    epoch_1d_check_converge_particle_order
 )
 
 # NS Channel 2D functions
@@ -69,7 +78,7 @@ __all__ = [
     
     # Euler 1D
     "euler_1d_check_converge_cfl",
-    "euler_1d_check_converge_beta", 
+    "euler_1d_check_converge_beta",
     "euler_1d_check_converge_k",
     "euler_1d_check_converge_n_space",
     
@@ -90,4 +99,11 @@ __all__ = [
     "ns_transient_2d_check_converge_relaxation_factor",
     "ns_transient_2d_check_converge_residual_threshold",
     "ns_transient_2d_check_converge_parameter",
+
+    # EPOCH 1D
+    "epoch_1d_check_converge_nx",
+    "epoch_1d_check_converge_npart",
+    "epoch_1d_check_converge_dt_multiplier",
+    "epoch_1d_check_converge_field_order",
+    "epoch_1d_check_converge_particle_order",
 ]

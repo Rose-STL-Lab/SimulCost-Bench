@@ -108,141 +108,213 @@ class BarChartGenerator:
     def create_success_rate_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
         """
         Create bar chart for success rates across models and configurations.
-        
+        All precision levels are shown in a single chart with 6 bars per model.
+
         Args:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
         # Clean model names
         df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
-        
-        # Create figure with subplots for different precision levels
-        precision_levels = df['Precision Level'].unique()
-        fig, axes = plt.subplots(1, len(precision_levels), figsize=(4 * len(precision_levels), 5))
-        
-        if len(precision_levels) == 1:
-            axes = [axes]
-        
-        # Get consistent y-axis limits for success rate (0 to 1)
-        y_min, y_max = 0, 1.0
-        
-        for i, precision in enumerate(precision_levels):
-            ax = axes[i]
-            precision_data = df[df['Precision Level'] == precision]
-            
-            # Pivot data for grouped bar chart
-            pivot_data = precision_data.pivot(index='Model_Clean', 
-                                            columns='Inference Mode', 
-                                            values='success_rate')
-            
-            # Reorder columns to put Zero-shot first, then Iterative
-            if 'Zero-shot' in pivot_data.columns and 'Iterative' in pivot_data.columns:
-                pivot_data = pivot_data[['Zero-shot', 'Iterative']]
-            
-            # Create grouped bar chart
-            pivot_data.plot(kind='bar', ax=ax, width=0.6, alpha=0.8, legend=False)
-            
-            ax.set_title(f'Success Rate - {precision.title()} Precision', 
-                        fontsize=12, fontweight='bold', pad=15)
-            ax.set_xlabel('Model', fontsize=10, fontweight='bold')
-            ax.set_ylabel('Success Rate', fontsize=10, fontweight='bold')
-            ax.set_ylim(y_min, y_max)
-            ax.tick_params(axis='x', rotation=45)
-            ax.grid(True, alpha=0.3)
-            
-            # Add value labels on bars
-            for container in ax.containers:
-                ax.bar_label(container, fmt='%.2f', fontsize=7)
-        
-        # Add single figure-level legend next to title
-        handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, title='Inference Mode', title_fontsize=8, fontsize=7, 
-                  loc='upper center', bbox_to_anchor=(0.68, 0.98), frameon=False)
-        
-        plt.suptitle(f'{dataset_name.replace("_", " ").title()}', 
-                    fontsize=14, fontweight='bold', y=0.95)
+
+        # Create single figure for all precision levels
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+
+        # Get unique models and precision levels
+        models = sorted(df['Model_Clean'].unique())
+        precision_levels = ['low', 'medium', 'high']  # Ensure consistent ordering
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Prepare data for grouped bars
+        bar_width = 0.13  # Width of individual bars
+        spacing = 0.02   # Spacing between bar groups
+        group_width = len(precision_levels) * len(inference_modes) * bar_width + spacing
+
+        # Get all values to determine color intensity mapping
+        all_values = df['success_rate'].values
+        min_val, max_val = np.min(all_values), np.max(all_values)
+        val_range = max_val - min_val if max_val != min_val else 1
+
+        # Create color maps for Zero-shot (green) and Iterative (blue)
+        from matplotlib.colors import LinearSegmentedColormap
+        green_cmap = LinearSegmentedColormap.from_list('green', ['#90EE90', '#006400'])  # Light to dark green
+        blue_cmap = LinearSegmentedColormap.from_list('blue', ['#ADD8E6', '#000080'])   # Light to dark blue
+
+        x_positions = np.arange(len(models))
+        precision_labels = ['L', 'M', 'H']
+
+        for i, model in enumerate(models):
+            model_data = df[df['Model_Clean'] == model]
+
+            for j, precision in enumerate(precision_levels):
+                precision_data = model_data[model_data['Precision Level'] == precision]
+
+                for k, mode in enumerate(inference_modes):
+                    mode_data = precision_data[precision_data['Inference Mode'] == mode]
+
+                    if len(mode_data) > 0:
+                        value = mode_data['success_rate'].iloc[0]
+
+                        # Calculate color intensity based on value
+                        intensity = (value - min_val) / val_range if val_range > 0 else 0.5
+
+                        # Choose color based on inference mode
+                        if mode == 'Zero-shot':
+                            color = green_cmap(intensity)
+                        else:  # Iterative
+                            color = blue_cmap(intensity)
+
+                        # Calculate bar position
+                        bar_pos = x_positions[i] + (j * len(inference_modes) + k) * bar_width - group_width/2
+
+                        # Create bar
+                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8)
+
+                        # Add precision label in the middle of the bar
+                        ax.text(bar_pos, value/2, precision_labels[j],
+                               ha='center', va='center', fontweight='bold',
+                               color='white', fontsize=8)
+
+                        # Add value label on top of the bar
+                        ax.text(bar_pos, value + 0.01, f'{value:.2f}',
+                               ha='center', va='bottom', fontsize=7)
+
+        # Customize the chart
+        ax.set_xlabel('Model', fontsize=10, fontweight='bold')
+        ax.set_ylabel('Success Rate', fontsize=10, fontweight='bold')
+        ax.set_title(f'{dataset_name.replace("_", " ").title()}',
+                    fontsize=10, fontweight='bold')  # Match y-axis font size
+        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(models, rotation=0)  # Horizontal labels
+        ax.grid(True, alpha=0.3)
+
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='#228B22', label='Zero-shot'),  # Medium green
+            Patch(facecolor='#4169E1', label='Iterative')   # Medium blue
+        ]
+        ax.legend(handles=legend_elements, title='Inference Mode',
+                 title_fontsize=8, fontsize=7, loc='upper right', frameon=True)
+
         plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15)
-        
+
         # Save chart
         output_path = self.output_dir / dataset_name / "success_rate.png"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
-        
+
         print(f"Success rate chart saved to: {output_path}")
     
     def create_hard_efficiency_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
         """
         Create bar chart for hard efficiency metrics across models and configurations.
-        
+        All precision levels are shown in a single chart with 6 bars per model.
+
         Args:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
         # Clean model names
         df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
-        
+
         # Focus only on hard efficiency metric
         metric = 'mean_hard_efficiency'
         if metric not in df.columns:
             print(f"Warning: Hard efficiency metric not found in dataset '{dataset_name}'")
             return
-        
-        precision_levels = df['Precision Level'].unique()
-        fig, axes = plt.subplots(1, len(precision_levels), figsize=(4 * len(precision_levels), 5))
-        
-        if len(precision_levels) == 1:
-            axes = [axes]
-        
-        # Get consistent y-axis limits for hard efficiency across all precision levels
-        y_min = 0
-        y_max = df[metric].max() * 1.1  # Add 10% padding to the maximum value
-        
-        for i, precision in enumerate(precision_levels):
-            ax = axes[i]
-            precision_data = df[df['Precision Level'] == precision]
-            
-            # Pivot data for grouped bar chart
-            pivot_data = precision_data.pivot(index='Model_Clean', 
-                                            columns='Inference Mode', 
-                                            values=metric)
-            
-            # Reorder columns to put Zero-shot first, then Iterative
-            if 'Zero-shot' in pivot_data.columns and 'Iterative' in pivot_data.columns:
-                pivot_data = pivot_data[['Zero-shot', 'Iterative']]
-            
-            # Create grouped bar chart
-            pivot_data.plot(kind='bar', ax=ax, width=0.6, alpha=0.8, legend=False)
-            
-            ax.set_title(f'Hard Efficiency - {precision.title()} Precision', 
-                        fontsize=12, fontweight='bold', pad=15)
-            ax.set_xlabel('Model', fontsize=10, fontweight='bold')
-            ax.set_ylabel('Hard Efficiency', fontsize=10, fontweight='bold')
-            ax.set_ylim(y_min, y_max)
-            ax.tick_params(axis='x', rotation=45)
-            ax.grid(True, alpha=0.3)
-            
-            # Add value labels on bars
-            for container in ax.containers:
-                ax.bar_label(container, fmt='%.2f', fontsize=7)
-        
-        # Add single figure-level legend next to title
-        handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, title='Inference Mode', title_fontsize=8, fontsize=7, 
-                  loc='upper center', bbox_to_anchor=(0.68, 0.98), frameon=False)
-        
-        plt.suptitle(f'{dataset_name.replace("_", " ").title()}', 
-                    fontsize=14, fontweight='bold', y=0.95)
+
+        # Create single figure for all precision levels
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+
+        # Get unique models and precision levels
+        models = sorted(df['Model_Clean'].unique())
+        precision_levels = ['low', 'medium', 'high']  # Ensure consistent ordering
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Prepare data for grouped bars
+        bar_width = 0.13  # Width of individual bars
+        spacing = 0.02   # Spacing between bar groups
+        group_width = len(precision_levels) * len(inference_modes) * bar_width + spacing
+
+        # Get all values to determine color intensity mapping
+        all_values = df[metric].values
+        min_val, max_val = np.min(all_values), np.max(all_values)
+        val_range = max_val - min_val if max_val != min_val else 1
+
+        # Create color maps for Zero-shot (green) and Iterative (blue)
+        from matplotlib.colors import LinearSegmentedColormap
+        green_cmap = LinearSegmentedColormap.from_list('green', ['#90EE90', '#006400'])  # Light to dark green
+        blue_cmap = LinearSegmentedColormap.from_list('blue', ['#ADD8E6', '#000080'])   # Light to dark blue
+
+        x_positions = np.arange(len(models))
+        precision_labels = ['L', 'M', 'H']
+
+        for i, model in enumerate(models):
+            model_data = df[df['Model_Clean'] == model]
+
+            for j, precision in enumerate(precision_levels):
+                precision_data = model_data[model_data['Precision Level'] == precision]
+
+                for k, mode in enumerate(inference_modes):
+                    mode_data = precision_data[precision_data['Inference Mode'] == mode]
+
+                    if len(mode_data) > 0:
+                        value = mode_data[metric].iloc[0]
+
+                        # Calculate color intensity based on value
+                        intensity = (value - min_val) / val_range if val_range > 0 else 0.5
+
+                        # Choose color based on inference mode
+                        if mode == 'Zero-shot':
+                            color = green_cmap(intensity)
+                        else:  # Iterative
+                            color = blue_cmap(intensity)
+
+                        # Calculate bar position
+                        bar_pos = x_positions[i] + (j * len(inference_modes) + k) * bar_width - group_width/2
+
+                        # Create bar
+                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8)
+
+                        # Add precision label in the middle of the bar
+                        ax.text(bar_pos, value/2, precision_labels[j],
+                               ha='center', va='center', fontweight='bold',
+                               color='white', fontsize=8)
+
+                        # Add value label on top of the bar
+                        ax.text(bar_pos, value + max_val * 0.01, f'{value:.2f}',
+                               ha='center', va='bottom', fontsize=7)
+
+        # Customize the chart
+        ax.set_xlabel('Model', fontsize=10, fontweight='bold')
+        ax.set_ylabel('Hard Efficiency', fontsize=10, fontweight='bold')
+        ax.set_title(f'{dataset_name.replace("_", " ").title()}',
+                    fontsize=10, fontweight='bold')  # Match y-axis font size
+        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(models, rotation=0)  # Horizontal labels
+        ax.grid(True, alpha=0.3)
+
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='#228B22', label='Zero-shot'),  # Medium green
+            Patch(facecolor='#4169E1', label='Iterative')   # Medium blue
+        ]
+        ax.legend(handles=legend_elements, title='Inference Mode',
+                 title_fontsize=8, fontsize=7, loc='upper right', frameon=True)
+
         plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15)
-        
+
         # Save chart
         output_path = self.output_dir / dataset_name / "hard_efficiency.png"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
-        
+
         print(f"Hard efficiency chart saved to: {output_path}")
     
     def create_overview_chart_deprecated(self, df: pd.DataFrame, dataset_name: str) -> None:

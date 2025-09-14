@@ -37,7 +37,12 @@ TOOL_NAME_KEYS = {
     "ns_transient_2d_check_converge_resolution": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
     "ns_transient_2d_check_converge_cfl": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
     "ns_transient_2d_check_converge_relaxation_factor": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
-    "ns_transient_2d_check_converge_residual_threshold": ["resolution", "cfl", "relaxation_factor", "residual_threshold"]
+    "ns_transient_2d_check_converge_residual_threshold": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
+    "epoch_1d_check_converge_dt_multiplier": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
+    "epoch_1d_check_converge_nx": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
+    "epoch_1d_check_converge_npart": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
+    "epoch_1d_check_converge_field_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
+    "epoch_1d_check_converge_particle_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"]
 }
 
 
@@ -335,6 +340,25 @@ class ToolCallManager:
                     relaxation_factor=fetch_param(tool_args, "relaxation_factor"),
                     residual_threshold=fetch_param(tool_args, "residual_threshold"),
                     norm_rmse_tolerance=self.norm_rmse_tolerance,
+                )
+            elif tool_name in [
+                "epoch_1d_check_converge_dt_multiplier", "epoch_1d_check_converge_nx",
+                "epoch_1d_check_converge_npart", "epoch_1d_check_converge_field_order",
+                "epoch_1d_check_converge_particle_order"
+            ]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for epoch_1d tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    nx=fetch_param(tool_args, "nx"),
+                    dt_multiplier=fetch_param(tool_args, "dt_multiplier"),
+                    npart=fetch_param(tool_args, "npart"),
+                    field_order=fetch_param(tool_args, "field_order"),
+                    particle_order=fetch_param(tool_args, "particle_order"),
+                    tolerance=tolerance
                 )
             else:
                 # Critical else branch to handle unrecognized tool names
