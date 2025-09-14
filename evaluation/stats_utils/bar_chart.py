@@ -208,9 +208,9 @@ class BarChartGenerator:
 
         print(f"Success rate chart saved to: {output_path}")
     
-    def create_hard_efficiency_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
+    def create_efficiency_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
         """
-        Create bar chart for hard efficiency metrics across models and configurations.
+        Create bar chart for efficiency metrics across models and configurations.
         All precision levels are shown in a single chart with 6 bars per model.
 
         Args:
@@ -220,8 +220,8 @@ class BarChartGenerator:
         # Clean model names
         df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
 
-        # Focus only on hard efficiency metric
-        metric = 'mean_hard_efficiency'
+        # Focus only on efficiency metric
+        metric = 'mean_efficiency'
         if metric not in df.columns:
             print(f"Warning: Hard efficiency metric not found in dataset '{dataset_name}'")
             return
@@ -290,7 +290,7 @@ class BarChartGenerator:
 
         # Customize the chart
         ax.set_xlabel('Model', fontsize=10, fontweight='bold')
-        ax.set_ylabel('Hard Efficiency', fontsize=10, fontweight='bold')
+        ax.set_ylabel('Efficiency', fontsize=10, fontweight='bold')
         ax.set_title(f'{dataset_name.replace("_", " ").title()}',
                     fontsize=10, fontweight='bold')  # Match y-axis font size
         ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
@@ -310,7 +310,7 @@ class BarChartGenerator:
         plt.tight_layout()
 
         # Save chart
-        output_path = self.output_dir / dataset_name / "hard_efficiency.png"
+        output_path = self.output_dir / dataset_name / "efficiency.png"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -362,12 +362,12 @@ class BarChartGenerator:
             ax3.text(i, v + 0.01, f'{v:.2f}', ha='center', fontweight='bold')
         
         # 4. Soft Success vs Hard Efficiency scatter plot (if available)
-        if 'mean_soft_success' in df.columns and 'mean_hard_efficiency' in df.columns:
-            scatter = ax4.scatter(df['mean_soft_success'], df['mean_hard_efficiency'], 
+        if 'success_rate' in df.columns and 'mean_efficiency' in df.columns:
+            scatter = ax4.scatter(df['success_rate'], df['mean_efficiency'], 
                                 c=df['Precision Level'].astype('category').cat.codes, 
                                 cmap='viridis', alpha=0.6, s=60)
-            ax4.set_xlabel('Mean Soft Success')
-            ax4.set_ylabel('Mean Hard Efficiency')
+            ax4.set_xlabel('Success Rate')
+            ax4.set_ylabel('Mean Efficiency')
             ax4.set_title('Soft Success vs Hard Efficiency', fontweight='bold')
             ax4.grid(True, alpha=0.3)
             
@@ -412,9 +412,9 @@ class BarChartGenerator:
             return False
         
         try:
-            # Generate only the key charts: success rate and hard efficiency
+            # Generate only the key charts: success rate and efficiency
             self.create_success_rate_chart(df, dataset_name)
-            self.create_hard_efficiency_chart(df, dataset_name)
+            self.create_efficiency_chart(df, dataset_name)
             
             print(f"✓ Successfully generated charts for dataset: {dataset_name}")
             return True

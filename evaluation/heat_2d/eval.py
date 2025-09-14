@@ -18,34 +18,6 @@ RMSE_TOLERANCE_BY_PRECISION = {
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"dx", "error_threshold", "relax", "t_init"}
 
-def soft_success(d, epsilon):
-    """Calculate Soft Success value for a single (d, epsilon) pair"""
-    r = d / epsilon
-    
-    if r <= 1:
-        return 1.0
-    
-    # Parameters
-    alpha = 0.6
-    beta = 0.43
-    gamma = 1.5
-    omega = 0.3
-    delta = 2.2
-    
-    # Dual-component decay function
-    exp_component = np.exp(-beta * (r - 1)**gamma)
-    logistic_component = 1 / (1 + omega * (r - 1)**delta)
-    
-    return alpha * exp_component + (1 - alpha) * logistic_component
-
-def soft_success_multi(d_list, epsilon_list):
-    """Calculate average Soft Success value for multiple (d, epsilon) pairs"""
-    ss_values = []
-    for d, eps in zip(d_list, epsilon_list):
-        ss = soft_success(d, eps)
-        ss_values.append(ss)
-    
-    return np.mean(ss_values)  # Arithmetic mean
 
 
 def get_reference_params(dummy: Dict) -> Dict:
@@ -146,9 +118,7 @@ def evaluate(
     total_model_cost = total_dummy_cost = 0.0
     success_cnt = converged_cnt = evaluated = 0
     total_rmse = 0.0
-    total_soft_efficiency = 0.0
-    total_hard_efficiency = 0.0
-    total_soft_success = 0.0
+    total_efficiency = 0.0
 
     # Validate inputs
     if task not in VALID_TASKS:
@@ -235,30 +205,17 @@ def evaluate(
         # Calculate metrics with robust error handling
         dummy_cost = dummy["dummy_cost"]
         
-        # Calculate soft success value
-        if np.isnan(rmse) or np.isinf(rmse):
-            soft_success_value = 0.0
-            logger.warning(f"⚠️ QID {qid}: RMSE ({rmse}) is NaN/inf, setting soft success to 0")
-        else:
-            soft_success_value = soft_success(rmse, rmse_tol)
-            
         # Calculate efficiency metrics with division by zero protection
         if cost <= 0:
             efficiency = 0.0
-            hard_efficiency = 0.0
-            logger.warning(f"⚠️ QID {qid}: Cost is {cost}, setting efficiencies to 0")
+            logger.warning(f"⚠️ QID {qid}: Cost is {cost}, setting efficiency to 0")
         else:
-            efficiency = soft_success_value * (dummy_cost / cost)
-            hard_efficiency = float(success) * (dummy_cost / cost)
-            
+            efficiency = float(success) * (dummy_cost / cost)
+
             # Handle NaN/inf values in efficiency calculations
             if np.isnan(efficiency) or np.isinf(efficiency):
                 efficiency = 0.0
                 logger.warning(f"⚠️ QID {qid}: Efficiency is NaN/inf, setting to 0")
-                
-            if np.isnan(hard_efficiency) or np.isinf(hard_efficiency):
-                hard_efficiency = 0.0
-                logger.warning(f"⚠️ QID {qid}: Hard efficiency is NaN/inf, setting to 0")
         
         # Accumulate metrics
         total_model_cost += cost
@@ -270,20 +227,16 @@ def evaluate(
         rmse_for_total = 0.0 if (np.isnan(rmse) or np.isinf(rmse)) else rmse
         total_rmse += rmse_for_total
         
-        total_soft_efficiency += efficiency
-        total_hard_efficiency += hard_efficiency
-        total_soft_success += soft_success_value
+        total_efficiency += efficiency
 
         logger.info(
             f"\n📊 --- Evaluation Result ---\n"
             f"🆔 QID: {qid}\n"
             f"🔄 Converged flag: {converged}\n"
             f"🎯 Success (within tolerance): {success}\n"
-            f"🎯 Soft Success: {soft_success_value:.3f}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
-            f"⚡ Soft Efficiency: {efficiency:.3f}\n"
-            f"⚡ Hard Efficiency: {hard_efficiency:.3f}\n"
+            f"⚡ Efficiency: {efficiency:.3f}\n"
             f"📉 RMSE (model vs. dummy): {rmse:.3e}\n"
             f"📏 RMSE Tolerance: {rmse_tol:.3e}\n"
             f"📌 Model Parameters:\n{json.dumps(last_iter, indent=2, cls=NumpyEncoder)}\n"
@@ -294,22 +247,18 @@ def evaluate(
     # Calculate final metrics with division by zero protection
     if evaluated == 0:
         logger.warning("⚠️ No valid evaluations performed")
-        success_rate = converged_rate = mean_soft_efficiency = 0.0
-        mean_hard_efficiency = mean_rmse = mean_ss = 0.0
+        success_rate = converged_rate = mean_efficiency = 0.0
+        mean_rmse = 0.0
     else:
         success_rate = success_cnt / evaluated
         converged_rate = converged_cnt / evaluated
-        mean_soft_efficiency = total_soft_efficiency / evaluated
-        mean_hard_efficiency = total_hard_efficiency / evaluated
+        mean_efficiency = total_efficiency / evaluated
         mean_rmse = total_rmse / evaluated
-        mean_ss = total_soft_success / evaluated
 
     metrics = {
         "success_rate": f"{success_rate:.3f}",
         "converged_rate": f"{converged_rate:.3f}",
-        "mean_soft_efficiency": f"{mean_soft_efficiency:.3f}",
-        "mean_hard_efficiency": f"{mean_hard_efficiency:.3f}",
-        "mean_soft_success": f"{mean_ss:.3f}",
+        "mean_efficiency": f"{mean_efficiency:.3f}",
         "mean_rmse": f"{mean_rmse:.2e}",
         "rmse_tolerance": f"{rmse_tol:.2e}",
         "total_model_cost": total_model_cost,

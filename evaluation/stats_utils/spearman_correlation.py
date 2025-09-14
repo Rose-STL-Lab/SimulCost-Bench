@@ -42,9 +42,7 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 # Configuration constants
-METRICS_TO_ANALYZE = ['success_rate', 'mean_hard_efficiency']
-# Temporarily commenting out soft metrics for focused analysis
-# METRICS_TO_ANALYZE = ['success_rate', 'mean_soft_success', 'mean_soft_efficiency', 'mean_hard_efficiency']
+METRICS_TO_ANALYZE = ['success_rate', 'mean_efficiency']
 PRECISION_LEVELS = ['low', 'medium', 'high', 'overall']
 INFERENCE_MODES = ['Zero-shot', 'Iterative']
 
