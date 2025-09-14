@@ -44,6 +44,8 @@ conda activate simulcost
 poetry install --no-root
 ```
 
+**Note**: To run 1D EPOCH PIC simulations, see the [EPOCH Setup Guide](costsci_tools/solvers/EPOCH_SETUP.md) for additional configuration requirements.
+
 ## 📋 Tasks and Zero-Shot Support
 
 The table below summarizes the available tasks for each simulation type and indicates whether each task supports zero-shot inference.
