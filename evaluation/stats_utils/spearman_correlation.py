@@ -636,9 +636,8 @@ class SpearmanCorrelationAnalyzer:
         for i in range(len(precision_labels)):
             for j in range(len(METRICS_TO_ANALYZE)):
                 if not np.isnan(correlation_matrix[i, j]):
-                    significance = self.correlation_results[PRECISION_LEVELS[i]][METRICS_TO_ANALYZE[j]]['significance']
-                    text = f"{correlation_matrix[i, j]:.3f}\n{significance}"
-                    ax.text(j, i, text, ha="center", va="center", 
+                    text = f"{correlation_matrix[i, j]:.3f}"
+                    ax.text(j, i, text, ha="center", va="center",
                            color="white" if abs(correlation_matrix[i, j]) > 0.5 else "black",
                            fontsize=10, fontweight='bold')
         
@@ -723,11 +722,10 @@ class SpearmanCorrelationAnalyzer:
                         if not np.isnan(corr_value):
                             precision_level = PRECISION_LEVELS[i]
                             metric = METRICS_TO_ANALYZE[j]
-                            if (precision_level in model_results and 
+                            if (precision_level in model_results and
                                 metric in model_results[precision_level]):
-                                significance = model_results[precision_level][metric]['significance']
-                                text = f"{corr_value:.3f}\n{significance}"
-                                ax.text(j, i, text, ha="center", va="center", 
+                                text = f"{corr_value:.3f}"
+                                ax.text(j, i, text, ha="center", va="center",
                                        color="white" if abs(corr_value) > 0.5 else "black",
                                        fontsize=10, fontweight='bold')
             
@@ -857,17 +855,61 @@ class SpearmanCorrelationAnalyzer:
         
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
-            f.write("SPEARMAN CORRELATION ANALYSIS REPORT\n")
+            f.write("SPEARMAN RANK CORRELATION ANALYSIS REPORT\n")
             f.write(f"Dataset(s): {dataset_title}\n")
             f.write("="*80 + "\n\n")
-            
-            # Executive Summary
-            f.write("EXECUTIVE SUMMARY\n")
+
+            # Statistical Principles
+            f.write("STATISTICAL PRINCIPLES AND METHODOLOGY\n")
             f.write("-"*50 + "\n")
-            f.write("This report analyzes the Spearman rank correlation between zero-shot and\n")
-            f.write("iterative model performance across different precision levels and metrics.\n")
-            f.write("Higher correlations indicate more consistent model rankings between the\n")
-            f.write("two inference approaches.\n\n")
+            f.write("This analysis employs Spearman rank correlation to measure the monotonic\n")
+            f.write("relationship between zero-shot and iterative model performance rankings.\n")
+            f.write("Unlike Pearson correlation, Spearman correlation assesses whether the\n")
+            f.write("relative ordering of models is consistent across inference modes.\n\n")
+
+            f.write("Mathematical Formulation:\n\n")
+            f.write("Spearman correlation coefficient: ρ = 1 - (6∑di²) / (n(n²-1))\n")
+            f.write("Where:\n")
+            f.write("  • di = difference between ranks of model i in zero-shot vs iterative\n")
+            f.write("  • n = number of models\n")
+            f.write("  • ρ ranges from -1 to +1\n\n")
+
+            f.write("Alternative formulation (equivalent):\n")
+            f.write("ρ = Pearson correlation between rank(Xi) and rank(Yi)\n")
+            f.write("Where:\n")
+            f.write("  • rank(Xi) = rank of model i in zero-shot performance\n")
+            f.write("  • rank(Yi) = rank of model i in iterative performance\n\n")
+
+            f.write("Correlation Interpretation:\n")
+            f.write("• |ρ| ≥ 0.7:  Strong monotonic relationship (consistent rankings)\n")
+            f.write("• 0.5 ≤ |ρ| < 0.7:  Moderate monotonic relationship\n")
+            f.write("• 0.3 ≤ |ρ| < 0.5:  Weak monotonic relationship\n")
+            f.write("• |ρ| < 0.3:  Very weak/negligible monotonic relationship\n\n")
+
+            f.write("Positive correlation (ρ > 0): Models ranked higher in zero-shot tend to\n")
+            f.write("be ranked higher in iterative mode (and vice versa).\n")
+            f.write("Negative correlation (ρ < 0): Models ranked higher in zero-shot tend to\n")
+            f.write("be ranked lower in iterative mode (inverse ranking relationship).\n\n")
+
+            f.write("Key Advantages of Spearman over Pearson:\n")
+            f.write("• Robust to outliers and non-linear relationships\n")
+            f.write("• Focuses on ranking consistency rather than linear scaling\n")
+            f.write("• No assumptions about data distribution\n")
+            f.write("• More appropriate for ordinal data and model comparisons\n\n")
+
+            f.write("Statistical Significance:\n")
+            f.write("• p < 0.001: *** (highly significant)\n")
+            f.write("• p < 0.01:  ** (very significant)\n")
+            f.write("• p < 0.05:  * (significant)\n")
+            f.write("• p ≥ 0.05:  ns (not significant)\n\n")
+
+            # Model Ranking Consistency Analysis
+            f.write("MODEL RANKING CONSISTENCY ANALYSIS\n")
+            f.write("-"*50 + "\n")
+            f.write("This analysis addresses the critical question: Do models maintain consistent\n")
+            f.write("relative rankings between zero-shot and iterative inference modes? High\n")
+            f.write("positive correlations indicate that the top-performing models in zero-shot\n")
+            f.write("evaluation are also likely to be top performers in iterative evaluation.\n\n")
             
             # Summary statistics
             strong_correlations = []
@@ -935,67 +977,194 @@ class SpearmanCorrelationAnalyzer:
                     f.write(f"    • Sample size: n = {n_samples}\n")
                     f.write("\n")
             
-            # Practical implications
-            f.write("PRACTICAL IMPLICATIONS\n")
+            # Model Ranking Consistency Findings
+            f.write("MODEL RANKING CONSISTENCY FINDINGS\n")
             f.write("-"*50 + "\n")
+
+            # Analyze ranking consistency
+            highly_consistent = []
+            moderately_consistent = []
+            poorly_consistent = []
+
+            for precision_level, metrics in self.correlation_results.items():
+                for metric, stats in metrics.items():
+                    correlation = stats['correlation']
+                    if not np.isnan(correlation):
+                        abs_corr = abs(correlation)
+                        # Calculate ranking agreement percentage (approximate)
+                        rank_agreement = ((correlation + 1) / 2 * 100) if correlation > 0 else 0
+                        corr_info = (precision_level, metric, correlation, rank_agreement, stats['p_value'], stats['significance'])
+
+                        if abs_corr >= 0.7:
+                            highly_consistent.append(corr_info)
+                        elif abs_corr >= 0.4:
+                            moderately_consistent.append(corr_info)
+                        else:
+                            poorly_consistent.append(corr_info)
+
+            if highly_consistent:
+                highly_consistent.sort(key=lambda x: abs(x[2]), reverse=True)
+                f.write("HIGH RANKING CONSISTENCY (Strong correlations |ρ| ≥ 0.7):\n")
+                f.write("Zero-shot rankings strongly predict iterative rankings\n\n")
+                for precision, metric, corr, rank_agree, p_val, sig in highly_consistent:
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Spearman correlation: ρ = {corr:.3f} {sig}\n")
+                    if corr > 0:
+                        f.write(f"  - Ranking agreement: ~{rank_agree:.0f}%\n")
+                        f.write(f"  - Interpretation: Top zero-shot models are also top iterative models\n")
+                        f.write(f"  - Implication: Zero-shot evaluation reliably identifies best models for iterative use\n")
+                    else:
+                        f.write(f"  - Interpretation: Inverse ranking relationship (rare)\n")
+                        f.write(f"  - Implication: Top zero-shot models may be poor iterative models\n")
+                    f.write("\n")
+
+            if moderately_consistent:
+                moderately_consistent.sort(key=lambda x: abs(x[2]), reverse=True)
+                f.write("MODERATE RANKING CONSISTENCY (Moderate correlations 0.4 ≤ |ρ| < 0.7):\n")
+                f.write("Zero-shot rankings moderately predict iterative rankings\n\n")
+                for precision, metric, corr, rank_agree, p_val, sig in moderately_consistent:
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Spearman correlation: ρ = {corr:.3f} {sig}\n")
+                    if corr > 0:
+                        f.write(f"  - Ranking agreement: ~{rank_agree:.0f}%\n")
+                        f.write(f"  - Interpretation: Moderate consistency in model rankings\n")
+                    f.write("\n")
+
+            if poorly_consistent:
+                f.write("LOW RANKING CONSISTENCY (Weak correlations |ρ| < 0.4):\n")
+                f.write("Zero-shot rankings poorly predict iterative rankings\n\n")
+                poorly_consistent_sorted = sorted(poorly_consistent, key=lambda x: abs(x[2]), reverse=True)
+                for precision, metric, corr, rank_agree, p_val, sig in poorly_consistent_sorted:
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Spearman correlation: ρ = {corr:.3f} {sig}\n")
+                    if corr > 0:
+                        f.write(f"  - Ranking agreement: ~{rank_agree:.0f}%\n")
+                    else:
+                        f.write(f"  - Ranking agreement: Very low (inconsistent orderings)\n")
+                    f.write(f"  - Implication: Zero-shot rankings provide limited guidance for iterative model selection\n")
+                    f.write("\n")
             
-            if strong_correlations:
-                strong_correlations.sort(key=lambda x: abs(x[2]), reverse=True)
-                f.write("STRONG CORRELATIONS indicate consistent model rankings:\n")
-                for precision, metric, corr, p_val, sig in strong_correlations[:5]:
-                    f.write(f"• {precision.capitalize()}/{metric}: ρ = {corr:.3f} {sig}\n")
-                f.write("  → Zero-shot and iterative approaches rank models similarly\n")
-                f.write("  → Model selection can be based on either approach\n\n")
-            
-            if weak_correlations:
-                f.write("WEAK CORRELATIONS suggest different model rankings:\n")
-                weak_sorted = sorted(weak_correlations, key=lambda x: abs(x[2]))
-                for precision, metric, corr, p_val, sig in weak_sorted[:3]:
-                    f.write(f"• {precision.capitalize()}/{metric}: ρ = {corr:.3f} {sig}\n")
-                f.write("  → Model rankings differ significantly between approaches\n")
-                f.write("  → Consider evaluation approach when selecting models\n\n")
-            
-            # Recommendations
-            f.write("RECOMMENDATIONS\n")
+            # Model Selection Strategy Based on Ranking Consistency
+            f.write("MODEL SELECTION STRATEGY BASED ON RANKING CONSISTENCY\n")
             f.write("-"*50 + "\n")
-            
-            # Analyze precision level patterns
-            precision_avg_corrs = {}
+
+            # Calculate overall ranking consistency statistics
+            all_correlations = []
+            highly_consistent_cases = []
+            for precision_level, metrics in self.correlation_results.items():
+                for metric, stats in metrics.items():
+                    if not np.isnan(stats['correlation']):
+                        all_correlations.append(abs(stats['correlation']))
+                        if abs(stats['correlation']) >= 0.7 and stats['correlation'] > 0:
+                            highly_consistent_cases.append((precision_level, metric, stats['correlation']))
+
+            if all_correlations:
+                avg_consistency = np.mean(all_correlations)
+                f.write("OVERALL RANKING CONSISTENCY ASSESSMENT:\n")
+                f.write(f"• Average ranking consistency: |ρ| = {avg_consistency:.3f}\n")
+                f.write(f"• Strong ranking consistency (|ρ| ≥ 0.7): {len([c for c in all_correlations if c >= 0.7])}/{len(all_correlations)} cases\n")
+                f.write(f"• Moderate+ ranking consistency (|ρ| ≥ 0.4): {len([c for c in all_correlations if c >= 0.4])}/{len(all_correlations)} cases\n\n")
+
+            # Precision level ranking consistency analysis
+            precision_consistency = {}
             for precision_level in ['low', 'medium', 'high']:
                 if precision_level in self.correlation_results:
                     corrs = [stats['correlation'] for stats in self.correlation_results[precision_level].values()
                             if not np.isnan(stats['correlation'])]
                     if corrs:
-                        precision_avg_corrs[precision_level] = np.mean([abs(c) for c in corrs])
-            
-            if len(precision_avg_corrs) >= 2:
-                best_precision = max(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
-                worst_precision = min(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
-                
-                f.write("Based on correlation analysis:\n\n")
-                f.write(f"1. Most consistent model rankings: {best_precision.upper()} precision\n")
-                f.write(f"   (Average |correlation| = {precision_avg_corrs[best_precision]:.3f})\n")
-                f.write(f"   → Reliable to use either zero-shot or iterative for model selection\n\n")
-                
-                f.write(f"2. Least consistent model rankings: {worst_precision.upper()} precision\n")
-                f.write(f"   (Average |correlation| = {precision_avg_corrs[worst_precision]:.3f})\n")
-                f.write(f"   → Choose evaluation approach carefully for model selection\n\n")
-            
-            # Find most reliable metrics
-            metric_avg_corrs = {}
+                        abs_corrs = [abs(c) for c in corrs]
+                        positive_corrs = [c for c in corrs if c > 0]
+                        precision_consistency[precision_level] = {
+                            'avg_consistency': np.mean(abs_corrs),
+                            'strong_consistency_count': len([c for c in abs_corrs if c >= 0.7]),
+                            'total_count': len(abs_corrs),
+                            'positive_correlations': len(positive_corrs),
+                            'avg_positive_correlation': np.mean(positive_corrs) if positive_corrs else 0
+                        }
+
+            if precision_consistency:
+                f.write("PRECISION-LEVEL RANKING CONSISTENCY:\n")
+                for precision, stats in precision_consistency.items():
+                    f.write(f"• {precision.capitalize()} precision tasks:\n")
+                    f.write(f"  - Average ranking consistency: |ρ| = {stats['avg_consistency']:.3f}\n")
+                    f.write(f"  - Strong consistency: {stats['strong_consistency_count']}/{stats['total_count']} metrics\n")
+                    f.write(f"  - Positive correlations: {stats['positive_correlations']}/{stats['total_count']} metrics\n")
+
+                    if stats['avg_consistency'] >= 0.7:
+                        f.write(f"  - Model selection strategy: Zero-shot rankings highly reliable\n")
+                        f.write(f"  - Recommendation: Use zero-shot evaluation for efficient model ranking\n")
+                    elif stats['avg_consistency'] >= 0.4:
+                        f.write(f"  - Model selection strategy: Zero-shot rankings moderately reliable\n")
+                        f.write(f"  - Recommendation: Zero-shot provides reasonable initial model ranking\n")
+                    else:
+                        f.write(f"  - Model selection strategy: Rankings inconsistent between modes\n")
+                        f.write(f"  - Recommendation: Evaluate models in both zero-shot and iterative modes\n")
+                    f.write("\n")
+
+                # Find most reliable precision level for ranking consistency
+                best_precision = max(precision_consistency.keys(),
+                                   key=lambda x: precision_consistency[x]['avg_consistency'])
+                f.write(f"MOST RELIABLE PRECISION LEVEL FOR ZERO-SHOT RANKING: {best_precision.upper()}\n")
+                f.write(f"(Average consistency: |ρ| = {precision_consistency[best_precision]['avg_consistency']:.3f})\n\n")
+
+            # Metric-specific ranking consistency
+            metric_consistency = {}
             for metric in METRICS_TO_ANALYZE:
                 corrs = []
                 for precision_level in self.correlation_results.values():
                     if metric in precision_level and not np.isnan(precision_level[metric]['correlation']):
-                        corrs.append(abs(precision_level[metric]['correlation']))
+                        corrs.append(precision_level[metric]['correlation'])
                 if corrs:
-                    metric_avg_corrs[metric] = np.mean(corrs)
-            
-            if metric_avg_corrs:
-                sorted_metrics = sorted(metric_avg_corrs.items(), key=lambda x: x[1], reverse=True)
-                f.write("3. Most consistent metrics across precision levels:\n")
-                for metric, avg_corr in sorted_metrics[:3]:
-                    f.write(f"   • {metric}: average |correlation| = {avg_corr:.3f}\n")
+                    abs_corrs = [abs(c) for c in corrs]
+                    positive_corrs = [c for c in corrs if c > 0]
+                    metric_consistency[metric] = {
+                        'avg_consistency': np.mean(abs_corrs),
+                        'avg_positive_correlation': np.mean(positive_corrs) if positive_corrs else 0,
+                        'consistency_level': 'High' if np.mean(abs_corrs) >= 0.7 else 'Moderate' if np.mean(abs_corrs) >= 0.4 else 'Low',
+                        'positive_cases': len(positive_corrs),
+                        'total_cases': len(corrs)
+                    }
+
+            if metric_consistency:
+                f.write("METRIC-SPECIFIC RANKING CONSISTENCY:\n")
+                sorted_metrics = sorted(metric_consistency.items(),
+                                      key=lambda x: x[1]['avg_consistency'], reverse=True)
+                for metric, stats in sorted_metrics:
+                    f.write(f"• {metric.replace('_', ' ').title()}:\n")
+                    f.write(f"  - Average ranking consistency: |ρ| = {stats['avg_consistency']:.3f}\n")
+                    f.write(f"  - Consistency level: {stats['consistency_level']}\n")
+                    f.write(f"  - Positive correlations: {stats['positive_cases']}/{stats['total_cases']} precision levels\n")
+
+                    if stats['consistency_level'] == 'High':
+                        f.write(f"  - Strategy: Zero-shot {metric} rankings are highly reliable for model selection\n")
+                    elif stats['consistency_level'] == 'Moderate':
+                        f.write(f"  - Strategy: Zero-shot {metric} rankings provide reasonable model guidance\n")
+                    else:
+                        f.write(f"  - Strategy: Evaluate {metric} in both modes for accurate model comparison\n")
+                    f.write("\n")
+
+            f.write("PRACTICAL MODEL SELECTION RECOMMENDATIONS:\n")
+            f.write("1. FOR EFFICIENT MODEL SCREENING:\n")
+            if highly_consistent_cases:
+                f.write("   Use zero-shot rankings to identify top models for:\n")
+                for precision, metric, corr in highly_consistent_cases:
+                    f.write(f"   • {precision.capitalize()} precision {metric} tasks (ρ = {corr:.3f})\n")
+                f.write("   These show strong ranking agreement - top zero-shot models will likely\n")
+                f.write("   remain top performers in iterative mode.\n\n")
+            else:
+                f.write("   • No cases with strong ranking consistency found\n")
+                f.write("   • Consider evaluating both modes for reliable model selection\n\n")
+
+            f.write("2. FOR COMPREHENSIVE MODEL EVALUATION:\n")
+            f.write("   • Always validate final model selection with both evaluation modes\n")
+            f.write("   • Pay special attention to metrics with low ranking consistency\n")
+            f.write("   • Consider that rankings may shift significantly between modes\n")
+            f.write("   • Use zero-shot for initial screening, iterative for final validation\n\n")
+
+            f.write("3. UNDERSTANDING RANKING SHIFTS:\n")
+            f.write("   • Strong positive correlations: Consistent relative model performance\n")
+            f.write("   • Weak correlations: Different models excel in different inference modes\n")
+            f.write("   • Consider task requirements when choosing evaluation approach\n")
             
             f.write("\n" + "="*80 + "\n")
             f.write("End of Report\n")

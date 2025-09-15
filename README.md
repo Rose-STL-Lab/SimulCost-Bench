@@ -307,6 +307,7 @@ python evaluation/simul_sum.py -d burgers_1d
 python evaluation/simul_sum.py -d euler_1d
 python evaluation/simul_sum.py -d ns_2d
 python evaluation/simul_sum.py -d ns_transient_2d
+python evaluation/simul_sum.py -d epoch_1d
 ```
 
 **Parameters:**

@@ -100,7 +100,8 @@ class BarChartGenerator:
             'amazon.nova-premier-v1:0': 'Nova-Premier',
             'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
             'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
-            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct'
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5'
         }
         
         return name_mapping.get(model_name, model_name)
@@ -126,21 +127,21 @@ class BarChartGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Prepare data for grouped bars
-        bar_width = 0.13  # Width of individual bars
-        spacing = 0.02   # Spacing between bar groups
-        group_width = len(precision_levels) * len(inference_modes) * bar_width + spacing
+        bar_width = 0.12  # Width of individual bars
+        precision_spacing = 0.08  # Spacing between different precision levels
+        mode_spacing = 0.01  # Small spacing between zero-shot and iterative within same precision
+        model_spacing = 0.16  # Spacing between different models
 
-        # Get all values to determine color intensity mapping
-        all_values = df['success_rate'].values
-        min_val, max_val = np.min(all_values), np.max(all_values)
-        val_range = max_val - min_val if max_val != min_val else 1
+        # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
+        zero_shot_color = '#D3D3D3'  # Light gray
+        iterative_color = '#4169E1'  # Dark blue
 
-        # Create color maps for Zero-shot (green) and Iterative (blue)
-        from matplotlib.colors import LinearSegmentedColormap
-        green_cmap = LinearSegmentedColormap.from_list('green', ['#90EE90', '#006400'])  # Light to dark green
-        blue_cmap = LinearSegmentedColormap.from_list('blue', ['#ADD8E6', '#000080'])   # Light to dark blue
+        # Get max value for y-axis scaling
+        max_val = df['success_rate'].max()
 
-        x_positions = np.arange(len(models))
+        # Calculate model positions with spacing
+        total_group_width = len(precision_levels) * (2 * bar_width + mode_spacing) + (len(precision_levels) - 1) * precision_spacing
+        x_positions = np.arange(len(models)) * (total_group_width + model_spacing)
         precision_labels = ['L', 'M', 'H']
 
         for i, model in enumerate(models):
@@ -155,25 +156,26 @@ class BarChartGenerator:
                     if len(mode_data) > 0:
                         value = mode_data['success_rate'].iloc[0]
 
-                        # Calculate color intensity based on value
-                        intensity = (value - min_val) / val_range if val_range > 0 else 0.5
-
-                        # Choose color based on inference mode
+                        # Choose color and pattern based on inference mode
                         if mode == 'Zero-shot':
-                            color = green_cmap(intensity)
+                            color = zero_shot_color
+                            hatch = '///'  # Gray stripes
                         else:  # Iterative
-                            color = blue_cmap(intensity)
+                            color = iterative_color
+                            hatch = None  # No pattern
 
-                        # Calculate bar position
-                        bar_pos = x_positions[i] + (j * len(inference_modes) + k) * bar_width - group_width/2
+                        # Calculate bar position with spacing between precision levels
+                        precision_offset = j * (2 * bar_width + mode_spacing + precision_spacing)
+                        mode_offset = k * (bar_width + mode_spacing)
+                        bar_pos = x_positions[i] + precision_offset + mode_offset - (len(precision_levels) * (2 * bar_width + mode_spacing + precision_spacing) - precision_spacing) / 2
 
-                        # Create bar
-                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8)
+                        # Create bar with fine stripes
+                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8, hatch=hatch, edgecolor='lightgray', linewidth=0.3)
 
                         # Add precision label in the middle of the bar
                         ax.text(bar_pos, value/2, precision_labels[j],
                                ha='center', va='center', fontweight='bold',
-                               color='white', fontsize=8)
+                               color='black', fontsize=8)
 
                         # Add value label on top of the bar
                         ax.text(bar_pos, value + 0.01, f'{value:.2f}',
@@ -189,11 +191,11 @@ class BarChartGenerator:
         ax.set_xticklabels(models, rotation=0)  # Horizontal labels
         ax.grid(True, alpha=0.3)
 
-        # Create custom legend
+        # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor='#228B22', label='Zero-shot'),  # Medium green
-            Patch(facecolor='#4169E1', label='Iterative')   # Medium blue
+            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
+            Patch(facecolor=iterative_color, label='Iterative')
         ]
         ax.legend(handles=legend_elements, title='Inference Mode',
                  title_fontsize=8, fontsize=7, loc='upper right', frameon=True)
@@ -235,21 +237,22 @@ class BarChartGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Prepare data for grouped bars
-        bar_width = 0.13  # Width of individual bars
-        spacing = 0.02   # Spacing between bar groups
-        group_width = len(precision_levels) * len(inference_modes) * bar_width + spacing
+        bar_width = 0.12  # Width of individual bars
+        precision_spacing = 0.04  # Spacing between different precision levels
+        mode_spacing = 0.01  # Small spacing between zero-shot and iterative within same precision
+        model_spacing = 0.16  # Spacing between different models
 
-        # Get all values to determine color intensity mapping
+        # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
+        zero_shot_color = '#D3D3D3'  # Light gray
+        iterative_color = '#4169E1'  # Dark blue
+
+        # Get max value for positioning labels
         all_values = df[metric].values
-        min_val, max_val = np.min(all_values), np.max(all_values)
-        val_range = max_val - min_val if max_val != min_val else 1
+        max_val = np.max(all_values)
 
-        # Create color maps for Zero-shot (green) and Iterative (blue)
-        from matplotlib.colors import LinearSegmentedColormap
-        green_cmap = LinearSegmentedColormap.from_list('green', ['#90EE90', '#006400'])  # Light to dark green
-        blue_cmap = LinearSegmentedColormap.from_list('blue', ['#ADD8E6', '#000080'])   # Light to dark blue
-
-        x_positions = np.arange(len(models))
+        # Calculate model positions with spacing
+        total_group_width = len(precision_levels) * (2 * bar_width + mode_spacing) + (len(precision_levels) - 1) * precision_spacing
+        x_positions = np.arange(len(models)) * (total_group_width + model_spacing)
         precision_labels = ['L', 'M', 'H']
 
         for i, model in enumerate(models):
@@ -264,25 +267,26 @@ class BarChartGenerator:
                     if len(mode_data) > 0:
                         value = mode_data[metric].iloc[0]
 
-                        # Calculate color intensity based on value
-                        intensity = (value - min_val) / val_range if val_range > 0 else 0.5
-
-                        # Choose color based on inference mode
+                        # Choose color and pattern based on inference mode
                         if mode == 'Zero-shot':
-                            color = green_cmap(intensity)
+                            color = zero_shot_color
+                            hatch = '//'  # Gray sparse stripes
                         else:  # Iterative
-                            color = blue_cmap(intensity)
+                            color = iterative_color
+                            hatch = None  # No pattern
 
-                        # Calculate bar position
-                        bar_pos = x_positions[i] + (j * len(inference_modes) + k) * bar_width - group_width/2
+                        # Calculate bar position with spacing between precision levels
+                        precision_offset = j * (2 * bar_width + mode_spacing + precision_spacing)
+                        mode_offset = k * (bar_width + mode_spacing)
+                        bar_pos = x_positions[i] + precision_offset + mode_offset - (len(precision_levels) * (2 * bar_width + mode_spacing + precision_spacing) - precision_spacing) / 2
 
-                        # Create bar
-                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8)
+                        # Create bar with fine stripes
+                        bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8, hatch=hatch, edgecolor='lightgray', linewidth=0.3)
 
                         # Add precision label in the middle of the bar
                         ax.text(bar_pos, value/2, precision_labels[j],
                                ha='center', va='center', fontweight='bold',
-                               color='white', fontsize=8)
+                               color='black', fontsize=8)
 
                         # Add value label on top of the bar
                         ax.text(bar_pos, value + max_val * 0.01, f'{value:.2f}',
@@ -298,11 +302,11 @@ class BarChartGenerator:
         ax.set_xticklabels(models, rotation=0)  # Horizontal labels
         ax.grid(True, alpha=0.3)
 
-        # Create custom legend
+        # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor='#228B22', label='Zero-shot'),  # Medium green
-            Patch(facecolor='#4169E1', label='Iterative')   # Medium blue
+            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
+            Patch(facecolor=iterative_color, label='Iterative')
         ]
         ax.legend(handles=legend_elements, title='Inference Mode',
                  title_fontsize=8, fontsize=7, loc='upper right', frameon=True)

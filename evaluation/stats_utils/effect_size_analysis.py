@@ -574,11 +574,10 @@ class EffectSizeAnalyzer:
                 if i < len(cohens_d_matrix) and j < len(cohens_d_matrix[i]):
                     cohens_d = cohens_d_matrix[i, j]
                     if not np.isnan(cohens_d):
-                        interpretation = self.interpret_effect_size(cohens_d).split()[0]  # Get magnitude only
-                        text = f"{cohens_d:.3f}\n({interpretation})"
-                        ax.text(j, i, text, ha="center", va="center", 
+                        text = f"{cohens_d:.3f}"
+                        ax.text(j, i, text, ha="center", va="center",
                                color="white" if abs(cohens_d) > 1.0 else "black",
-                               fontsize=9, fontweight='bold')
+                               fontsize=10, fontweight='bold')
         
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
@@ -788,10 +787,47 @@ class EffectSizeAnalyzer:
             f.write("EFFECT SIZE ANALYSIS REPORT\n")
             f.write(f"Dataset(s): {dataset_title}\n")
             f.write("="*80 + "\n\n")
-            
-            # Executive Summary
-            f.write("EXECUTIVE SUMMARY\n")
+
+            # Statistical Principles
+            f.write("STATISTICAL PRINCIPLES AND METHODOLOGY\n")
             f.write("-"*50 + "\n")
+            f.write("This analysis employs effect size metrics to quantify the magnitude of performance\n")
+            f.write("differences between iterative and zero-shot inference approaches. Effect sizes\n")
+            f.write("provide standardized measures independent of sample size, enabling meaningful\n")
+            f.write("comparison across different conditions and datasets.\n\n")
+
+            f.write("Mathematical Formulations:\n\n")
+            f.write("1. Cohen's d = (μ_iterative - μ_zero_shot) / σ_pooled\n")
+            f.write("   Where σ_pooled = √[((n₁-1)s₁² + (n₂-1)s₂²) / (n₁+n₂-2)]\n")
+            f.write("   - Measures standardized mean difference using pooled standard deviation\n")
+            f.write("   - Positive values indicate iterative > zero-shot performance\n\n")
+
+            f.write("2. Hedges' g = Cohen's d × J\n")
+            f.write("   Where J = 1 - 3/(4(n₁+n₂-2)-1) (bias correction factor)\n")
+            f.write("   - Bias-corrected version of Cohen's d for small samples\n\n")
+
+            f.write("3. Glass's Δ = (μ_iterative - μ_zero_shot) / σ_control\n")
+            f.write("   - Uses only control group (zero-shot) standard deviation\n")
+            f.write("   - Appropriate when control group represents baseline variability\n\n")
+
+            f.write("Effect Size Interpretation (Cohen's conventions):\n")
+            f.write("• |d| < 0.2:  Negligible effect\n")
+            f.write("• 0.2 ≤ |d| < 0.5:  Small effect\n")
+            f.write("• 0.5 ≤ |d| < 0.8:  Medium effect  \n")
+            f.write("• |d| ≥ 0.8:  Large effect\n\n")
+
+            f.write("Statistical Significance Testing:\n")
+            f.write("• Paired t-test: Parametric test for mean differences (assumes normality)\n")
+            f.write("• Wilcoxon signed-rank test: Non-parametric alternative (robust to outliers)\n")
+            f.write("• p < 0.05: Statistically significant difference\n\n")
+
+            # Performance Improvement Analysis
+            f.write("ITERATIVE vs ZERO-SHOT PERFORMANCE ANALYSIS\n")
+            f.write("-"*50 + "\n")
+            f.write("This analysis focuses on quantifying the performance gains achieved when\n")
+            f.write("switching from zero-shot to iterative inference approaches. Positive effect\n")
+            f.write("sizes indicate iterative inference outperforms zero-shot, while negative\n")
+            f.write("values suggest zero-shot may be preferable.\n\n")
             
             # Find overall trends
             large_effects = []
@@ -819,8 +855,8 @@ class EffectSizeAnalyzer:
             f.write(f"• Small effects found: {len(small_effects)} cases\n")
             f.write(f"• Negligible effects found: {len(negligible_effects)} cases\n\n")
             
-            # Key findings
-            f.write("KEY FINDINGS\n")
+            # Executive Summary
+            f.write("EXECUTIVE SUMMARY\n")
             f.write("-"*50 + "\n")
             
             # Analyze patterns by precision level
@@ -878,87 +914,153 @@ class EffectSizeAnalyzer:
                         f.write(f"    - {metric}: {diff:+.3f} degradation (Cohen's d = {d:.3f})\n")
                     f.write("\n")
             
-            # Practical implications
-            f.write("PRACTICAL IMPLICATIONS\n")
+            # Performance Improvement Quantification
+            f.write("PERFORMANCE IMPROVEMENT QUANTIFICATION\n")
             f.write("-"*50 + "\n")
-            
-            # Find the best performing combinations
-            best_combinations = []
+
+            # Analyze all improvements (positive effect sizes)
+            all_improvements = []
+            all_degradations = []
             for precision_level, metrics in self.effect_size_results.items():
                 for metric, stats in metrics.items():
-                    if not np.isnan(stats['cohens_d']) and stats['cohens_d'] > 0.5:
-                        best_combinations.append((precision_level, metric, stats['cohens_d'], stats['mean_difference']))
-            
-            if best_combinations:
-                best_combinations.sort(key=lambda x: x[2], reverse=True)  # Sort by Cohen's d
-                f.write("Most effective use cases for ITERATIVE approach:\n")
-                for i, (precision, metric, d, diff) in enumerate(best_combinations[:5], 1):
-                    f.write(f"{i}. {precision.capitalize()} precision, {metric}: {diff:+.3f} improvement (d = {d:.3f})\n")
+                    if not np.isnan(stats['cohens_d']):
+                        if stats['cohens_d'] > 0:
+                            all_improvements.append((precision_level, metric, stats['cohens_d'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
+                        elif stats['cohens_d'] < 0:
+                            all_degradations.append((precision_level, metric, stats['cohens_d'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
+
+            if all_improvements:
+                all_improvements.sort(key=lambda x: x[2], reverse=True)  # Sort by Cohen's d
+                f.write("ITERATIVE INFERENCE PERFORMANCE GAINS:\n")
+                f.write("(Ranked by effect size magnitude)\n\n")
+                for i, (precision, metric, d, diff, iter_mean, zero_mean) in enumerate(all_improvements, 1):
+                    # Calculate relative improvement percentage
+                    rel_improvement = (diff / zero_mean * 100) if zero_mean != 0 else 0
+                    f.write(f"{i}. {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"   • Effect size (Cohen's d): {d:.3f} ({self.interpret_effect_size(d)})\n")
+                    f.write(f"   • Absolute improvement: {diff:+.3f}\n")
+                    f.write(f"   • Relative improvement: {rel_improvement:+.1f}%\n")
+                    f.write(f"   • Iterative performance: {iter_mean:.3f}\n")
+                    f.write(f"   • Zero-shot performance: {zero_mean:.3f}\n\n")
                 f.write("\n")
             
-            # Find cases where zero-shot might be better
-            zero_shot_better = []
-            for precision_level, metrics in self.effect_size_results.items():
-                for metric, stats in metrics.items():
-                    if not np.isnan(stats['cohens_d']) and stats['cohens_d'] < -0.2:
-                        zero_shot_better.append((precision_level, metric, stats['cohens_d'], stats['mean_difference']))
-            
-            if zero_shot_better:
-                zero_shot_better.sort(key=lambda x: x[2])  # Sort by Cohen's d (most negative first)
-                f.write("Cases where ZERO-SHOT approach might be preferred:\n")
-                for precision, metric, d, diff in zero_shot_better:
-                    f.write(f"• {precision.capitalize()} precision, {metric}: {diff:+.3f} difference (d = {d:.3f})\n")
-                f.write("\n")
+            if all_degradations:
+                all_degradations.sort(key=lambda x: x[2])  # Sort by Cohen's d (most negative first)
+                f.write("CASES WHERE ZERO-SHOT OUTPERFORMS ITERATIVE:\n")
+                f.write("(Areas where iterative inference shows performance decline)\n\n")
+                for i, (precision, metric, d, diff, iter_mean, zero_mean) in enumerate(all_degradations, 1):
+                    # Calculate relative degradation percentage
+                    rel_degradation = (diff / zero_mean * 100) if zero_mean != 0 else 0
+                    f.write(f"{i}. {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"   • Effect size (Cohen's d): {d:.3f} ({self.interpret_effect_size(d)})\n")
+                    f.write(f"   • Absolute degradation: {diff:.3f}\n")
+                    f.write(f"   • Relative degradation: {rel_degradation:.1f}%\n")
+                    f.write(f"   • Iterative performance: {iter_mean:.3f}\n")
+                    f.write(f"   • Zero-shot performance: {zero_mean:.3f}\n\n")
             else:
+                f.write("CASES WHERE ZERO-SHOT OUTPERFORMS ITERATIVE:\n")
                 f.write("No cases found where zero-shot approach shows meaningful advantages.\n\n")
             
-            # Recommendations
-            f.write("RECOMMENDATIONS\n")
+            # Strategic Recommendations
+            f.write("STRATEGIC RECOMMENDATIONS FOR ITERATIVE INFERENCE ADOPTION\n")
             f.write("-"*50 + "\n")
-            
-            # Analyze patterns
-            high_precision_effects = [stats['cohens_d'] for stats in self.effect_size_results.get('high', {}).values() 
-                                    if not np.isnan(stats['cohens_d'])]
-            medium_precision_effects = [stats['cohens_d'] for stats in self.effect_size_results.get('medium', {}).values() 
-                                      if not np.isnan(stats['cohens_d'])]
-            low_precision_effects = [stats['cohens_d'] for stats in self.effect_size_results.get('low', {}).values() 
-                                   if not np.isnan(stats['cohens_d'])]
-            
-            if high_precision_effects and medium_precision_effects and low_precision_effects:
-                avg_high = np.mean(high_precision_effects)
-                avg_medium = np.mean(medium_precision_effects)
-                avg_low = np.mean(low_precision_effects)
+
+            # Calculate overall performance improvement statistics
+            if all_improvements:
+                avg_effect_size = np.mean([x[2] for x in all_improvements])
+                avg_abs_improvement = np.mean([x[3] for x in all_improvements])
+                max_improvement = max(all_improvements, key=lambda x: x[2])
+
+                f.write("OVERALL ITERATIVE INFERENCE BENEFITS:\n")
+                f.write(f"• Average effect size across all improvements: {avg_effect_size:.3f}\n")
+                f.write(f"• Average absolute performance gain: {avg_abs_improvement:+.3f}\n")
+                f.write(f"• Maximum improvement observed: {max_improvement[3]:+.3f} ")
+                f.write(f"({max_improvement[1]} at {max_improvement[0]} precision, d = {max_improvement[2]:.3f})\n\n")
+
+            # Analyze patterns by precision level
+            precision_analysis = {}
+            for precision_level in ['low', 'medium', 'high']:
+                if precision_level in self.effect_size_results:
+                    effects = [stats['cohens_d'] for stats in self.effect_size_results[precision_level].values()
+                             if not np.isnan(stats['cohens_d'])]
+                    improvements = [stats['mean_difference'] for stats in self.effect_size_results[precision_level].values()
+                                  if not np.isnan(stats['cohens_d']) and stats['cohens_d'] > 0]
+
+                    if effects:
+                        precision_analysis[precision_level] = {
+                            'avg_effect': np.mean(effects),
+                            'avg_improvement': np.mean(improvements) if improvements else 0,
+                            'improvement_count': len(improvements),
+                            'total_metrics': len(effects)
+                        }
+
+            if precision_analysis:
+                f.write("PRECISION-LEVEL ANALYSIS:\n")
+                for precision, stats in precision_analysis.items():
+                    f.write(f"• {precision.capitalize()} precision:\n")
+                    f.write(f"  - Average effect size: {stats['avg_effect']:+.3f}\n")
+                    f.write(f"  - Average performance improvement: {stats['avg_improvement']:+.3f}\n")
+                    f.write(f"  - Metrics showing improvement: {stats['improvement_count']}/{stats['total_metrics']}\n")
+
+                # Determine best precision level for iterative inference
+                best_precision = max(precision_analysis.keys(), key=lambda x: precision_analysis[x]['avg_effect'])
+                f.write(f"\n• MOST EFFECTIVE PRECISION LEVEL: {best_precision.upper()}\n")
+                f.write(f"  (Average effect size: {precision_analysis[best_precision]['avg_effect']:+.3f})\n\n")
                 
-                f.write("Based on the effect size analysis:\n\n")
-                
-                if avg_low > avg_medium > avg_high:
-                    f.write("1. Iterative approach shows DECREASING benefits as precision requirements increase\n")
-                    f.write("   → Consider iterative for low-precision tasks, zero-shot for high-precision\n")
-                elif avg_high > avg_medium > avg_low:
-                    f.write("1. Iterative approach shows INCREASING benefits as precision requirements increase\n")
-                    f.write("   → Strongly recommend iterative for high-precision tasks\n")
-                else:
-                    f.write("1. Effect sizes vary across precision levels without clear pattern\n")
-                    f.write("   → Evaluate iterative vs zero-shot based on specific use case requirements\n")
-                
-                # Find metrics with most consistent benefits
-                consistent_metrics = []
+                # Find metrics with most consistent benefits across precision levels
+                metric_consistency = {}
                 for metric in METRICS_TO_ANALYZE:
+                    metric_improvements = []
                     metric_effects = []
                     for precision_level in ['low', 'medium', 'high']:
-                        if (precision_level in self.effect_size_results and 
+                        if (precision_level in self.effect_size_results and
                             metric in self.effect_size_results[precision_level] and
                             not np.isnan(self.effect_size_results[precision_level][metric]['cohens_d'])):
-                            metric_effects.append(self.effect_size_results[precision_level][metric]['cohens_d'])
-                    
-                    if len(metric_effects) >= 2 and all(d > 0.3 for d in metric_effects):
-                        consistent_metrics.append((metric, np.mean(metric_effects)))
-                
-                if consistent_metrics:
-                    consistent_metrics.sort(key=lambda x: x[1], reverse=True)
-                    f.write(f"\n2. Metrics showing most consistent iterative benefits:\n")
-                    for metric, avg_effect in consistent_metrics:
-                        f.write(f"   • {metric}: average Cohen's d = {avg_effect:.3f}\n")
+                            effect = self.effect_size_results[precision_level][metric]['cohens_d']
+                            improvement = self.effect_size_results[precision_level][metric]['mean_difference']
+                            metric_effects.append(effect)
+                            if effect > 0:
+                                metric_improvements.append(improvement)
+
+                    if len(metric_effects) >= 2:
+                        metric_consistency[metric] = {
+                            'avg_effect': np.mean(metric_effects),
+                            'avg_improvement': np.mean(metric_improvements) if metric_improvements else 0,
+                            'consistent_improvements': len(metric_improvements),
+                            'total_measurements': len(metric_effects)
+                        }
+
+                if metric_consistency:
+                    f.write("METRIC-SPECIFIC RECOMMENDATIONS:\n")
+                    sorted_metrics = sorted(metric_consistency.items(), key=lambda x: x[1]['avg_effect'], reverse=True)
+                    for metric, stats in sorted_metrics:
+                        f.write(f"• {metric.replace('_', ' ').title()}:\n")
+                        f.write(f"  - Average effect size: {stats['avg_effect']:+.3f}\n")
+                        f.write(f"  - Average improvement when positive: {stats['avg_improvement']:+.3f}\n")
+                        f.write(f"  - Consistent improvement rate: {stats['consistent_improvements']}/{stats['total_measurements']} precision levels\n")
+
+            f.write(f"\nPRACTICAL IMPLEMENTATION GUIDANCE:\n")
+            f.write("1. WHEN TO USE ITERATIVE INFERENCE:\n")
+            if all_improvements:
+                # Find conditions with largest improvements
+                large_improvements = [x for x in all_improvements if x[2] >= 0.8]  # Large effect sizes
+                if large_improvements:
+                    f.write("   • Strongly recommended for:\n")
+                    for precision, metric, d, diff, _, _ in large_improvements:
+                        f.write(f"     - {precision.capitalize()} precision {metric} tasks (d = {d:.3f}, improvement = {diff:+.3f})\n")
+
+            if all_degradations:
+                f.write("\n2. WHEN TO PREFER ZERO-SHOT:\n")
+                f.write("   • Consider zero-shot for:\n")
+                for precision, metric, d, diff, _, _ in all_degradations:
+                    f.write(f"     - {precision.capitalize()} precision {metric} tasks (performance may decline by {abs(diff):.3f})\n")
+
+            f.write(f"\n3. COST-BENEFIT CONSIDERATIONS:\n")
+            f.write("   • Iterative inference requires additional computational resources\n")
+            f.write("   • Weigh performance gains against increased inference time and costs\n")
+            if all_improvements:
+                f.write(f"   • Consider the {avg_abs_improvement:+.3f} average performance improvement\n")
+                f.write(f"     against the computational overhead of iterative processing\n")
             
             f.write("\n" + "="*80 + "\n")
             f.write("End of Report\n")

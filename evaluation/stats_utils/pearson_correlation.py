@@ -636,9 +636,8 @@ class PearsonCorrelationAnalyzer:
         for i in range(len(precision_labels)):
             for j in range(len(METRICS_TO_ANALYZE)):
                 if not np.isnan(correlation_matrix[i, j]):
-                    significance = self.correlation_results[PRECISION_LEVELS[i]][METRICS_TO_ANALYZE[j]]['significance']
-                    text = f"{correlation_matrix[i, j]:.3f}\n{significance}"
-                    ax.text(j, i, text, ha="center", va="center", 
+                    text = f"{correlation_matrix[i, j]:.3f}"
+                    ax.text(j, i, text, ha="center", va="center",
                            color="white" if abs(correlation_matrix[i, j]) > 0.5 else "black",
                            fontsize=10, fontweight='bold')
         
@@ -723,11 +722,10 @@ class PearsonCorrelationAnalyzer:
                         if not np.isnan(corr_value):
                             precision_level = PRECISION_LEVELS[i]
                             metric = METRICS_TO_ANALYZE[j]
-                            if (precision_level in model_results and 
+                            if (precision_level in model_results and
                                 metric in model_results[precision_level]):
-                                significance = model_results[precision_level][metric]['significance']
-                                text = f"{corr_value:.3f}\n{significance}"
-                                ax.text(j, i, text, ha="center", va="center", 
+                                text = f"{corr_value:.3f}"
+                                ax.text(j, i, text, ha="center", va="center",
                                        color="white" if abs(corr_value) > 0.5 else "black",
                                        fontsize=10, fontweight='bold')
             
@@ -860,14 +858,47 @@ class PearsonCorrelationAnalyzer:
             f.write("PEARSON CORRELATION ANALYSIS REPORT\n")
             f.write(f"Dataset(s): {dataset_title}\n")
             f.write("="*80 + "\n\n")
-            
-            # Executive Summary
-            f.write("EXECUTIVE SUMMARY\n")
+
+            # Statistical Principles
+            f.write("STATISTICAL PRINCIPLES AND METHODOLOGY\n")
             f.write("-"*50 + "\n")
-            f.write("This report analyzes the Pearson linear correlation between zero-shot and\n")
-            f.write("iterative model performance across different precision levels and metrics.\n")
-            f.write("Higher correlations indicate more consistent linear relationships between the\n")
-            f.write("two inference approaches.\n\n")
+            f.write("This analysis employs Pearson product-moment correlation to measure the linear\n")
+            f.write("relationship between zero-shot and iterative model performance. The correlation\n")
+            f.write("coefficient quantifies how well zero-shot performance can predict iterative\n")
+            f.write("performance, and vice versa.\n\n")
+
+            f.write("Mathematical Formulation:\n\n")
+            f.write("Pearson correlation coefficient: r = Σ((Xi - X̄)(Yi - Ȳ)) / √(Σ(Xi - X̄)² × Σ(Yi - Ȳ)²)\n")
+            f.write("Where:\n")
+            f.write("  • Xi = zero-shot performance for model i\n")
+            f.write("  • Yi = iterative performance for model i\n")
+            f.write("  • X̄, Ȳ = sample means\n")
+            f.write("  • r ranges from -1 to +1\n\n")
+
+            f.write("Correlation Interpretation:\n")
+            f.write("• |r| ≥ 0.7:  Strong linear relationship\n")
+            f.write("• 0.5 ≤ |r| < 0.7:  Moderate linear relationship\n")
+            f.write("• 0.3 ≤ |r| < 0.5:  Weak linear relationship\n")
+            f.write("• |r| < 0.3:  Very weak/negligible linear relationship\n\n")
+
+            f.write("Positive correlation (r > 0): Models performing well in zero-shot also\n")
+            f.write("tend to perform well in iterative mode (and vice versa).\n")
+            f.write("Negative correlation (r < 0): Models performing well in one mode tend to\n")
+            f.write("perform poorly in the other mode.\n\n")
+
+            f.write("Statistical Significance:\n")
+            f.write("• p < 0.001: *** (highly significant)\n")
+            f.write("• p < 0.01:  ** (very significant)\n")
+            f.write("• p < 0.05:  * (significant)\n")
+            f.write("• p ≥ 0.05:  ns (not significant)\n\n")
+
+            # Performance Predictability Analysis
+            f.write("MODEL PERFORMANCE PREDICTABILITY ANALYSIS\n")
+            f.write("-"*50 + "\n")
+            f.write("This analysis addresses the key question: Do models that perform well in\n")
+            f.write("zero-shot inference also perform well in iterative inference? High positive\n")
+            f.write("correlations suggest that zero-shot performance is a good predictor of\n")
+            f.write("iterative performance, enabling efficient model selection.\n\n")
             
             # Summary statistics
             strong_correlations = []
@@ -935,67 +966,170 @@ class PearsonCorrelationAnalyzer:
                     f.write(f"    • Sample size: n = {n_samples}\n")
                     f.write("\n")
             
-            # Practical implications
-            f.write("PRACTICAL IMPLICATIONS\n")
+            # Model Performance Predictability
+            f.write("MODEL PERFORMANCE PREDICTABILITY FINDINGS\n")
             f.write("-"*50 + "\n")
+
+            # Analyze predictive power
+            highly_predictive = []
+            moderately_predictive = []
+            poorly_predictive = []
+
+            for precision_level, metrics in self.correlation_results.items():
+                for metric, stats in metrics.items():
+                    correlation = stats['correlation']
+                    if not np.isnan(correlation):
+                        abs_corr = abs(correlation)
+                        r_squared = correlation ** 2  # Coefficient of determination
+                        corr_info = (precision_level, metric, correlation, r_squared, stats['p_value'], stats['significance'])
+
+                        if abs_corr >= 0.7:
+                            highly_predictive.append(corr_info)
+                        elif abs_corr >= 0.4:
+                            moderately_predictive.append(corr_info)
+                        else:
+                            poorly_predictive.append(corr_info)
+
+            if highly_predictive:
+                highly_predictive.sort(key=lambda x: abs(x[2]), reverse=True)
+                f.write("HIGH PREDICTIVE POWER (Strong correlations |r| ≥ 0.7):\n")
+                f.write("Zero-shot performance strongly predicts iterative performance\n\n")
+                for precision, metric, corr, r_sq, p_val, sig in highly_predictive:
+                    variance_explained = r_sq * 100
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Correlation: r = {corr:.3f} {sig}\n")
+                    f.write(f"  - Variance explained: {variance_explained:.1f}%\n")
+                    f.write(f"  - Interpretation: {'Strong positive' if corr > 0 else 'Strong negative'} relationship\n")
+                    if corr > 0:
+                        f.write(f"  - Implication: Models with high zero-shot {metric} also have high iterative {metric}\n")
+                    else:
+                        f.write(f"  - Implication: Models with high zero-shot {metric} tend to have low iterative {metric}\n")
+                    f.write("\n")
+
+            if moderately_predictive:
+                moderately_predictive.sort(key=lambda x: abs(x[2]), reverse=True)
+                f.write("MODERATE PREDICTIVE POWER (Moderate correlations 0.4 ≤ |r| < 0.7):\n")
+                f.write("Zero-shot performance moderately predicts iterative performance\n\n")
+                for precision, metric, corr, r_sq, p_val, sig in moderately_predictive:
+                    variance_explained = r_sq * 100
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Correlation: r = {corr:.3f} {sig}\n")
+                    f.write(f"  - Variance explained: {variance_explained:.1f}%\n")
+                    f.write(f"  - Interpretation: {'Moderate positive' if corr > 0 else 'Moderate negative'} relationship\n")
+                    f.write("\n")
+
+            if poorly_predictive:
+                f.write("LOW PREDICTIVE POWER (Weak correlations |r| < 0.4):\n")
+                f.write("Zero-shot performance poorly predicts iterative performance\n\n")
+                poorly_predictive_sorted = sorted(poorly_predictive, key=lambda x: abs(x[2]), reverse=True)
+                for precision, metric, corr, r_sq, p_val, sig in poorly_predictive_sorted:
+                    variance_explained = r_sq * 100
+                    f.write(f"• {precision.capitalize()} precision - {metric}:\n")
+                    f.write(f"  - Correlation: r = {corr:.3f} {sig}\n")
+                    f.write(f"  - Variance explained: {variance_explained:.1f}%\n")
+                    f.write(f"  - Implication: Zero-shot ranking provides limited prediction of iterative ranking\n")
+                    f.write("\n")
             
-            if strong_correlations:
-                strong_correlations.sort(key=lambda x: abs(x[2]), reverse=True)
-                f.write("STRONG CORRELATIONS indicate consistent linear relationships:\n")
-                for precision, metric, corr, p_val, sig in strong_correlations[:5]:
-                    f.write(f"• {precision.capitalize()}/{metric}: r = {corr:.3f} {sig}\n")
-                f.write("  → Zero-shot and iterative approaches show linear relationships\n")
-                f.write("  → Model performance scales consistently across approaches\n\n")
-            
-            if weak_correlations:
-                f.write("WEAK CORRELATIONS suggest different performance patterns:\n")
-                weak_sorted = sorted(weak_correlations, key=lambda x: abs(x[2]))
-                for precision, metric, corr, p_val, sig in weak_sorted[:3]:
-                    f.write(f"• {precision.capitalize()}/{metric}: r = {corr:.3f} {sig}\n")
-                f.write("  → Performance patterns differ between approaches\n")
-                f.write("  → Consider approach-specific model selection\n\n")
-            
-            # Recommendations
-            f.write("RECOMMENDATIONS\n")
+            # Model Selection Strategy Recommendations
+            f.write("MODEL SELECTION STRATEGY RECOMMENDATIONS\n")
             f.write("-"*50 + "\n")
-            
-            # Analyze precision level patterns
-            precision_avg_corrs = {}
+
+            # Calculate overall predictability statistics
+            all_correlations = []
+            strong_positive = []
+            for precision_level, metrics in self.correlation_results.items():
+                for metric, stats in metrics.items():
+                    if not np.isnan(stats['correlation']):
+                        all_correlations.append(abs(stats['correlation']))
+                        if stats['correlation'] > 0.7:
+                            strong_positive.append((precision_level, metric, stats['correlation']))
+
+            if all_correlations:
+                avg_correlation = np.mean(all_correlations)
+                f.write("OVERALL PREDICTABILITY ASSESSMENT:\n")
+                f.write(f"• Average absolute correlation: {avg_correlation:.3f}\n")
+                f.write(f"• Strong correlations (|r| ≥ 0.7): {len([c for c in all_correlations if c >= 0.7])}/{len(all_correlations)} cases\n")
+                f.write(f"• Moderate+ correlations (|r| ≥ 0.4): {len([c for c in all_correlations if c >= 0.4])}/{len(all_correlations)} cases\n\n")
+
+            # Precision level analysis for model selection
+            precision_predictability = {}
             for precision_level in ['low', 'medium', 'high']:
                 if precision_level in self.correlation_results:
                     corrs = [stats['correlation'] for stats in self.correlation_results[precision_level].values()
                             if not np.isnan(stats['correlation'])]
                     if corrs:
-                        precision_avg_corrs[precision_level] = np.mean([abs(c) for c in corrs])
-            
-            if len(precision_avg_corrs) >= 2:
-                best_precision = max(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
-                worst_precision = min(precision_avg_corrs.keys(), key=lambda x: precision_avg_corrs[x])
-                
-                f.write("Based on correlation analysis:\n\n")
-                f.write(f"1. Most consistent linear relationships: {best_precision.upper()} precision\n")
-                f.write(f"   (Average |correlation| = {precision_avg_corrs[best_precision]:.3f})\n")
-                f.write(f"   → Reliable to use either zero-shot or iterative for model selection\n\n")
-                
-                f.write(f"2. Least consistent linear relationships: {worst_precision.upper()} precision\n")
-                f.write(f"   (Average |correlation| = {precision_avg_corrs[worst_precision]:.3f})\n")
-                f.write(f"   → Choose evaluation approach carefully for model selection\n\n")
-            
-            # Find most reliable metrics
-            metric_avg_corrs = {}
+                        abs_corrs = [abs(c) for c in corrs]
+                        precision_predictability[precision_level] = {
+                            'avg_correlation': np.mean(abs_corrs),
+                            'strong_count': len([c for c in abs_corrs if c >= 0.7]),
+                            'total_count': len(abs_corrs),
+                            'max_correlation': max(abs_corrs)
+                        }
+
+            if precision_predictability:
+                f.write("PRECISION-LEVEL MODEL SELECTION GUIDANCE:\n")
+                for precision, stats in precision_predictability.items():
+                    f.write(f"• {precision.capitalize()} precision tasks:\n")
+                    f.write(f"  - Average predictive power: |r| = {stats['avg_correlation']:.3f}\n")
+                    f.write(f"  - Strong predictors: {stats['strong_count']}/{stats['total_count']} metrics\n")
+
+                    if stats['avg_correlation'] >= 0.7:
+                        f.write(f"  - Strategy: Zero-shot evaluation highly reliable for model selection\n")
+                    elif stats['avg_correlation'] >= 0.4:
+                        f.write(f"  - Strategy: Zero-shot evaluation moderately reliable for model selection\n")
+                    else:
+                        f.write(f"  - Strategy: Evaluate both zero-shot and iterative for model selection\n")
+                    f.write("\n")
+
+                # Find best precision level for zero-shot based selection
+                best_precision = max(precision_predictability.keys(),
+                                   key=lambda x: precision_predictability[x]['avg_correlation'])
+                f.write(f"MOST RELIABLE PRECISION LEVEL FOR ZERO-SHOT BASED SELECTION: {best_precision.upper()}\n")
+                f.write(f"(Average correlation: {precision_predictability[best_precision]['avg_correlation']:.3f})\n\n")
+
+            # Metric-specific guidance
+            metric_predictability = {}
             for metric in METRICS_TO_ANALYZE:
                 corrs = []
                 for precision_level in self.correlation_results.values():
                     if metric in precision_level and not np.isnan(precision_level[metric]['correlation']):
                         corrs.append(abs(precision_level[metric]['correlation']))
                 if corrs:
-                    metric_avg_corrs[metric] = np.mean(corrs)
-            
-            if metric_avg_corrs:
-                sorted_metrics = sorted(metric_avg_corrs.items(), key=lambda x: x[1], reverse=True)
-                f.write("3. Most consistent metrics across precision levels:\n")
-                for metric, avg_corr in sorted_metrics[:3]:
-                    f.write(f"   • {metric}: average |correlation| = {avg_corr:.3f}\n")
+                    metric_predictability[metric] = {
+                        'avg_correlation': np.mean(corrs),
+                        'max_correlation': max(corrs),
+                        'reliability': 'High' if np.mean(corrs) >= 0.7 else 'Moderate' if np.mean(corrs) >= 0.4 else 'Low'
+                    }
+
+            if metric_predictability:
+                f.write("METRIC-SPECIFIC SELECTION RELIABILITY:\n")
+                sorted_metrics = sorted(metric_predictability.items(),
+                                      key=lambda x: x[1]['avg_correlation'], reverse=True)
+                for metric, stats in sorted_metrics:
+                    f.write(f"• {metric.replace('_', ' ').title()}:\n")
+                    f.write(f"  - Average predictive power: |r| = {stats['avg_correlation']:.3f}\n")
+                    f.write(f"  - Reliability for zero-shot based selection: {stats['reliability']}\n")
+
+                    if stats['reliability'] == 'High':
+                        f.write(f"  - Recommendation: Use zero-shot {metric} for efficient model ranking\n")
+                    elif stats['reliability'] == 'Moderate':
+                        f.write(f"  - Recommendation: Zero-shot {metric} provides reasonable model ranking\n")
+                    else:
+                        f.write(f"  - Recommendation: Evaluate iterative {metric} for accurate model ranking\n")
+                    f.write("\n")
+
+            f.write("PRACTICAL IMPLEMENTATION STRATEGY:\n")
+            f.write("1. FOR EFFICIENT MODEL SCREENING:\n")
+            if strong_positive:
+                f.write("   • Use zero-shot evaluation for initial model ranking in:\n")
+                for precision, metric, corr in strong_positive:
+                    f.write(f"     - {precision.capitalize()} precision {metric} (r = {corr:.3f})\n")
+                f.write("\n")
+
+            f.write("2. FOR COMPREHENSIVE MODEL EVALUATION:\n")
+            f.write("   • Always evaluate both zero-shot and iterative for final selection\n")
+            f.write("   • Pay special attention to metrics with weak correlations\n")
+            f.write("   • Consider task-specific requirements and computational constraints\n")
             
             f.write("\n" + "="*80 + "\n")
             f.write("End of Report\n")
