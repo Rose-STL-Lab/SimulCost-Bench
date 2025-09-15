@@ -101,7 +101,8 @@ class BarChartGenerator:
             'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
             'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
             'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
-            'gpt-5-2025-08-07': 'GPT-5'
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
         }
         
         return name_mapping.get(model_name, model_name)
@@ -133,7 +134,7 @@ class BarChartGenerator:
         model_spacing = 0.16  # Spacing between different models
 
         # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
-        zero_shot_color = '#D3D3D3'  # Light gray
+        zero_shot_color = '#BBBBBB'  # Slightly darker gray
         iterative_color = '#4169E1'  # Dark blue
 
         # Get max value for y-axis scaling
@@ -243,7 +244,7 @@ class BarChartGenerator:
         model_spacing = 0.16  # Spacing between different models
 
         # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
-        zero_shot_color = '#D3D3D3'  # Light gray
+        zero_shot_color = '#BBBBBB'  # Slightly darker gray
         iterative_color = '#4169E1'  # Dark blue
 
         # Get max value for positioning labels
