@@ -13,7 +13,6 @@ A comprehensive benchmark for evaluating Large Language Models (LLMs) on computa
 - [Resume Functionality](#-resume-functionality)
 - [Evaluate Performance](#-evaluate-models-performance)
 - [Tabulate Results](#️-tabulate-evaluation-results)
-- [Evaluated Models](#-evaluated-models)
 - [Script Usage Guide](#️-script-usage-guide)
 
 ## 📦 Environment Setup
@@ -319,7 +318,7 @@ python evaluation/simul_sum.py -d epoch_1d
 
 **Note:** Run `tabulate.py` first to generate the required task-level CSV files before running `simul_sum.py`.
 
-## 🤖 Evaluated Models
+<!-- ## 🤖 Evaluated Models
 
 ### Commercial Models
 - **Anthropic**: 
@@ -331,14 +330,14 @@ python evaluation/simul_sum.py -d epoch_1d
 - **Mistral**: `mistral.mistral-large-2402-v1:0`
 - **Meta**: `meta.llama3-70b-instruct-v1:0`
 - **Amazon**: `amazon.nova-premier-v1:0`
-<!-- - **DeepSeek**: `deepseek.r1-v1:0` -->
-<!-- - **AI21**: `ai21.jamba-1-5-large-v1:0` -->
+- **DeepSeek**: `deepseek.r1-v1:0`
+- **AI21**: `ai21.jamba-1-5-large-v1:0`
 
 ### Open-Source Models
 - **Alibaba**:
   - `qwen3_8b`
   - `qwen3_32b`
-  - `qwen3_235b_a22b`
+  - `qwen3_235b_a22b` -->
 
 ## 🛠️ Script Usage Guide
 

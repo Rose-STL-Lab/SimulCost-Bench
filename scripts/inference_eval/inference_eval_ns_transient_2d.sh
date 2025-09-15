@@ -35,17 +35,15 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 #  "amazon.nova-premier-v1:0"
 # )
 
-# model_provider="custom_model"
-# models=(
-#  "qwen3_0_6b"
-#  "qwen3_8b"
-#  "qwen3_32b" 
-# )
-
-model_provider="openai"
+model_provider="custom_model"
 models=(
-  "gpt-5-2025-08-07"
+ "qwen3_32b" 
 )
+
+# model_provider="openai"
+# models=(
+#   "gpt-5-2025-08-07"
+# )
 
 # ========= Main loop =========
 for task in "${tasks[@]}"; do
