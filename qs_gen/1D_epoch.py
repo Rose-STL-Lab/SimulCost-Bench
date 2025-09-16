@@ -140,8 +140,8 @@ class OneDEpochQuestionGenerator:
                     # For tasks like nx/npart, param_history is 1D: [{params}, {params}, ...]
                     param_dict = param_set
 
-                # Map parameter names for epoch solver
-                param_name_mapping = {
+                # Original parameter names in data source (need to map from these)
+                source_param_mapping = {
                     "dt_multiplier": "dt_mult",
                     "nx": "nx",
                     "npart": "npart",
@@ -149,9 +149,18 @@ class OneDEpochQuestionGenerator:
                     "particle_order": "particle_order"
                 }
 
-                mapped_param_name = param_name_mapping.get(task, task)
-                if param_dict.get(mapped_param_name) == target_param_value:
-                    best_params = param_dict.copy()
+                source_param_name = source_param_mapping.get(task, task)
+                if param_dict.get(source_param_name) == target_param_value:
+                    # Convert to standard parameter names for output
+                    best_params = {}
+                    for orig_key, orig_val in param_dict.items():
+                        # Map back to standard names
+                        if orig_key == "dt_mult":
+                            best_params["dt_multiplier"] = orig_val
+                        elif orig_key == "field_Order":
+                            best_params["field_order"] = orig_val
+                        else:
+                            best_params[orig_key] = orig_val
                     break
 
             # If not found, this is an error in the data
