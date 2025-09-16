@@ -333,8 +333,8 @@ def main():
         print(f"\n📋 TASK: {task.upper()}")
         print("-" * 50)
 
-        # Handle the inconsistent naming (dt_multipler vs dt_multiplier)
-        task_dir_name = "dt_multipler" if task == "dt_multiplier" else task
+        # Handle the inconsistent naming (dt_multiplier vs dt_multiplier)
+        task_dir_name = task
         task_dir = f"data/epoch_1d/{task_dir_name}"
 
         # Get precision levels from the new structure

@@ -23,7 +23,7 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
-tasks=("nx" "npart" "dt_multiplier" scripts/inference_eval/inference_eval_epoch_1d.sh"field_order" "particle_order")
+tasks=("nx" "npart" "dt_multiplier" "field_order" "particle_order")
 precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
