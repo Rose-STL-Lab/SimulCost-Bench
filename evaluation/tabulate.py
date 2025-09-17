@@ -53,6 +53,32 @@ PRIORITY_METRICS = [
 # ------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------
+def clean_model_names(model_name: str) -> str:
+    """
+    Clean and shorten model names for better display.
+
+    Args:
+        model_name: Original model name
+
+    Returns:
+        Cleaned model name
+    """
+    name_mapping = {
+        'amazon.nova-premier-v1:0': 'Nova-Premier',
+        'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+        'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+        'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+        'gpt-5-2025-08-07': 'GPT-5',
+        'qwen3_32b': 'Qwen3-32B',
+        
+        'qwen3_0_6b': 'Qwen3-0.6B',
+        'qwen3_8b': 'Qwen3-8B',
+        'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+        'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+    }
+
+    return name_mapping.get(model_name, model_name)
+
 def normalize_metrics(metrics: Dict[str, str]) -> Dict[str, str]:
     """
     Normalize field names to canonical forms using FIELD_NAME_MAPPING.
@@ -188,6 +214,9 @@ def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) ->
                 mode_key, model = match.groups()
                 mode = "Iterative" if mode_key == "iterative" else "Zero-shot"
 
+                # Clean model name
+                model = clean_model_names(model)
+
                 result = parse_log(log_path)
                 if result is None:
                     continue
@@ -212,6 +241,13 @@ def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) ->
             **merged_metrics,
         }
         rows.append(row)
+
+    # Sort rows: zero-shot first, then iterative, then by task
+    def sort_key(row):
+        mode_order = 0 if row["Inference Mode"] == "Zero-shot" else 1
+        return (mode_order, row["Task"], row["Model"])
+
+    rows.sort(key=sort_key)
 
     metric_columns = sorted(metric_names)
     return rows, metric_columns
@@ -362,9 +398,13 @@ def write_excel(
 
         # Write by group, leaving blank row between groups
         col_idx = {c: i for i, c in enumerate(ordered_cols)}
+        # Sort by Task, then Inference Mode (Zero-shot first, then Iterative)
+        df_sorted = df.copy()
+        df_sorted["mode_order"] = df_sorted["Inference Mode"].map({"Zero-shot": 0, "Iterative": 1})
+        df_sorted = df_sorted.sort_values(["Task", "mode_order", "Model"])
+
         for (task, mode), subdf in (
-            df.sort_values(["Task", "Inference Mode"])
-            .groupby(["Task", "Inference Mode"], sort=False)
+            df_sorted.groupby(["Task", "Inference Mode"], sort=False)
         ):
             # Maximum efficiency within group (may be empty)
             max_efficiency = (

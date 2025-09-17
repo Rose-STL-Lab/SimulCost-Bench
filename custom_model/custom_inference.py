@@ -1,5 +1,33 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from methods import *
+import copy
+
+_PROBLEM_TO_TOOL_NAME = {
+    "1D_heat_transfer":{
+        "cfl":"heat_1d_check_converge_cfl",
+        "n_space":"heat_1d_check_converge_n_space"
+    },
+    "2D_heat_transfer":{
+        
+    },
+    "1D_burgers":{
+        
+    },
+    "euler_1d":{
+        "cfl":"euler_1d_check_converge_cfl",
+        "beta":"euler_1d_check_converge_beta",
+        "k":"euler_1d_check_converge_k",
+        "n_space":"euler_1d_check_converge_n_space"
+    },
+    "ns_channel_2d":{
+        "mesh_x":"ns_2d_check_converge_mesh_x"
+    },
+    "ns_transient_2d":{
+        "resolution":"ns_transient_2d_check_converge_resolution"
+    }
+}
 
 class Qwen3:
     def __init__(self, model_path: str):
@@ -34,7 +62,6 @@ class Qwen3:
         # print("================================================")
         # print("Messages:", messages)
         # print("================================================")
-
         # Prepare the model input        
         text = self.tokenizer.apply_chat_template(
             messages,
@@ -66,99 +93,45 @@ class Qwen3:
         # print("Qwen3 Response:", response)
         
         return response
-
-# from peft import PeftModel
-
-# class Llama3:
-#     def __init__(self, model_path: str):
-#         """
-#         Initialize Llama3.2 model.
+    
+class BOAgent:
+    def __init__(self, model_path='/home/leo/workspace/SimulCost-Bench/custom_model/bo_configs/config.yaml'):
+        '''
+        Bayesian Optimization base class.
         
-#         Args:
-#             model_path (str): Path to your model files/weights
-#         """
-#         self.model_path = model_path
+        Here model_path is a yaml config recording BO parameters.
+        '''
+        from omegaconf import OmegaConf
         
-#         # Load the tokenizer and the model
-#         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-#         self.model = AutoModelForCausalLM.from_pretrained(
-#             model_path,
-#             torch_dtype=torch.float16,
-#             device_map="auto",
-#             trust_remote_code=True
-#         )
+        cfg = OmegaConf.load(model_path)
+        self.cfg = cfg
         
-#         # Ensure padding token is set
-#         if self.tokenizer.pad_token is None:
-#             self.tokenizer.pad_token = self.tokenizer.eos_token
-  
-#     def invoke(self, messages: list[dict]) -> str:
-#         """
-#         Perform inference on the given messages.
+        # Import BO class from methods
+        from methods import BO
+        self.bo = BO(model_path)
         
-#         Args:
-#             messages (list[dict]): List of message dictionaries
-#                 Each message should have the format:
-#                 {"role": "system|user|assistant", "content": "message content"}
+    def invoke(self, messages):
+        """Main entry point for Bayesian Optimization agent inference.
         
-#         Returns:
-#             str: Generated response from the model
-#         """
-#         print("================================================")
-#         print("Messages:", messages)
-#         print("================================================")
-
-#         # Apply chat template to convert messages to text format
-#         text = self.tokenizer.apply_chat_template(
-#             messages,
-#             tokenize=False,
-#             add_generation_prompt=True
-#         )
+        Args:
+            messages (list): List of message dictionaries
+            
+        Returns:
+            str: JSON-formatted response with optimization results
+        """
+        # Extract problem parameters from messages
+        problem, task, profile, tolerance, optimization_type = extract_problem_info_from_messages(messages)
         
-#         # Tokenize the input text
-#         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-
-#         # Generate response
-#         with torch.no_grad():
-#             generated_ids = self.model.generate(
-#                 **model_inputs,
-#                 max_new_tokens=256,
-#                 temperature=0.7,
-#                 do_sample=True,
-#                 pad_token_id=self.tokenizer.eos_token_id,
-#                 eos_token_id=self.tokenizer.eos_token_id
-#             )
+        # Run Bayesian Optimization (only supports zero-shot mode)
+        if optimization_type == "zero-shot":
+            final_params, best_score = self.bo.solve(problem, task, profile, tolerance, messages)
+            
+            response = str({
+                "tool_name": _PROBLEM_TO_TOOL_NAME[problem][task],
+                "tool_reason": "Based on Bayesian optimization with Gaussian process modeling and acquisition function maximization, I propose this parameter value as the optimal solution.",
+                "tool_args": final_params
+            })
+        else:
+            raise NotImplementedError("BO doesn't support iterative!")
         
-#         # Extract only the newly generated tokens
-#         output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
-        
-#         # Decode the response
-#         response = self.tokenizer.decode(output_ids, skip_special_tokens=True).strip()
-        
-#         print("Llama3.2 Response:", response)
-        
-#         return response
-   
-# class Llama3_lora_3B(Llama3):
-#     def __init__(self, model_path):
-#         base_name = "meta-llama/Llama-3.2-3B-Instruct"
-#         self.tokenizer = AutoTokenizer.from_pretrained(base_name)
-#         self.model = AutoModelForCausalLM.from_pretrained(
-#             base_name,
-#             torch_dtype=torch.float16,
-#             device_map="auto",
-#             trust_remote_code=True
-#         )
-#         self.model = PeftModel.from_pretrained(self.model, model_path)
-       
-# class Llama3_lora_1B(Llama3):
-#     def __init__(self, model_path):
-#         base_name = "meta-llama/Llama-3.2-1B-Instruct"
-#         self.tokenizer = AutoTokenizer.from_pretrained(base_name)
-#         self.model = AutoModelForCausalLM.from_pretrained(
-#             base_name,
-#             torch_dtype=torch.float16,
-#             device_map="auto",
-#             trust_remote_code=True
-#         )
-#         self.model = PeftModel.from_pretrained(self.model, model_path)
+        return response

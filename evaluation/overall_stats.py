@@ -46,16 +46,6 @@ class OverallStatsGenerator:
         plt.style.use('seaborn-v0_8-whitegrid')
         sns.set_palette("husl")
 
-        # Model name mapping for cleaner display
-        self.model_name_mapping = {
-            'amazon.nova-premier-v1:0': 'Nova-Premier',
-            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
-            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
-            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
-            'gpt-5-2025-08-07': 'GPT-5',
-            'qwen3_32b': 'Qwen3-32B',
-            'qwen3_8b': 'Qwen3-8B',
-        }
 
     def find_available_datasets(self) -> List[str]:
         """
@@ -113,17 +103,6 @@ class OverallStatsGenerator:
 
         return combined_df
 
-    def clean_model_names(self, model_name: str) -> str:
-        """
-        Clean and shorten model names for better display.
-
-        Args:
-            model_name: Original model name
-
-        Returns:
-            Cleaned model name
-        """
-        return self.model_name_mapping.get(model_name, model_name)
 
     def calculate_overall_statistics(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -135,16 +114,15 @@ class OverallStatsGenerator:
         Returns:
             DataFrame with overall statistics per model/mode/precision combination
         """
-        # Add cleaned model names
-        df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
+        # Model names are already cleaned by upstream processing
 
         # Group by Model, Precision Level, and Inference Mode
         # Calculate weighted averages across all simulations
         aggregated_results = []
 
-        grouping_cols = ['Model', 'Model_Clean', 'Precision Level', 'Inference Mode']
+        grouping_cols = ['Model', 'Precision Level', 'Inference Mode']
         for group_keys, group in df.groupby(grouping_cols):
-            model, model_clean, precision, mode = group_keys
+            model, precision, mode = group_keys
 
             # Calculate total samples across all simulations
             total_samples = group['Number of Samples'].sum()
@@ -168,7 +146,6 @@ class OverallStatsGenerator:
             # Create aggregated row
             agg_row = {
                 'Model': model,
-                'Model_Clean': model_clean,
                 'Precision Level': precision,
                 'Inference Mode': mode,
                 'Total Samples': total_samples,
@@ -186,7 +163,7 @@ class OverallStatsGenerator:
         result_df['mode_order'] = result_df['Inference Mode'].map({'Zero-shot': 0, 'Iterative': 1})
         precision_order = {'low': 0, 'medium': 1, 'high': 2}
         result_df['precision_order'] = result_df['Precision Level'].map(precision_order)
-        result_df = result_df.sort_values(['mode_order', 'precision_order', 'Model_Clean']).drop(['mode_order', 'precision_order'], axis=1)
+        result_df = result_df.sort_values(['mode_order', 'precision_order', 'Model']).drop(['mode_order', 'precision_order'], axis=1)
 
         return result_df
 
@@ -207,15 +184,14 @@ class OverallStatsGenerator:
         Returns:
             DataFrame with aggregated statistics per model/mode combination (no precision level)
         """
-        # Add cleaned model names
-        df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
+        # Model names are already cleaned by upstream processing
 
         # Group by Model and Inference Mode only (no Precision Level)
         aggregated_results = []
 
-        grouping_cols = ['Model', 'Model_Clean', 'Inference Mode']
+        grouping_cols = ['Model', 'Inference Mode']
         for group_keys, group in df.groupby(grouping_cols):
-            model, model_clean, mode = group_keys
+            model, mode = group_keys
 
             # Calculate total samples across all simulations and precision levels
             total_samples = group['Number of Samples'].sum()
@@ -242,7 +218,6 @@ class OverallStatsGenerator:
             # Create aggregated row
             agg_row = {
                 'Model': model,
-                'Model_Clean': model_clean,
                 'Inference Mode': mode,
                 'Total Samples': total_samples,
                 'Number of Solvers': num_simulations,
@@ -259,7 +234,7 @@ class OverallStatsGenerator:
         # Sort by inference mode (Zero-shot first, then Iterative), then model name
         result_df = pd.DataFrame(aggregated_results)
         result_df['mode_order'] = result_df['Inference Mode'].map({'Zero-shot': 0, 'Iterative': 1})
-        result_df = result_df.sort_values(['mode_order', 'Model_Clean']).drop(['mode_order'], axis=1)
+        result_df = result_df.sort_values(['mode_order', 'Model']).drop(['mode_order'], axis=1)
 
         return result_df
 
@@ -275,7 +250,7 @@ class OverallStatsGenerator:
 
         # Create ordered columns
         ordered_cols = [
-            'Model_Clean', 'Model', 'Precision Level', 'Inference Mode',
+            'Model', 'Precision Level', 'Inference Mode',
             'Total Samples', 'Number of Solvers', 'Success Rate',
             'Efficiency', 'Simulations'
         ]
@@ -299,7 +274,7 @@ class OverallStatsGenerator:
 
         # Create ordered columns for aggregated data
         ordered_cols = [
-            'Model_Clean', 'Model', 'Inference Mode',
+            'Model', 'Inference Mode',
             'Total Samples', 'Number of Solvers', 'Precision Levels Tested',
             'Success Rate', 'Efficiency', 'Simulations', 'Precision Levels'
         ]
@@ -323,7 +298,7 @@ class OverallStatsGenerator:
 
         # Create ordered columns
         ordered_cols = [
-            'Model_Clean', 'Precision Level', 'Inference Mode',
+            'Model', 'Precision Level', 'Inference Mode',
             'Total Samples', 'Number of Solvers', 'Success Rate',
             'Efficiency', 'Simulations'
         ]
@@ -375,7 +350,7 @@ class OverallStatsGenerator:
 
             # Write header
             for i, col in enumerate(ordered_cols):
-                display_name = col.replace('_', ' ').replace('Model Clean', 'Model')
+                display_name = col.replace('_', ' ')
                 ws.write(0, i, display_name, header_fmt)
 
             excel_row = 1
@@ -421,7 +396,7 @@ class OverallStatsGenerator:
                 for i, col in enumerate(ordered_cols):
                     val = row[col]
 
-                    if is_best_performance and col in ['Model_Clean', 'Efficiency']:
+                    if is_best_performance and col in ['Model', 'Efficiency']:
                         cell_fmt = best_fmt
                     else:
                         cell_fmt = base_fmt
@@ -443,7 +418,7 @@ class OverallStatsGenerator:
 
             # Auto-adjust column widths
             for idx, col in enumerate(ordered_cols):
-                if col == 'Model_Clean':
+                if col == 'Model':
                     ws.set_column(idx, idx, 20)
                 elif col == 'Simulations':
                     ws.set_column(idx, idx, 30)
@@ -478,7 +453,7 @@ class OverallStatsGenerator:
 
         # Create ordered columns for aggregated data
         ordered_cols = [
-            'Model_Clean', 'Inference Mode',
+            'Model', 'Inference Mode',
             'Total Samples', 'Number of Solvers', 'Precision Levels Tested',
             'Success Rate', 'Efficiency', 'Simulations', 'Precision Levels'
         ]
@@ -530,7 +505,7 @@ class OverallStatsGenerator:
 
             # Write header
             for i, col in enumerate(ordered_cols):
-                display_name = col.replace('_', ' ').replace('Model Clean', 'Model')
+                display_name = col.replace('_', ' ')
                 ws.write(0, i, display_name, header_fmt)
 
             excel_row = 1
@@ -566,7 +541,7 @@ class OverallStatsGenerator:
                 for i, col in enumerate(ordered_cols):
                     val = row[col]
 
-                    if is_best_performance and col in ['Model_Clean', 'Efficiency']:
+                    if is_best_performance and col in ['Model', 'Efficiency']:
                         cell_fmt = best_fmt
                     else:
                         cell_fmt = base_fmt
@@ -588,7 +563,7 @@ class OverallStatsGenerator:
 
             # Auto-adjust column widths
             for idx, col in enumerate(ordered_cols):
-                if col == 'Model_Clean':
+                if col == 'Model':
                     ws.set_column(idx, idx, 20)
                 elif col in ['Simulations', 'Precision Levels']:
                     ws.set_column(idx, idx, 30)
@@ -623,7 +598,7 @@ class OverallStatsGenerator:
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         # Get unique models and precision levels
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         precision_levels = ['low', 'medium', 'high']
         inference_modes = ['Zero-shot', 'Iterative']
 
@@ -646,7 +621,7 @@ class OverallStatsGenerator:
         max_val = df['Success Rate'].max()
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, precision in enumerate(precision_levels):
                 precision_data = model_data[model_data['Precision Level'] == precision]
@@ -722,7 +697,7 @@ class OverallStatsGenerator:
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
         # Get unique models and inference modes
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
@@ -740,7 +715,7 @@ class OverallStatsGenerator:
         max_val = df['Success Rate'].max()
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, mode in enumerate(inference_modes):
                 mode_data = model_data[model_data['Inference Mode'] == mode]
@@ -805,7 +780,7 @@ class OverallStatsGenerator:
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         # Get unique models and precision levels
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         precision_levels = ['low', 'medium', 'high']
         inference_modes = ['Zero-shot', 'Iterative']
 
@@ -828,7 +803,7 @@ class OverallStatsGenerator:
         max_val = df['Efficiency'].max()
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, precision in enumerate(precision_levels):
                 precision_data = model_data[model_data['Precision Level'] == precision]
@@ -904,7 +879,7 @@ class OverallStatsGenerator:
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
         # Get unique models and inference modes
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
@@ -922,7 +897,7 @@ class OverallStatsGenerator:
         max_val = df['Efficiency'].max()
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, mode in enumerate(inference_modes):
                 mode_data = model_data[model_data['Inference Mode'] == mode]

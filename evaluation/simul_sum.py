@@ -47,13 +47,13 @@ def weighted_average(values: List[float], weights: List[int]) -> float:
 
 def aggregate_simulation_results(csv_file: Path, precision_level: str, dataset: str) -> List[Dict]:
     """
-    Aggregate task-level results to simulation-level results.
-    
+    Aggregate task-level results to simulation-level results for a specific precision level.
+
     Args:
         csv_file: Path to task-level CSV file
         precision_level: The precision level (high, medium, low)
         dataset: The dataset name (e.g., 'heat_1d', 'heat_2d', 'euler_1d')
-        
+
     Returns:
         List of dictionaries with simulation-level aggregated results
     """
@@ -163,6 +163,105 @@ def write_simulation_csv_by_mode(results: List[Dict], base_output_file: Path) ->
         write_simulation_csv(mode_results, mode_file)
 
 
+def aggregate_across_precision_levels(all_results: List[Dict], dataset: str) -> List[Dict]:
+    """
+    Aggregate results across all precision levels for dataset-wide metrics.
+    Similar to overall_stats.py calculate_aggregated_statistics() but for individual datasets.
+
+    Args:
+        all_results: List of dictionaries containing results from all precision levels
+        dataset: The dataset name
+
+    Returns:
+        List of dictionaries with dataset-wide aggregated results (no precision level dimension)
+    """
+    if not all_results:
+        return []
+
+    # Convert to DataFrame for easier processing
+    df = pd.DataFrame(all_results)
+
+    # Group by Model and Inference Mode only (aggregate across precision levels)
+    aggregated_results = []
+
+    grouping_cols = ['Model', 'Inference Mode']
+    for group_keys, group in df.groupby(grouping_cols):
+        model, mode = group_keys
+
+        # Calculate total samples across all precision levels
+        total_samples = group['Number of Samples'].sum()
+
+        # Number of precision levels tested
+        num_precision_levels = len(group['Precision Level'].unique())
+
+        # Calculate weighted averages for metrics
+        weights = group['Number of Samples'].tolist()
+
+        # Success rate: weighted average across all precision levels
+        success_values = []
+        success_weights = []
+        for idx, val in enumerate(group['success_rate']):
+            if pd.notnull(val) and is_number(val):
+                success_values.append(float(val))
+                success_weights.append(weights[idx])
+        avg_success_rate = weighted_average(success_values, success_weights) if success_values else 0.0
+
+        # Efficiency: weighted average across all precision levels
+        efficiency_values = []
+        efficiency_weights = []
+        for idx, val in enumerate(group['mean_efficiency']):
+            if pd.notnull(val) and is_number(val):
+                efficiency_values.append(float(val))
+                efficiency_weights.append(weights[idx])
+        avg_efficiency = weighted_average(efficiency_values, efficiency_weights) if efficiency_values else 0.0
+
+        # Create aggregated row
+        agg_row = {
+            'Model': model,
+            'Simulation': dataset,
+            'Inference Mode': mode,
+            'Number of Samples': total_samples,
+            'Precision Levels Tested': num_precision_levels,
+            'success_rate': avg_success_rate,
+            'mean_efficiency': avg_efficiency,
+            'Precision Levels': ', '.join(sorted(group['Precision Level'].unique()))
+        }
+
+        # Aggregate other numeric metrics using weighted averages
+        excluded_fields = {'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
+                          'success_rate', 'mean_efficiency', 'converged_rate', 'mean_rmse',
+                          'rmse_tolerance', 'total_dummy_cost', 'total_model_cost'}
+
+        for col in group.columns:
+            if col in excluded_fields or col in agg_row:
+                continue
+
+            # Extract numeric values and their corresponding weights
+            numeric_values = []
+            numeric_weights = []
+
+            for idx, value in enumerate(group[col]):
+                if is_number(value):
+                    numeric_values.append(float(value))
+                    numeric_weights.append(weights[idx])
+
+            if numeric_values:
+                agg_row[col] = weighted_average(numeric_values, numeric_weights)
+            else:
+                # If no numeric values, use the first non-empty value or 'nan'
+                non_empty_values = [v for v in group[col] if str(v).strip() and str(v) != 'nan']
+                agg_row[col] = non_empty_values[0] if non_empty_values else 'nan'
+
+        aggregated_results.append(agg_row)
+
+    # Sort by inference mode (Zero-shot first, then Iterative), then model name
+    result_df = pd.DataFrame(aggregated_results)
+    result_df['mode_order'] = result_df['Inference Mode'].map({'Zero-shot': 0, 'Iterative': 1})
+    result_df = result_df.sort_values(['mode_order', 'Model']).drop(['mode_order'], axis=1)
+
+    return result_df.to_dict('records')
+
+
 def write_simulation_excel_by_mode(results: List[Dict], base_output_file: Path) -> None:
     """Write simulation-level results to Excel, split by inference mode into separate folders."""
     # Group results by inference mode
@@ -180,11 +279,224 @@ def write_simulation_excel_by_mode(results: List[Dict], base_output_file: Path) 
         write_simulation_excel(mode_results, mode_file)
 
 
+def write_aggregated_simulation_csv(results: List[Dict], output_file: Path) -> None:
+    """Write dataset-wide aggregated simulation results to CSV (no precision level dimension)."""
+    if not results:
+        return
+
+    # Determine column order for aggregated data
+    priority_cols = [
+        'Model', 'Simulation', 'Inference Mode', 'Number of Samples', 'Precision Levels Tested',
+        'success_rate', 'mean_efficiency'
+    ]
+
+    # Get all columns from results
+    all_cols = set()
+    for result in results:
+        all_cols.update(result.keys())
+
+    # Order columns: priority first, then remaining alphabetically
+    remaining_cols = sorted(all_cols - set(priority_cols))
+    ordered_cols = [col for col in priority_cols if col in all_cols] + remaining_cols
+
+    # Format specific metrics to 2 decimal places
+    formatted_results = []
+    for result in results:
+        formatted_result = result.copy()
+        for metric in ['success_rate', 'mean_efficiency']:
+            if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
+                formatted_result[metric] = f"{formatted_result[metric]:.2f}"
+        formatted_results.append(formatted_result)
+
+    # Write CSV
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open('w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=ordered_cols)
+        writer.writeheader()
+        writer.writerows(formatted_results)
+
+
+def write_aggregated_simulation_excel(results: List[Dict], output_file: Path) -> None:
+    """Write dataset-wide aggregated simulation results to Excel with beautiful formatting (no precision level dimension)."""
+    if not results:
+        return
+
+    # Determine column order for aggregated data
+    priority_cols = [
+        'Model', 'Simulation', 'Inference Mode', 'Number of Samples', 'Precision Levels Tested',
+        'success_rate', 'mean_efficiency'
+    ]
+
+    # Get all columns from results
+    all_cols = set()
+    for result in results:
+        all_cols.update(result.keys())
+
+    # Order columns: priority first, then remaining alphabetically
+    remaining_cols = sorted(all_cols - set(priority_cols))
+    ordered_cols = [col for col in priority_cols if col in all_cols] + remaining_cols
+
+    # Format specific metrics to 2 decimal places for Excel
+    formatted_results = []
+    for result in results:
+        formatted_result = result.copy()
+        for metric in ['success_rate', 'mean_efficiency']:
+            if metric in formatted_result and isinstance(formatted_result[metric], (int, float)):
+                formatted_result[metric] = f"{formatted_result[metric]:.2f}"
+        formatted_results.append(formatted_result)
+
+    # Create DataFrame
+    df = pd.DataFrame(formatted_results)[ordered_cols]
+
+    # Convert numeric columns
+    for col in ['mean_efficiency']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # Handle NaN and infinity values
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: 'nan' if pd.isna(x) or (isinstance(x, float) and (x == float('inf') or x == -float('inf'))) else x)
+
+    # Write Excel with advanced formatting
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+        wb = writer.book
+        ws = wb.add_worksheet('Aggregated Summary')
+        writer.sheets['Aggregated Summary'] = ws
+
+        # Formatting styles
+        header_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#F0F0F0'
+        })
+
+        # Iterative mode rows - light green background
+        iterative_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F5E8'
+        })
+
+        # Zero-shot mode rows - light blue background
+        zeroshot_fmt = wb.add_format({
+            'border': 1,
+            'bg_color': '#E8F0FF'
+        })
+
+        # Best performance highlighting
+        best_iterative_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#E8F5E8'
+        })
+
+        best_zeroshot_fmt = wb.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#E8F0FF'
+        })
+
+        # Write header row with formatting
+        for i, col in enumerate(ordered_cols):
+            ws.write(0, i, col, header_fmt)
+
+        excel_row = 1
+        current_mode = None
+
+        # Sort by Inference Mode (Zero-shot first, then Iterative) for organized display
+        mode_order = {'Zero-shot': 0, 'Iterative': 1}
+        df['mode_order'] = df['Inference Mode'].map(mode_order)
+        df_sorted = df.sort_values(['mode_order', 'Model']).drop(['mode_order'], axis=1)
+
+        for _, row in df_sorted.iterrows():
+            mode = row['Inference Mode']
+
+            # Add visual separator (blank row) when inference mode changes
+            if current_mode != mode and current_mode is not None:
+                excel_row += 1
+            current_mode = mode
+
+            # Find best efficiency within current mode group for highlighting
+            same_mode = df_sorted[df_sorted['Inference Mode'] == mode]
+            max_efficiency = None
+            if 'mean_efficiency' in same_mode.columns:
+                numeric_efficiencies = same_mode['mean_efficiency'][same_mode['mean_efficiency'] != 'nan']
+                if len(numeric_efficiencies) > 0:
+                    max_efficiency = numeric_efficiencies.max()
+
+            # Check if this is the best performing model in this mode group
+            is_best_performance = (
+                max_efficiency is not None
+                and row.get('mean_efficiency', 0) == max_efficiency
+                and row.get('mean_efficiency', 0) != 0
+                and row.get('mean_efficiency', 0) != 'nan'
+            )
+
+            # Write each cell with appropriate formatting
+            for i, col in enumerate(ordered_cols):
+                val = row[col]
+
+                # Choose formatting based on inference mode and performance
+                if mode.lower() == 'iterative':
+                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                        cell_fmt = best_iterative_fmt
+                    else:
+                        cell_fmt = iterative_fmt
+                elif mode.lower() == 'zero-shot':
+                    if is_best_performance and col in ['Model', 'mean_efficiency']:
+                        cell_fmt = best_zeroshot_fmt
+                    else:
+                        cell_fmt = zeroshot_fmt
+                else:
+                    cell_fmt = iterative_fmt  # Fallback
+
+                # Write cell value
+                if col in ['Number of Samples', 'Precision Levels Tested']:
+                    ws.write_number(excel_row, i, val, cell_fmt)
+                elif val == 'nan':
+                    ws.write(excel_row, i, 'nan', cell_fmt)
+                else:
+                    ws.write(excel_row, i, val, cell_fmt)
+
+            excel_row += 1
+
+        # Auto filter and freeze panes
+        ws.autofilter(0, 0, excel_row - 1, len(ordered_cols) - 1)
+        ws.freeze_panes(1, 0)
+
+        # Auto-adjust column widths with professional spacing
+        for idx, col in enumerate(ordered_cols):
+            if col == 'Model':
+                ws.set_column(idx, idx, 35)  # Wider for model names
+            elif col in ['Inference Mode', 'Precision Levels']:
+                ws.set_column(idx, idx, 15)  # Medium width for categories
+            elif col == 'Simulation':
+                ws.set_column(idx, idx, 12)  # Compact for simulation
+            else:
+                # Auto-size other columns with reasonable bounds
+                max_len = max(df[col].astype(str).map(len).max(), len(col)) + 3
+                ws.set_column(idx, idx, min(max_len, 20))
+
+        # Add a legend at the bottom
+        legend_row = excel_row + 2
+        legend_fmt = wb.add_format({'italic': True, 'font_size': 9})
+        iterative_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F5E8'})
+        zeroshot_legend_fmt = wb.add_format({'italic': True, 'font_size': 9, 'bg_color': '#E8F0FF'})
+
+        ws.write(legend_row, 0, "Legend:", legend_fmt)
+        ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
+        ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
+        ws.write(legend_row + 3, 0, "Best efficiency model in each mode group shown in bold", legend_fmt)
+        ws.write(legend_row + 4, 0, "Aggregated across all precision levels", legend_fmt)
+
+
 def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
     """Write simulation-level results to Excel with beautiful formatting and visual separators."""
     if not results:
         return
-        
+
     # Determine column order
     priority_cols = [
         'Model', 'Simulation', 'Precision Level', 'Inference Mode', 'Number of Samples',
@@ -273,27 +585,29 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
         excel_row = 1
         col_idx = {c: i for i, c in enumerate(ordered_cols)}
         
-        # Sort by Precision Level (low → medium → high) and Inference Mode for organized display
+        # Sort by Inference Mode (Zero-shot first, then Iterative) and Precision Level (low → medium → high) for organized display
+        mode_order = {'Zero-shot': 0, 'Iterative': 1}
         precision_order = ['low', 'medium', 'high']
+        df['mode_order'] = df['Inference Mode'].map(mode_order)
         df['precision_order'] = df['Precision Level'].map({level: i for i, level in enumerate(precision_order)})
-        df_sorted = df.sort_values(['precision_order', 'Inference Mode']).drop('precision_order', axis=1)
+        df_sorted = df.sort_values(['mode_order', 'precision_order', 'Model']).drop(['mode_order', 'precision_order'], axis=1)
         
         current_precision = None
         current_mode = None
-        
+
         for _, row in df_sorted.iterrows():
             precision = row['Precision Level']
             mode = row['Inference Mode']
-            
-            # Add visual separator (blank row) when precision level changes
-            if current_precision != precision and current_precision is not None:
-                excel_row += 1
-            current_precision = precision
-            
-            # Add visual separator (blank row) when inference mode changes within same precision
+
+            # Add visual separator (blank row) when inference mode changes
             if current_mode != mode and current_mode is not None:
                 excel_row += 1
             current_mode = mode
+
+            # Add visual separator (blank row) when precision level changes within same mode
+            if current_precision != precision and current_precision is not None:
+                excel_row += 1
+            current_precision = precision
             
             # Find best efficiency within current precision/mode group for highlighting
             same_group = df_sorted[
@@ -369,8 +683,8 @@ def write_simulation_excel(results: List[Dict], output_file: Path) -> None:
         ws.write(legend_row, 0, "Legend:", legend_fmt)
         ws.write(legend_row + 1, 0, "Iterative mode", iterative_legend_fmt)
         ws.write(legend_row + 2, 0, "Zero-shot mode", zeroshot_legend_fmt)
-        ws.write(legend_row + 3, 0, "Best efficiency model in each precision/mode group shown in bold", legend_fmt)
-        ws.write(legend_row + 4, 0, "Blank rows separate precision levels and inference modes", legend_fmt)
+        ws.write(legend_row + 3, 0, "Best efficiency model in each mode/precision group shown in bold", legend_fmt)
+        ws.write(legend_row + 4, 0, "Blank rows separate inference modes and precision levels", legend_fmt)
 
 
 def main():
@@ -424,21 +738,37 @@ def main():
     # Output files in the main dataset directory
     output_csv = dataset_dir / f"{args.dataset}_sum.csv"
     output_xlsx = dataset_dir / f"{args.dataset}_sum.xlsx"
-    
-    # Write combined outputs
-    print(f"\nWriting combined results...")
+
+    # Aggregated output files (dataset-wide metrics)
+    aggregated_csv = dataset_dir / f"{args.dataset}_sum_aggregated.csv"
+    aggregated_xlsx = dataset_dir / f"{args.dataset}_sum_aggregated.xlsx"
+
+    # Write combined outputs (with precision level column)
+    print(f"\nWriting detailed results (with precision levels)...")
     write_simulation_csv(all_results, output_csv)
     write_simulation_excel(all_results, output_xlsx)
-    
+
+    # Calculate and write aggregated outputs (dataset-wide metrics)
+    print(f"\nCalculating and writing aggregated results (dataset-wide metrics)...")
+    aggregated_results = aggregate_across_precision_levels(all_results, args.dataset)
+
+    if aggregated_results:
+        write_aggregated_simulation_csv(aggregated_results, aggregated_csv)
+        write_aggregated_simulation_excel(aggregated_results, aggregated_xlsx)
+        print(f"   📊 Aggregated CSV  : {aggregated_csv}")
+        print(f"   📈 Aggregated Excel: {aggregated_xlsx} (dataset-wide metrics across all precision levels)")
+
     # Write outputs by inference mode
     write_simulation_csv_by_mode(all_results, output_csv)
     write_simulation_excel_by_mode(all_results, output_xlsx)
-    
+
     print(f"\n🎉 Simulation-level summaries generated:")
-    print(f"   📊 CSV  : {output_csv}")
-    print(f"   📈 Excel: {output_xlsx} (beautifully formatted with colors and visual separators)")
+    print(f"   📊 Detailed CSV  : {output_csv}")
+    print(f"   📈 Detailed Excel: {output_xlsx} (beautifully formatted with colors and visual separators)")
+    print(f"   📊 Aggregated CSV: {aggregated_csv}")
+    print(f"   📈 Aggregated Excel: {aggregated_xlsx} (dataset-wide metrics)")
     print(f"   Mode-specific files created in: {output_csv.parent}/zero_shot/ and {output_csv.parent}/iterative/")
-    print(f"\n📋 Summary: Combined {len(all_results)} model results across {len(precision_levels)} precision levels")
+    print(f"\n📋 Summary: Combined {len(all_results)} detailed model results and {len(aggregated_results) if aggregated_results else 0} aggregated model results across {len(precision_levels)} precision levels")
 
 
 if __name__ == "__main__":

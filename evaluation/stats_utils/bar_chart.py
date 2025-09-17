@@ -84,28 +84,6 @@ class BarChartGenerator:
             print(f"Error loading dataset '{dataset_name}': {e}")
             return None
     
-    def clean_model_names(self, model_name: str) -> str:
-        """
-        Clean and shorten model names for better display.
-        Developers can easily add new model mappings here.
-        
-        Args:
-            model_name: Original model name
-            
-        Returns:
-            Cleaned model name
-        """
-        # Model name mapping - easily extensible for new models
-        name_mapping = {
-            'amazon.nova-premier-v1:0': 'Nova-Premier',
-            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
-            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
-            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
-            'gpt-5-2025-08-07': 'GPT-5',
-            'qwen3_32b': 'Qwen3-32B',
-        }
-        
-        return name_mapping.get(model_name, model_name)
     
     def create_success_rate_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
         """
@@ -116,14 +94,13 @@ class BarChartGenerator:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
-        # Clean model names
-        df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
+        # Model names are already cleaned by upstream processing
 
         # Create single figure for all precision levels
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         # Get unique models and precision levels
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         precision_levels = ['low', 'medium', 'high']  # Ensure consistent ordering
         inference_modes = ['Zero-shot', 'Iterative']
 
@@ -146,7 +123,7 @@ class BarChartGenerator:
         precision_labels = ['L', 'M', 'H']
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, precision in enumerate(precision_levels):
                 precision_data = model_data[model_data['Precision Level'] == precision]
@@ -220,8 +197,7 @@ class BarChartGenerator:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
-        # Clean model names
-        df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
+        # Model names are already cleaned by upstream processing
 
         # Focus only on efficiency metric
         metric = 'mean_efficiency'
@@ -233,7 +209,7 @@ class BarChartGenerator:
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         # Get unique models and precision levels
-        models = sorted(df['Model_Clean'].unique())
+        models = sorted(df['Model'].unique())
         precision_levels = ['low', 'medium', 'high']  # Ensure consistent ordering
         inference_modes = ['Zero-shot', 'Iterative']
 
@@ -257,7 +233,7 @@ class BarChartGenerator:
         precision_labels = ['L', 'M', 'H']
 
         for i, model in enumerate(models):
-            model_data = df[df['Model_Clean'] == model]
+            model_data = df[df['Model'] == model]
 
             for j, precision in enumerate(precision_levels):
                 precision_data = model_data[model_data['Precision Level'] == precision]
@@ -330,14 +306,13 @@ class BarChartGenerator:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
-        # Clean model names
-        df['Model_Clean'] = df['Model'].apply(self.clean_model_names)
+        # Model names are already cleaned by upstream processing
         
         # Create figure with multiple subplots
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         
         # 1. Success Rate by Model (aggregated across precision levels)
-        success_by_model = df.groupby('Model_Clean')['success_rate'].mean().sort_values(ascending=False)
+        success_by_model = df.groupby('Model')['success_rate'].mean().sort_values(ascending=False)
         success_by_model.plot(kind='bar', ax=ax1, color='skyblue', alpha=0.8)
         ax1.set_title('Average Success Rate by Model', fontweight='bold')
         ax1.set_ylabel('Success Rate')
