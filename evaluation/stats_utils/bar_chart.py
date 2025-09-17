@@ -129,9 +129,9 @@ class BarChartGenerator:
 
         # Prepare data for grouped bars
         bar_width = 0.12  # Width of individual bars
-        precision_spacing = 0.08  # Spacing between different precision levels
+        precision_spacing = 0.12  # Spacing between different precision levels
         mode_spacing = 0.01  # Small spacing between zero-shot and iterative within same precision
-        model_spacing = 0.16  # Spacing between different models
+        model_spacing = 0.32  # Spacing between different models
 
         # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
         zero_shot_color = '#BBBBBB'  # Slightly darker gray
@@ -239,9 +239,9 @@ class BarChartGenerator:
 
         # Prepare data for grouped bars
         bar_width = 0.12  # Width of individual bars
-        precision_spacing = 0.04  # Spacing between different precision levels
+        precision_spacing = 0.12  # Spacing between different precision levels
         mode_spacing = 0.01  # Small spacing between zero-shot and iterative within same precision
-        model_spacing = 0.16  # Spacing between different models
+        model_spacing = 0.32  # Spacing between different models
 
         # Fixed colors - light gray with stripes for Zero-shot, dark blue with dots for Iterative
         zero_shot_color = '#BBBBBB'  # Slightly darker gray
