@@ -39,8 +39,7 @@ class TaskDifficultyAnalyzer:
         # Task difficulty categories
         self.task_categories = {
             'Common': ['cfl', 'dx', 'n_space', 'resolution', 'mesh_x', 'mesh_y', 'dt_multiplier', 'nx', 'npart'],
-            'Occasional': [],  # Will be populated dynamically with *_threshold and relax* tasks
-            'Rare': []  # Will be populated with remaining tasks
+            'Uncommon': []  # All other tasks will be classified as uncommon
         }
 
         # Metrics to analyze
@@ -74,18 +73,10 @@ class TaskDifficultyAnalyzer:
                     if 'Task' in df.columns:
                         all_tasks.update(df['Task'].unique())
 
-        # Categorize tasks based on patterns
+        # Categorize tasks: Common tasks stay Common, all others become Uncommon
         for task in all_tasks:
-            if task in self.task_categories['Common']:
-                continue
-            elif ('threshold' in task.lower() or
-                  task.lower().startswith('relax') or
-                  'relax' in task.lower() or
-                  task.lower().startswith('omega') or
-                  task.lower().startswith('diff_')):
-                self.task_categories['Occasional'].append(task)
-            else:
-                self.task_categories['Rare'].append(task)
+            if task not in self.task_categories['Common']:
+                self.task_categories['Uncommon'].append(task)
 
         print(f"Task categorization:")
         for category, tasks in self.task_categories.items():
@@ -114,7 +105,7 @@ class TaskDifficultyAnalyzer:
             try:
                 df = pd.read_csv(summary_file)
 
-                # Extract dataset and precision from file path
+                # Extract dataset, precision, and method type from file path
                 file_parts = summary_file.stem.split('_')
                 if len(file_parts) >= 3:
                     precision = file_parts[-1]  # last part should be precision
@@ -122,8 +113,16 @@ class TaskDifficultyAnalyzer:
                 else:
                     continue
 
+                # Determine method type (zero_shot, iterative, or other)
+                method_type = "other"  # default
+                if 'zero_shot' in str(summary_file):
+                    method_type = "zero_shot"
+                elif 'iterative' in str(summary_file):
+                    method_type = "iterative"
+
                 df['Dataset'] = dataset
                 df['Precision'] = precision
+                df['MethodType'] = method_type
                 df['FilePath'] = str(summary_file)
                 all_data.append(df)
                 print(f"  Loaded {len(df)} records from {dataset}_{precision}")
@@ -152,7 +151,7 @@ class TaskDifficultyAnalyzer:
             for category, tasks in self.task_categories.items():
                 if task in tasks:
                     return category
-            return 'Rare'  # Default fallback
+            return 'Uncommon'  # Default fallback
 
         df['TaskCategory'] = df['Task'].apply(get_task_category)
         return df
@@ -172,7 +171,7 @@ class TaskDifficultyAnalyzer:
         # Group by task category and calculate statistics
         agg_stats = []
 
-        for category in ['Common', 'Occasional', 'Rare']:
+        for category in ['Common', 'Uncommon']:
             category_data = df[df['TaskCategory'] == category]
 
             if len(category_data) == 0:
@@ -200,7 +199,7 @@ class TaskDifficultyAnalyzer:
 
     def generate_detailed_task_stats(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Generate detailed statistics for each individual task
+        Generate detailed statistics for each individual task by method type
 
         Args:
             df: Combined DataFrame with all evaluation results
@@ -212,31 +211,38 @@ class TaskDifficultyAnalyzer:
 
         detailed_stats = []
 
+        # Generate stats for each task and method type combination
         for task in df['Task'].unique():
-            task_data = df[df['Task'] == task]
-            task_category = task_data['TaskCategory'].iloc[0]
+            for method_type in df['MethodType'].unique():
+                task_method_data = df[(df['Task'] == task) & (df['MethodType'] == method_type)]
 
-            stats = {
-                'Task': task,
-                'TaskCategory': task_category,
-                'NumDatasets': len(task_data['Dataset'].unique()),
-                'TotalSamples': len(task_data),
-            }
+                if len(task_method_data) == 0:
+                    continue
 
-            # Calculate statistics for each metric
-            for metric in self.metrics:
-                if metric in task_data.columns:
-                    values = task_data[metric].dropna()
-                    stats[f'{metric}_mean'] = values.mean()
-                    stats[f'{metric}_std'] = values.std()
-                    stats[f'{metric}_median'] = values.median()
-                    stats[f'{metric}_count'] = len(values)
+                task_category = task_method_data['TaskCategory'].iloc[0]
 
-            detailed_stats.append(stats)
+                stats = {
+                    'Task': task,
+                    'TaskCategory': task_category,
+                    'MethodType': method_type,
+                    'NumDatasets': len(task_method_data['Dataset'].unique()),
+                    'TotalSamples': len(task_method_data),
+                }
+
+                # Calculate statistics for each metric
+                for metric in self.metrics:
+                    if metric in task_method_data.columns:
+                        values = task_method_data[metric].dropna()
+                        stats[f'{metric}_mean'] = values.mean()
+                        stats[f'{metric}_std'] = values.std()
+                        stats[f'{metric}_median'] = values.median()
+                        stats[f'{metric}_count'] = len(values)
+
+                detailed_stats.append(stats)
 
         detailed_df = pd.DataFrame(detailed_stats)
-        detailed_df = detailed_df.sort_values(['TaskCategory', f'{self.metrics[0]}_mean'],
-                                             ascending=[True, False])
+        detailed_df = detailed_df.sort_values(['MethodType', 'TaskCategory', f'{self.metrics[0]}_mean'],
+                                             ascending=[True, True, False])
 
         return detailed_df
 
@@ -262,127 +268,133 @@ class TaskDifficultyAnalyzer:
         self._create_efficiency_scatter(detailed_df)
 
     def _create_success_rate_chart(self, detailed_df: pd.DataFrame) -> None:
-        """Create bar chart for success rate by individual tasks"""
-        # Filter tasks with sufficient data
-        filtered_df = detailed_df[detailed_df['success_rate_count'] >= 5].copy()
+        """Create bar chart for success rate by task categories for different method types"""
+        # Create charts for each method type
+        for method_type in ['zero_shot', 'iterative']:
+            self._create_method_success_rate_chart(detailed_df, method_type)
+
+    def _create_method_success_rate_chart(self, detailed_df: pd.DataFrame, method_type: str) -> None:
+        """Create success rate chart for a specific method type"""
+        # Filter data for this method type and sufficient data
+        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
+        filtered_df = method_data[method_data['success_rate_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
-            print("Not enough data for success rate chart")
+            print(f"Not enough data for {method_type} success rate chart")
             return
 
-        # Sort by task category and success rate
-        filtered_df = filtered_df.sort_values(['TaskCategory', 'success_rate_mean'], ascending=[True, False])
+        # Calculate aggregated success rate by category
+        category_stats = filtered_df.groupby('TaskCategory')['success_rate_mean'].mean().reset_index()
+        category_stats = category_stats.sort_values('TaskCategory')  # Ensure Common comes first
 
         # Define colors for task categories
-        category_colors = {'Common': 'green', 'Occasional': 'gold', 'Rare': 'red'}
-        colors = [category_colors[cat] for cat in filtered_df['TaskCategory']]
+        category_colors = {'Common': 'green', 'Uncommon': 'blue'}
+        colors = [category_colors[cat] for cat in category_stats['TaskCategory']]
 
-        # Create the bar chart
-        plt.figure(figsize=(16, 8))
-        bars = plt.bar(range(len(filtered_df)), filtered_df['success_rate_mean'], color=colors, alpha=0.7)
+        # Create the bar chart with smaller size
+        plt.figure(figsize=(4, 4))
+        bars = plt.bar(category_stats['TaskCategory'], category_stats['success_rate_mean'], color=colors, alpha=0.7, width=0.4)
 
         # Customize the chart
-        plt.xlabel('Tasks', fontsize=12, fontweight='bold')
         plt.ylabel('Success Rate', fontsize=12, fontweight='bold')
-        plt.title('Success Rate by Individual Tasks', fontsize=14, fontweight='bold', pad=20)
-        plt.xticks(range(len(filtered_df)), filtered_df['Task'], rotation=45, ha='right')
-        plt.grid(True, alpha=0.3, axis='y')
         plt.ylim(0, 1.0)
-
-        # Add legend
-        legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color, alpha=0.7, label=category)
-                          for category, color in category_colors.items()]
-        plt.legend(handles=legend_elements, loc='upper right')
+        plt.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
-        for bar, val in zip(bars, filtered_df['success_rate_mean']):
+        for bar, val in zip(bars, category_stats['success_rate_mean']):
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, height + 0.01,
-                    f'{val:.3f}', ha='center', va='bottom', fontsize=8, rotation=90)
+            plt.text(bar.get_x() + bar.get_width()/2, height + 0.02,
+                    f'{val:.3f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
 
         # Save the plot
         plt.tight_layout()
-        output_file = self.output_dir / "success_rate_by_tasks.png"
+        output_file = self.output_dir / f"success_rate_by_tasks_{method_type}.png"
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
-        print(f"Saved success rate chart to {output_file}")
+        print(f"Saved {method_type} success rate chart to {output_file}")
         plt.show()
 
     def _create_efficiency_chart(self, detailed_df: pd.DataFrame) -> None:
-        """Create bar chart for efficiency by individual tasks"""
-        # Filter tasks with sufficient data
-        filtered_df = detailed_df[detailed_df['mean_efficiency_count'] >= 5].copy()
+        """Create bar chart for efficiency by task categories for different method types"""
+        # Create charts for each method type
+        for method_type in ['zero_shot', 'iterative']:
+            self._create_method_efficiency_chart(detailed_df, method_type)
+
+    def _create_method_efficiency_chart(self, detailed_df: pd.DataFrame, method_type: str) -> None:
+        """Create efficiency chart for a specific method type"""
+        # Filter data for this method type and sufficient data
+        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
+        filtered_df = method_data[method_data['mean_efficiency_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
-            print("Not enough data for efficiency chart")
+            print(f"Not enough data for {method_type} efficiency chart")
             return
 
-        # Sort by task category and efficiency
-        filtered_df = filtered_df.sort_values(['TaskCategory', 'mean_efficiency_mean'], ascending=[True, False])
+        # Calculate aggregated efficiency by category
+        category_stats = filtered_df.groupby('TaskCategory')['mean_efficiency_mean'].mean().reset_index()
+        category_stats = category_stats.sort_values('TaskCategory')  # Ensure Common comes first
 
         # Define colors for task categories
-        category_colors = {'Common': 'green', 'Occasional': 'gold', 'Rare': 'red'}
-        colors = [category_colors[cat] for cat in filtered_df['TaskCategory']]
+        category_colors = {'Common': 'green', 'Uncommon': 'blue'}
+        colors = [category_colors[cat] for cat in category_stats['TaskCategory']]
 
-        # Create the bar chart
-        plt.figure(figsize=(16, 8))
-        bars = plt.bar(range(len(filtered_df)), filtered_df['mean_efficiency_mean'], color=colors, alpha=0.7)
+        # Create the bar chart with smaller size
+        plt.figure(figsize=(4, 4))
+        bars = plt.bar(category_stats['TaskCategory'], category_stats['mean_efficiency_mean'], color=colors, alpha=0.7, width=0.4)
 
         # Customize the chart
-        plt.xlabel('Tasks', fontsize=12, fontweight='bold')
         plt.ylabel('Efficiency', fontsize=12, fontweight='bold')
-        plt.title('Efficiency by Individual Tasks', fontsize=14, fontweight='bold', pad=20)
-        plt.xticks(range(len(filtered_df)), filtered_df['Task'], rotation=45, ha='right')
         plt.grid(True, alpha=0.3, axis='y')
 
-        # Add legend
-        legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color, alpha=0.7, label=category)
-                          for category, color in category_colors.items()]
-        plt.legend(handles=legend_elements, loc='upper right')
-
         # Add value labels on bars
-        for bar, val in zip(bars, filtered_df['mean_efficiency_mean']):
+        for bar, val in zip(bars, category_stats['mean_efficiency_mean']):
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, height + 0.01,
-                    f'{val:.3f}', ha='center', va='bottom', fontsize=8, rotation=90)
+            plt.text(bar.get_x() + bar.get_width()/2, height + 0.1,
+                    f'{val:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
 
         # Save the plot
         plt.tight_layout()
-        output_file = self.output_dir / "efficiency_by_tasks.png"
+        output_file = self.output_dir / f"efficiency_by_tasks_{method_type}.png"
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
-        print(f"Saved efficiency chart to {output_file}")
+        print(f"Saved {method_type} efficiency chart to {output_file}")
         plt.show()
 
     def _create_success_rate_scatter(self, detailed_df: pd.DataFrame) -> None:
         """Create scatter plot showing success rate distribution by task category"""
 
-        # Filter out tasks with insufficient data
+        # Filter out tasks with insufficient data and aggregate by task (average across method types)
         filtered_df = detailed_df[detailed_df['success_rate_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
             print("Not enough data for success rate scatter plot")
             return
 
+        # Aggregate by task name to get one point per task
+        task_aggregated = filtered_df.groupby(['Task', 'TaskCategory']).agg({
+            'success_rate_mean': 'mean'
+        }).reset_index()
+
         plt.figure(figsize=(9, 6))
 
         # Create scatter plot with task categories
-        colors = {'Common': 'green', 'Occasional': 'gold', 'Rare': 'red'}
+        colors = {'Common': 'green', 'Uncommon': 'blue'}
         y_positions = {}
         y_counter = 0
 
         # Assign y positions to avoid overlap with reduced spacing
-        for category in ['Common', 'Occasional', 'Rare']:
-            cat_data = filtered_df[filtered_df['TaskCategory'] == category]
+        for category in ['Common', 'Uncommon']:
+            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
             if len(cat_data) > 0:
                 # Sort by success rate to create better visual separation
                 cat_data = cat_data.sort_values('success_rate_mean')
 
                 for i, (_, row) in enumerate(cat_data.iterrows()):
-                    y_positions[row['Task']] = y_counter * 0.5  # Reduce vertical spacing
+                    # Add some vertical jitter to prevent overlap
+                    y_positions[row['Task']] = y_counter * 0.3 + (i % 2) * 0.1
                     y_counter += 1
 
         # Create the scatter plot
-        for category in ['Common', 'Occasional', 'Rare']:
-            cat_data = filtered_df[filtered_df['TaskCategory'] == category]
+        for category in ['Common', 'Uncommon']:
+            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
             if len(cat_data) > 0:
                 x_values = cat_data['success_rate_mean']
                 y_values = [y_positions[task] for task in cat_data['Task']]
@@ -390,7 +402,7 @@ class TaskDifficultyAnalyzer:
                            alpha=0.7, s=120, edgecolors='black', linewidth=0.5)
 
         # Add task labels
-        for _, row in filtered_df.iterrows():
+        for _, row in task_aggregated.iterrows():
             plt.annotate(row['Task'],
                        (row['success_rate_mean'], y_positions[row['Task']]),
                        xytext=(10, 0), textcoords='offset points', fontsize=9,
@@ -417,34 +429,40 @@ class TaskDifficultyAnalyzer:
     def _create_efficiency_scatter(self, detailed_df: pd.DataFrame) -> None:
         """Create scatter plot showing efficiency distribution by task category"""
 
-        # Filter out tasks with insufficient data
+        # Filter out tasks with insufficient data and aggregate by task (average across method types)
         filtered_df = detailed_df[detailed_df['mean_efficiency_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
             print("Not enough data for efficiency scatter plot")
             return
 
+        # Aggregate by task name to get one point per task
+        task_aggregated = filtered_df.groupby(['Task', 'TaskCategory']).agg({
+            'mean_efficiency_mean': 'mean'
+        }).reset_index()
+
         plt.figure(figsize=(9, 6))
 
         # Create scatter plot with task categories
-        colors = {'Common': 'green', 'Occasional': 'gold', 'Rare': 'red'}
+        colors = {'Common': 'green', 'Uncommon': 'blue'}
         y_positions = {}
         y_counter = 0
 
         # Assign y positions to avoid overlap with reduced spacing
-        for category in ['Common', 'Occasional', 'Rare']:
-            cat_data = filtered_df[filtered_df['TaskCategory'] == category]
+        for category in ['Common', 'Uncommon']:
+            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
             if len(cat_data) > 0:
                 # Sort by efficiency to create better visual separation
                 cat_data = cat_data.sort_values('mean_efficiency_mean')
 
                 for i, (_, row) in enumerate(cat_data.iterrows()):
-                    y_positions[row['Task']] = y_counter * 0.5  # Reduce vertical spacing
+                    # Add some vertical jitter to prevent overlap
+                    y_positions[row['Task']] = y_counter * 0.3 + (i % 2) * 0.1
                     y_counter += 1
 
         # Create the scatter plot
-        for category in ['Common', 'Occasional', 'Rare']:
-            cat_data = filtered_df[filtered_df['TaskCategory'] == category]
+        for category in ['Common', 'Uncommon']:
+            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
             if len(cat_data) > 0:
                 x_values = cat_data['mean_efficiency_mean']
                 y_values = [y_positions[task] for task in cat_data['Task']]
@@ -452,7 +470,7 @@ class TaskDifficultyAnalyzer:
                            alpha=0.7, s=120, edgecolors='black', linewidth=0.5)
 
         # Add task labels
-        for _, row in filtered_df.iterrows():
+        for _, row in task_aggregated.iterrows():
             plt.annotate(row['Task'],
                        (row['mean_efficiency_mean'], y_positions[row['Task']]),
                        xytext=(10, 0), textcoords='offset points', fontsize=9,
@@ -460,8 +478,8 @@ class TaskDifficultyAnalyzer:
                        ha='left', va='center')
 
         # Get the efficiency range and add margins
-        min_eff = filtered_df['mean_efficiency_mean'].min()
-        max_eff = filtered_df['mean_efficiency_mean'].max()
+        min_eff = task_aggregated['mean_efficiency_mean'].min()
+        max_eff = task_aggregated['mean_efficiency_mean'].max()
         margin = (max_eff - min_eff) * 0.1  # 10% margin on each side
 
         plt.xlabel('Efficiency', fontsize=12, fontweight='bold')
@@ -518,7 +536,7 @@ class TaskDifficultyAnalyzer:
         print(f"Total tasks found: {len(detailed_df)}")
 
         print("\nTask distribution by category:")
-        for category in ['Common', 'Occasional', 'Rare']:
+        for category in ['Common', 'Uncommon']:
             count = len([t for t in detailed_df['TaskCategory'] if t == category])
             tasks = [t for t, c in zip(detailed_df['Task'], detailed_df['TaskCategory']) if c == category]
             print(f"  {category}: {count} tasks - {tasks}")
