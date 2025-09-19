@@ -94,7 +94,23 @@ class BarChartGenerator:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
-        # Model names are already cleaned by upstream processing
+        # Model name mapping for clean display names
+        name_mapping = {
+            'amazon.nova-premier-v1:0': 'Nova-Premier',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
+            'qwen3_0_6b': 'Qwen3-0.6B',
+            'qwen3_8b': 'Qwen3-8B',
+            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        }
+
+        # Apply model name mapping
+        df = df.copy()
+        df['Model'] = df['Model'].apply(lambda x: name_mapping.get(x, x))
 
         # Create single figure for all precision levels
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
@@ -197,7 +213,23 @@ class BarChartGenerator:
             df: DataFrame containing evaluation results
             dataset_name: Name of the dataset
         """
-        # Model names are already cleaned by upstream processing
+        # Model name mapping for clean display names
+        name_mapping = {
+            'amazon.nova-premier-v1:0': 'Nova-Premier',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
+            'qwen3_0_6b': 'Qwen3-0.6B',
+            'qwen3_8b': 'Qwen3-8B',
+            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        }
+
+        # Apply model name mapping
+        df = df.copy()
+        df['Model'] = df['Model'].apply(lambda x: name_mapping.get(x, x))
 
         # Focus only on efficiency metric
         metric = 'mean_efficiency'
@@ -297,6 +329,226 @@ class BarChartGenerator:
         plt.close()
 
         print(f"Hard efficiency chart saved to: {output_path}")
+
+    def create_aggregated_success_rate_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
+        """
+        Create bar chart for success rates with aggregated precision levels.
+        Each model shows only 2 bars (Zero-shot and Iterative).
+
+        Args:
+            df: DataFrame containing evaluation results
+            dataset_name: Name of the dataset
+        """
+        # Model name mapping for clean display names
+        name_mapping = {
+            'amazon.nova-premier-v1:0': 'Nova-Premier',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
+            'qwen3_0_6b': 'Qwen3-0.6B',
+            'qwen3_8b': 'Qwen3-8B',
+            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        }
+
+        # Aggregate data across precision levels
+        aggregated_df = df.groupby(['Model', 'Inference Mode'])['success_rate'].mean().reset_index()
+
+        # Apply model name mapping
+        aggregated_df['Model'] = aggregated_df['Model'].apply(lambda x: name_mapping.get(x, x))
+
+        # Create figure
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+
+        # Get unique models and inference modes
+        models = sorted(aggregated_df['Model'].unique())
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Prepare data for grouped bars
+        bar_width = 0.35  # Width of individual bars
+        model_spacing = 0.8  # Spacing between different models
+
+        # Fixed colors
+        zero_shot_color = '#BBBBBB'  # Light gray
+        iterative_color = '#4169E1'  # Dark blue
+
+        # Get max value for y-axis scaling
+        max_val = aggregated_df['success_rate'].max()
+
+        # Calculate model positions
+        x_positions = np.arange(len(models))
+
+        for i, model in enumerate(models):
+            model_data = aggregated_df[aggregated_df['Model'] == model]
+
+            for j, mode in enumerate(inference_modes):
+                mode_data = model_data[model_data['Inference Mode'] == mode]
+
+                if len(mode_data) > 0:
+                    value = mode_data['success_rate'].iloc[0]
+
+                    # Choose color and pattern based on inference mode
+                    if mode == 'Zero-shot':
+                        color = zero_shot_color
+                        hatch = '///'  # Gray stripes
+                    else:  # Iterative
+                        color = iterative_color
+                        hatch = None  # No pattern
+
+                    # Calculate bar position
+                    bar_pos = x_positions[i] + (j - 0.5) * bar_width
+
+                    # Create bar
+                    bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
+                               hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+
+                    # Add value label on top of the bar
+                    ax.text(bar_pos, value + 0.01, f'{value:.2f}',
+                           ha='center', va='bottom', fontsize=9)
+
+        # Customize the chart
+        ax.set_xlabel('Model', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Success Rate', fontsize=12, fontweight='bold')
+        ax.set_title(f'{dataset_name.replace("_", " ").title()}',
+                    fontsize=12, fontweight='bold')
+        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(models, rotation=0)
+        ax.grid(True, alpha=0.3)
+
+        # Create custom legend with patterns
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
+            Patch(facecolor=iterative_color, label='Iterative')
+        ]
+        ax.legend(handles=legend_elements, title='Inference Mode',
+                 title_fontsize=10, fontsize=9, loc='upper right', frameon=True)
+
+        plt.tight_layout()
+
+        # Save chart
+        output_path = self.output_dir / dataset_name / "success_rate_aggregated.png"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"Aggregated success rate chart saved to: {output_path}")
+
+    def create_aggregated_efficiency_chart(self, df: pd.DataFrame, dataset_name: str) -> None:
+        """
+        Create bar chart for efficiency metrics with aggregated precision levels.
+        Each model shows only 2 bars (Zero-shot and Iterative).
+
+        Args:
+            df: DataFrame containing evaluation results
+            dataset_name: Name of the dataset
+        """
+        # Model name mapping for clean display names
+        name_mapping = {
+            'amazon.nova-premier-v1:0': 'Nova-Premier',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
+            'qwen3_0_6b': 'Qwen3-0.6B',
+            'qwen3_8b': 'Qwen3-8B',
+            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        }
+
+        # Focus only on efficiency metric
+        metric = 'mean_efficiency'
+        if metric not in df.columns:
+            print(f"Warning: Efficiency metric not found in dataset '{dataset_name}'")
+            return
+
+        # Aggregate data across precision levels
+        aggregated_df = df.groupby(['Model', 'Inference Mode'])[metric].mean().reset_index()
+
+        # Apply model name mapping
+        aggregated_df['Model'] = aggregated_df['Model'].apply(lambda x: name_mapping.get(x, x))
+
+        # Create figure
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+
+        # Get unique models and inference modes
+        models = sorted(aggregated_df['Model'].unique())
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Prepare data for grouped bars
+        bar_width = 0.35  # Width of individual bars
+        model_spacing = 0.8  # Spacing between different models
+
+        # Fixed colors
+        zero_shot_color = '#BBBBBB'  # Light gray
+        iterative_color = '#4169E1'  # Dark blue
+
+        # Get max value for y-axis scaling
+        max_val = aggregated_df[metric].max()
+
+        # Calculate model positions
+        x_positions = np.arange(len(models))
+
+        for i, model in enumerate(models):
+            model_data = aggregated_df[aggregated_df['Model'] == model]
+
+            for j, mode in enumerate(inference_modes):
+                mode_data = model_data[model_data['Inference Mode'] == mode]
+
+                if len(mode_data) > 0:
+                    value = mode_data[metric].iloc[0]
+
+                    # Choose color and pattern based on inference mode
+                    if mode == 'Zero-shot':
+                        color = zero_shot_color
+                        hatch = '///'  # Gray stripes
+                    else:  # Iterative
+                        color = iterative_color
+                        hatch = None  # No pattern
+
+                    # Calculate bar position
+                    bar_pos = x_positions[i] + (j - 0.5) * bar_width
+
+                    # Create bar
+                    bar = ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
+                               hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+
+                    # Add value label on top of the bar
+                    ax.text(bar_pos, value + max_val * 0.01, f'{value:.2f}',
+                           ha='center', va='bottom', fontsize=9)
+
+        # Customize the chart
+        ax.set_xlabel('Model', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Efficiency', fontsize=12, fontweight='bold')
+        ax.set_title(f'{dataset_name.replace("_", " ").title()}',
+                    fontsize=12, fontweight='bold')
+        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(models, rotation=0)
+        ax.grid(True, alpha=0.3)
+
+        # Create custom legend with patterns
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
+            Patch(facecolor=iterative_color, label='Iterative')
+        ]
+        ax.legend(handles=legend_elements, title='Inference Mode',
+                 title_fontsize=10, fontsize=9, loc='upper right', frameon=True)
+
+        plt.tight_layout()
+
+        # Save chart
+        output_path = self.output_dir / dataset_name / "efficiency_aggregated.png"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"Aggregated efficiency chart saved to: {output_path}")
     
     def create_overview_chart_deprecated(self, df: pd.DataFrame, dataset_name: str) -> None:
         """
@@ -377,28 +629,32 @@ class BarChartGenerator:
     def generate_charts_for_dataset(self, dataset_name: str) -> bool:
         """
         Generate all charts for a specific dataset.
-        
+
         Args:
             dataset_name: Name of the dataset
-            
+
         Returns:
             True if successful, False otherwise
         """
         print(f"\nProcessing dataset: {dataset_name}")
-        
+
         # Load dataset
         df = self.load_dataset(dataset_name)
         if df is None:
             return False
-        
+
         try:
-            # Generate only the key charts: success rate and efficiency
+            # Generate detailed charts: success rate and efficiency with precision levels
             self.create_success_rate_chart(df, dataset_name)
             self.create_efficiency_chart(df, dataset_name)
-            
+
+            # Generate aggregated charts: success rate and efficiency without precision levels
+            self.create_aggregated_success_rate_chart(df, dataset_name)
+            self.create_aggregated_efficiency_chart(df, dataset_name)
+
             print(f"✓ Successfully generated charts for dataset: {dataset_name}")
             return True
-            
+
         except Exception as e:
             print(f"✗ Error generating charts for dataset '{dataset_name}': {e}")
             return False

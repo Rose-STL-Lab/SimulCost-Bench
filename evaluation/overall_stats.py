@@ -15,6 +15,8 @@ Output: Creates comprehensive statistics and visualizations in eval_results/over
 - overall_summary.xlsx (beautifully formatted Excel file)
 - success_rate_overall.png (success rate bar chart)
 - efficiency_overall.png (efficiency bar chart)
+- line_plot_zero_shot.png (success rate & efficiency line plots for zero-shot mode)
+- line_plot_iterative.png (success rate & efficiency line plots for iterative mode)
 """
 
 import csv
@@ -25,6 +27,14 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from statistics import mean
+
+# Optional import for smart text positioning
+try:
+    from adjustText import adjust_text
+    ADJUST_TEXT_AVAILABLE = True
+except ImportError:
+    ADJUST_TEXT_AVAILABLE = False
+    print("Warning: adjustText library not found. Text labels may overlap. Install with: pip install adjustText")
 
 
 class OverallStatsGenerator:
@@ -46,6 +56,31 @@ class OverallStatsGenerator:
         plt.style.use('seaborn-v0_8-whitegrid')
         sns.set_palette("husl")
 
+        # Model name mapping for clean display names
+        self.name_mapping = {
+            'amazon.nova-premier-v1:0': 'Nova-Premier',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+            'gpt-5-2025-08-07': 'GPT-5',
+            'qwen3_32b': 'Qwen3-32B',
+            'qwen3_0_6b': 'Qwen3-0.6B',
+            'qwen3_8b': 'Qwen3-8B',
+            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        }
+
+    def clean_model_name(self, model_name: str) -> str:
+        """
+        Clean model name using the name mapping.
+
+        Args:
+            model_name: Raw model name from the data
+
+        Returns:
+            Clean, display-friendly model name
+        """
+        return self.name_mapping.get(model_name, model_name)
 
     def find_available_datasets(self) -> List[str]:
         """
@@ -87,6 +122,11 @@ class OverallStatsGenerator:
 
             try:
                 df = pd.read_csv(csv_path)
+
+                # Apply model name mapping
+                if 'Model' in df.columns:
+                    df['Model'] = df['Model'].apply(self.clean_model_name)
+
                 records_count = len(df)
                 total_records += records_count
                 all_data.append(df)
@@ -114,8 +154,6 @@ class OverallStatsGenerator:
         Returns:
             DataFrame with overall statistics per model/mode/precision combination
         """
-        # Model names are already cleaned by upstream processing
-
         # Group by Model, Precision Level, and Inference Mode
         # Calculate weighted averages across all simulations
         aggregated_results = []
@@ -184,8 +222,6 @@ class OverallStatsGenerator:
         Returns:
             DataFrame with aggregated statistics per model/mode combination (no precision level)
         """
-        # Model names are already cleaned by upstream processing
-
         # Group by Model and Inference Mode only (no Precision Level)
         aggregated_results = []
 
@@ -951,6 +987,195 @@ class OverallStatsGenerator:
 
         print(f"Aggregated efficiency chart saved to: {output_path}")
 
+    def create_combined_line_plots(self, df: pd.DataFrame) -> None:
+        """
+        Create a single combined line plot with 4 subplots:
+        Top row: Zero-shot (Success Rate, Efficiency)
+        Bottom row: Iterative (Success Rate, Efficiency)
+        Uses clean styling with custom legend layout.
+
+        Args:
+            df: DataFrame containing overall statistics
+        """
+        # Get unique models and precision levels
+        models = sorted(df['Model'].unique())
+        precision_levels = ['low', 'medium', 'high']
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Define three colors: blue, green, pink
+        base_colors = ['#1f77b4', '#2ca02c', '#ff69b4']  # Blue, Green, Pink
+
+        # Define markers: hollow circle and hollow square only
+        base_markers = ['o', 's']
+
+        # Define line styles: solid, dashed with shorter segments
+        line_styles = ['-', (0, (3, 2))]  # solid, short dashed (3pt dash, 2pt gap)
+
+        # Create style mapping for models (similar to the example image)
+        model_styles = {}
+        for i, model in enumerate(models):
+            color_idx = i % len(base_colors)
+            marker_idx = i % len(base_markers)
+            line_idx = (i // len(base_colors)) % len(line_styles)
+
+            model_styles[model] = {
+                'color': base_colors[color_idx],
+                'marker': base_markers[marker_idx],
+                'linestyle': line_styles[line_idx]
+            }
+
+        # Create single figure with 4 subplots (1x4 horizontal layout)
+        fig = plt.figure(figsize=(16, 5))
+
+        # Create custom layout: legend at top, plots in middle, labels at bottom
+        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.18)
+
+        # Create legend axis (spans full width at top)
+        legend_ax = fig.add_subplot(gs[0, :])
+
+        # Create 4 subplot axes (1x4 horizontal grid)
+        axes = {
+            ('Zero-shot', 'Success Rate'): fig.add_subplot(gs[1, 0]),
+            ('Zero-shot', 'Efficiency'): fig.add_subplot(gs[1, 1]),
+            ('Iterative', 'Success Rate'): fig.add_subplot(gs[1, 2]),
+            ('Iterative', 'Efficiency'): fig.add_subplot(gs[1, 3])
+        }
+
+        # Create bottom label axes
+        label_axes = [
+            fig.add_subplot(gs[2, 0]),
+            fig.add_subplot(gs[2, 1]),
+            fig.add_subplot(gs[2, 2]),
+            fig.add_subplot(gs[2, 3])
+        ]
+
+        metrics = ['Success Rate', 'Efficiency']
+
+        # Plot data for all mode-metric combinations
+        for mode in inference_modes:
+            mode_data = df[df['Inference Mode'] == mode]
+
+            for metric in metrics:
+                ax = axes[(mode, metric)]
+
+                for model in models:
+                    model_data = mode_data[mode_data['Model'] == model]
+
+                    if len(model_data) == 0:
+                        continue
+
+                    # Prepare data points for this model
+                    x_values = []
+                    y_values = []
+
+                    for precision_idx, precision in enumerate(precision_levels):
+                        precision_data = model_data[model_data['Precision Level'] == precision]
+                        if len(precision_data) > 0:
+                            x_values.append(precision_idx)
+                            y_values.append(precision_data[metric].iloc[0])
+
+                    # Plot line for this model
+                    if len(x_values) > 0:
+                        style = model_styles[model]
+
+                        ax.plot(x_values, y_values,
+                               marker=style['marker'],
+                               color=style['color'],
+                               linestyle=style['linestyle'],
+                               linewidth=1.0,
+                               markersize=3,
+                               markerfacecolor='white',
+                               markeredgecolor=style['color'],
+                               markeredgewidth=1.0,
+                               alpha=1.0,
+                               clip_on=False)  # Prevent markers from being clipped at plot boundaries
+
+                # Customize subplot
+                ax.set_xlabel('Accuracy Level', fontsize=12)
+                ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+                ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='gray')
+
+                # Set x-axis labels and ticks with tighter spacing and extra padding for markers
+                ax.set_xticks(range(len(precision_levels)))
+                ax.set_xticklabels([p.capitalize() for p in precision_levels], fontsize=10)
+                ax.set_xlim(-0.1, len(precision_levels) - 0.9)
+
+                # Set y-axis limits with more padding to prevent marker cropping
+                if len(mode_data) > 0:
+                    y_min = mode_data[metric].min()
+                    y_max = mode_data[metric].max()
+                    y_range = y_max - y_min
+
+                    if metric == 'Success Rate':
+                        # Allow negative lower bound to show markers at 0 values properly
+                        lower_bound = y_min - 0.08
+                        if y_min <= 0.05:  # If minimum value is close to 0
+                            lower_bound = -0.05
+                        ax.set_ylim(lower_bound, min(1, y_max + 0.08))
+                    else:  # Efficiency
+                        # Allow negative lower bound to show markers at 0 values properly
+                        lower_bound = y_min - 0.5
+                        if y_min <= 1.0:  # If minimum value is close to 0
+                            lower_bound = -1.0
+                        ax.set_ylim(lower_bound, y_max + max(0.5, y_range * 0.1))
+
+        # Create custom legend in top area
+        legend_ax.axis('off')
+
+        # Create legend elements for all models
+        legend_elements = []
+        for model in models:
+            style = model_styles[model]
+            from matplotlib.lines import Line2D
+
+            legend_elements.append(Line2D([0], [0],
+                                         marker=style['marker'],
+                                         color=style['color'],
+                                         linestyle=style['linestyle'],
+                                         linewidth=1.0,
+                                         markersize=3,
+                                         markerfacecolor='white',
+                                         markeredgecolor=style['color'],
+                                         markeredgewidth=1.0,
+                                         label=model))
+
+        # Display legend horizontally
+        ncols = len(models)
+        if len(models) > 6:  # If too many models, split into 2 rows
+            ncols = 3
+
+        legend_ax.legend(handles=legend_elements,
+                       loc='center',
+                       ncol=ncols,
+                       frameon=False,
+                       fontsize=11,
+                       columnspacing=2.0,
+                       handlelength=2.5)
+
+        # Add bottom labels for each subplot
+        subplot_labels = [
+            ('a', 'Zero-shot - Success Rate'),
+            ('b', 'Zero-shot - Efficiency'),
+            ('c', 'Iterative - Success Rate'),
+            ('d', 'Iterative - Efficiency')
+        ]
+
+        for i, (letter, description) in enumerate(subplot_labels):
+            label_ax = label_axes[i]
+            label_ax.axis('off')
+            label_ax.text(0.5, 0.5, f'({letter}) {description}',
+                         ha='center', va='center',
+                         fontsize=13, fontweight='bold',
+                         transform=label_ax.transAxes)
+
+        # Save single combined chart with extra padding
+        filename = "line_plot_combined.png"
+        output_path = self.output_dir / filename
+        plt.savefig(output_path, dpi=300, bbox_inches='tight', pad_inches=0.2)
+        plt.close()
+
+        print(f"Combined line plot saved to: {output_path}")
+
     def generate_overall_statistics(self) -> None:
         """Generate comprehensive overall statistics and visualizations."""
         print("🚀 Starting overall statistics generation...")
@@ -986,6 +1211,10 @@ class OverallStatsGenerator:
             print("📈 Generating aggregated visualizations...")
             self.create_aggregated_success_rate_chart(aggregated_stats)
             self.create_aggregated_efficiency_chart(aggregated_stats)
+
+            # Generate combined line plots
+            print("📈 Generating combined line plots...")
+            self.create_combined_line_plots(overall_stats)
 
             # Print summary
             print(f"\n🎉 Overall statistics generation completed!")

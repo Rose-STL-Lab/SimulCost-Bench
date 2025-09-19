@@ -24,26 +24,10 @@
       "custom_class": "Qwen3",
       "description": "Qwen3 235B parameter model with A22B architecture"
     },
-    
-    "llama3.2_3b_base": {
-      "custom_code": "/home/ubuntu/dev/SimulCost-Bench/custom_model/custom_inference.py",
-      "model_path": "meta-llama/Llama-3.2-3B-Instruct",
-      "custom_class": "Llama3"
-    },
-    "llama3.2_1b_base": {
-      "custom_code": "/home/ubuntu/dev/SimulCost-Bench/custom_model/custom_inference.py",
-      "model_path": "meta-llama/Llama-3.2-1B-Instruct",
-      "custom_class": "Llama3"
-    },
-    "llama3.2_3b_lora": {
-      "custom_code": "/home/ubuntu/dev/SimulCost-Bench/custom_model/custom_inference.py",
-      "model_path": "/data/expo_output/llama3.2-3b_heat_burgers_zero_shot/v2-20250809-031426/checkpoint-22/",
-      "custom_class": "Llama3_lora_3B"
-    },
-    "llama3.2_1b_lora": {
-      "custom_code": "/home/ubuntu/dev/SimulCost-Bench/custom_model/custom_inference.py",
-      "model_path": "/data/expo_output/llama3.2-1b_heat_burgers_zero_shot/v2-20250809-031426/checkpoint-22/",
-      "custom_class": "Llama3_lora_1B"
+    "bayesian_optimization": {
+      "custom_code": "/home/leo/workspace/SimulCost-Bench/custom_model/custom_inference.py",
+      "model_path": "/home/leo/workspace/SimulCost-Bench/custom_model/bo_configs/config.yaml",
+      "custom_class": "BOAgent"
     }
   }
 

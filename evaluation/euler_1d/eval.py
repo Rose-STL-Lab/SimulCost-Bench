@@ -82,7 +82,12 @@ def evaluate(
     
     # Build paths for euler_1d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
-    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+
+    # Handle ICL dataset path structure
+    if dataset == "euler_1d_icl":
+        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    else:
+        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
@@ -280,7 +285,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="euler_1d",
-                        help="Dataset name, e.g. euler_1d")
+                        choices=["euler_1d", "euler_1d_icl"],
+                        help="Dataset name: euler_1d (standard) or euler_1d_icl (with ICL examples)")
     parser.add_argument("-t", "--task",    default="cfl",
                         help="Task: cfl / k / beta / n_space")
     parser.add_argument("-l", "--precision_level", default="medium",

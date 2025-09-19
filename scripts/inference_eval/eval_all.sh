@@ -11,17 +11,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Model list (modify this list as needed)
 models=(
-  "anthropic.claude-3-5-haiku-20241022-v1:0"
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+#   "anthropic.claude-3-5-haiku-20241022-v1:0"
+#   "anthropic.claude-3-5-sonnet-20240620-v1:0"
   "anthropic.claude-3-7-sonnet-20250219-v1:0"
 
-#   "mistral.mistral-large-2402-v1:0"
-#   "meta.llama3-70b-instruct-v1:0"
-#   "amazon.nova-premier-v1:0"
+  "mistral.mistral-large-2402-v1:0"
+  "meta.llama3-70b-instruct-v1:0"
+  "amazon.nova-premier-v1:0"
+  "gpt-5-2025-08-07"
 
 #   "qwen3_0_6b"
 #   "qwen3_8b"
-#   "qwen3_32b"
+  "qwen3_32b"
 #   "qwen3_235b_a22b"
 )
 

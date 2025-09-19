@@ -64,17 +64,24 @@ def clean_model_names(model_name: str) -> str:
         Cleaned model name
     """
     name_mapping = {
+        # Support both underscore and colon formats
         'amazon.nova-premier-v1:0': 'Nova-Premier',
+        'amazon.nova-premier-v1_0': 'Nova-Premier',
         'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+        'anthropic.claude-3-7-sonnet-20250219-v1_0': 'Claude-3.7-Sonnet',
         'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+        'mistral.mistral-large-2402-v1_0': 'Mistral-Large',
         'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+        'meta.llama3-70b-instruct-v1_0': 'Llama-3-70B-Instruct',
         'gpt-5-2025-08-07': 'GPT-5',
         'qwen3_32b': 'Qwen3-32B',
-        
+
         'qwen3_0_6b': 'Qwen3-0.6B',
         'qwen3_8b': 'Qwen3-8B',
         'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+        'anthropic.claude-3-5-haiku-20241022-v1_0': 'Claude-3.5-Haiku',
         'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+        'anthropic.claude-3-5-sonnet-20240620-v1_0': 'Claude-3.5-Sonnet',
     }
 
     return name_mapping.get(model_name, model_name)

@@ -572,6 +572,7 @@ DATASET_TASK_MAP = {
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
+    "euler_1d_icl": ["cfl", "beta", "k", "n_space"],
     "ns_2d": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p",
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
     "ns_transient_2d": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
@@ -668,6 +669,7 @@ Available dataset-task combinations:
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
   burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
+  euler_1d_icl: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL version]
   ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (use -l for precision_level: low/medium/high)
   epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (use -l for precision_level: low/medium/high)
 
