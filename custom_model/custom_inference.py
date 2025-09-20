@@ -1,33 +1,5 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from methods import *
-import copy
-
-_PROBLEM_TO_TOOL_NAME = {
-    "1D_heat_transfer":{
-        "cfl":"heat_1d_check_converge_cfl",
-        "n_space":"heat_1d_check_converge_n_space"
-    },
-    "2D_heat_transfer":{
-        
-    },
-    "1D_burgers":{
-        
-    },
-    "euler_1d":{
-        "cfl":"euler_1d_check_converge_cfl",
-        "beta":"euler_1d_check_converge_beta",
-        "k":"euler_1d_check_converge_k",
-        "n_space":"euler_1d_check_converge_n_space"
-    },
-    "ns_channel_2d":{
-        "mesh_x":"ns_2d_check_converge_mesh_x"
-    },
-    "ns_transient_2d":{
-        "resolution":"ns_transient_2d_check_converge_resolution"
-    }
-}
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 class Qwen3:
     def __init__(self, model_path: str):
@@ -94,44 +66,75 @@ class Qwen3:
         
         return response
     
-class BOAgent:
-    def __init__(self, model_path='/home/leo/workspace/SimulCost-Bench/custom_model/bo_configs/config.yaml'):
-        '''
-        Bayesian Optimization base class.
+# _PROBLEM_TO_TOOL_NAME = {
+#     "1D_heat_transfer":{
+#         "cfl":"heat_1d_check_converge_cfl",
+#         "n_space":"heat_1d_check_converge_n_space"
+#     },
+#     "2D_heat_transfer":{
         
-        Here model_path is a yaml config recording BO parameters.
-        '''
-        from omegaconf import OmegaConf
+#     },
+#     "1D_burgers":{
         
-        cfg = OmegaConf.load(model_path)
-        self.cfg = cfg
+#     },
+#     "euler_1d":{
+#         "cfl":"euler_1d_check_converge_cfl",
+#         "beta":"euler_1d_check_converge_beta",
+#         "k":"euler_1d_check_converge_k",
+#         "n_space":"euler_1d_check_converge_n_space"
+#     },
+#     "ns_channel_2d":{
+#         "mesh_x":"ns_2d_check_converge_mesh_x"
+#     },
+#     "ns_transient_2d":{
+#         "resolution":"ns_transient_2d_check_converge_resolution"
+#     }
+# }
+
+# import sys
+# import os
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# import copy
+# from methods import *
+
+# class BOAgent:
+#     def __init__(self, model_path='/home/leo/workspace/SimulCost-Bench/custom_model/bo_configs/config.yaml'):
+#         '''
+#         Bayesian Optimization base class.
         
-        # Import BO class from methods
-        from methods import BO
-        self.bo = BO(model_path)
+#         Here model_path is a yaml config recording BO parameters.
+#         '''
+#         from omegaconf import OmegaConf
         
-    def invoke(self, messages):
-        """Main entry point for Bayesian Optimization agent inference.
+#         cfg = OmegaConf.load(model_path)
+#         self.cfg = cfg
         
-        Args:
-            messages (list): List of message dictionaries
+#         # Import BO class from methods
+#         from methods import BO
+#         self.bo = BO(model_path)
+        
+#     def invoke(self, messages):
+#         """Main entry point for Bayesian Optimization agent inference.
+        
+#         Args:
+#             messages (list): List of message dictionaries
             
-        Returns:
-            str: JSON-formatted response with optimization results
-        """
-        # Extract problem parameters from messages
-        problem, task, profile, tolerance, optimization_type = extract_problem_info_from_messages(messages)
+#         Returns:
+#             str: JSON-formatted response with optimization results
+#         """
+#         # Extract problem parameters from messages
+#         problem, task, profile, tolerance, optimization_type = extract_problem_info_from_messages(messages)
         
-        # Run Bayesian Optimization (only supports zero-shot mode)
-        if optimization_type == "zero-shot":
-            final_params, best_score = self.bo.solve(problem, task, profile, tolerance, messages)
+#         # Run Bayesian Optimization (only supports zero-shot mode)
+#         if optimization_type == "zero-shot":
+#             final_params, best_score = self.bo.solve(problem, task, profile, tolerance, messages)
             
-            response = str({
-                "tool_name": _PROBLEM_TO_TOOL_NAME[problem][task],
-                "tool_reason": "Based on Bayesian optimization with Gaussian process modeling and acquisition function maximization, I propose this parameter value as the optimal solution.",
-                "tool_args": final_params
-            })
-        else:
-            raise NotImplementedError("BO doesn't support iterative!")
+#             response = str({
+#                 "tool_name": _PROBLEM_TO_TOOL_NAME[problem][task],
+#                 "tool_reason": "Based on Bayesian optimization with Gaussian process modeling and acquisition function maximization, I propose this parameter value as the optimal solution.",
+#                 "tool_args": final_params
+#             })
+#         else:
+#             raise NotImplementedError("BO doesn't support iterative!")
         
-        return response
+#         return response

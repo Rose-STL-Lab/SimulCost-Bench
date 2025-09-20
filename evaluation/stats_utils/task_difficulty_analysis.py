@@ -22,6 +22,13 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 import argparse
 
+try:
+    from adjustText import adjust_text
+    ADJUSTTEXT_AVAILABLE = True
+except ImportError:
+    ADJUSTTEXT_AVAILABLE = False
+    print("Warning: adjustText package not available. Text labels may overlap.")
+
 
 class TaskDifficultyAnalyzer:
     """Analyzer for task difficulty across SimulCost-Bench datasets"""
@@ -263,9 +270,10 @@ class TaskDifficultyAnalyzer:
         self._create_success_rate_chart(detailed_df)
         self._create_efficiency_chart(detailed_df)
 
-        # Create detailed task performance scatter plots
-        self._create_success_rate_scatter(detailed_df)
-        self._create_efficiency_scatter(detailed_df)
+        # Create detailed task performance scatter plots for each method type
+        for method_type in ['zero_shot', 'iterative']:
+            self._create_success_rate_scatter(detailed_df, method_type)
+            self._create_efficiency_scatter(detailed_df, method_type)
 
     def _create_success_rate_chart(self, detailed_df: pd.DataFrame) -> None:
         """Create bar chart for success rate by task categories for different method types"""
@@ -297,14 +305,14 @@ class TaskDifficultyAnalyzer:
 
         # Customize the chart
         plt.ylabel('Success Rate', fontsize=12, fontweight='bold')
-        plt.ylim(0, 1.0)
+        plt.ylim(0, 1.05)
         plt.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
         for bar, val in zip(bars, category_stats['success_rate_mean']):
             height = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2, height + 0.02,
-                    f'{val:.3f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
+                    f'{val:.3f}', ha='center', va='bottom', fontsize=12)
 
         # Save the plot
         plt.tight_layout()
@@ -343,13 +351,17 @@ class TaskDifficultyAnalyzer:
 
         # Customize the chart
         plt.ylabel('Efficiency', fontsize=12, fontweight='bold')
+
+        # Set ylim based on data with extra margin
+        max_val = category_stats['mean_efficiency_mean'].max()
+        plt.ylim(0, max_val * 1.15)
         plt.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
         for bar, val in zip(bars, category_stats['mean_efficiency_mean']):
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, height + 0.1,
-                    f'{val:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
+            plt.text(bar.get_x() + bar.get_width()/2, height + max_val * 0.05,
+                    f'{val:.2f}', ha='center', va='bottom', fontsize=12)
 
         # Save the plot
         plt.tight_layout()
@@ -358,124 +370,178 @@ class TaskDifficultyAnalyzer:
         print(f"Saved {method_type} efficiency chart to {output_file}")
         plt.show()
 
-    def _create_success_rate_scatter(self, detailed_df: pd.DataFrame) -> None:
-        """Create scatter plot showing success rate distribution by task category"""
+    def _create_success_rate_scatter(self, detailed_df: pd.DataFrame, method_type: str) -> None:
+        """Create scatter plot showing success rate distribution by task category for a specific method type"""
 
-        # Filter out tasks with insufficient data and aggregate by task (average across method types)
-        filtered_df = detailed_df[detailed_df['success_rate_count'] >= 5].copy()
+        # Filter data for this method type and sufficient data
+        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
+        filtered_df = method_data[method_data['success_rate_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
-            print("Not enough data for success rate scatter plot")
+            print(f"Not enough data for {method_type} success rate scatter plot")
             return
 
-        # Aggregate by task name to get one point per task
-        task_aggregated = filtered_df.groupby(['Task', 'TaskCategory']).agg({
-            'success_rate_mean': 'mean'
-        }).reset_index()
+        # Use the filtered data directly (no need to aggregate since it's already per method type)
+        task_aggregated = filtered_df[['Task', 'TaskCategory', 'success_rate_mean']].copy()
 
-        plt.figure(figsize=(9, 6))
+        plt.figure(figsize=(12, 8))
 
-        # Create scatter plot with task categories
+        # Create scatter plot with task categories - separate regions for each category
         colors = {'Common': 'green', 'Uncommon': 'blue'}
-        y_positions = {}
-        y_counter = 0
 
-        # Assign y positions to avoid overlap with reduced spacing
-        for category in ['Common', 'Uncommon']:
-            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
-            if len(cat_data) > 0:
-                # Sort by success rate to create better visual separation
-                cat_data = cat_data.sort_values('success_rate_mean')
+        # Separate data by category
+        common_data = task_aggregated[task_aggregated['TaskCategory'] == 'Common'].copy()
+        uncommon_data = task_aggregated[task_aggregated['TaskCategory'] == 'Uncommon'].copy()
 
-                for i, (_, row) in enumerate(cat_data.iterrows()):
-                    # Add some vertical jitter to prevent overlap
-                    y_positions[row['Task']] = y_counter * 0.3 + (i % 2) * 0.1
-                    y_counter += 1
+        # Sort each category by success rate for better organization
+        common_data = common_data.sort_values('success_rate_mean') if len(common_data) > 0 else common_data
+        uncommon_data = uncommon_data.sort_values('success_rate_mean') if len(uncommon_data) > 0 else uncommon_data
 
-        # Create the scatter plot
-        for category in ['Common', 'Uncommon']:
-            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
-            if len(cat_data) > 0:
-                x_values = cat_data['success_rate_mean']
-                y_values = [y_positions[task] for task in cat_data['Task']]
-                plt.scatter(x_values, y_values, c=colors[category], label=category,
-                           alpha=0.7, s=120, edgecolors='black', linewidth=0.5)
+        # Assign y positions with clear separation between categories
+        y_spacing = 0.8  # Space between individual points
+        category_gap = 2.0  # Gap between categories
 
-        # Add task labels
-        for _, row in task_aggregated.iterrows():
-            plt.annotate(row['Task'],
-                       (row['success_rate_mean'], y_positions[row['Task']]),
-                       xytext=(10, 0), textcoords='offset points', fontsize=9,
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
-                       ha='left', va='center')
+        texts = []
+
+        # Plot Common tasks (bottom half)
+        if len(common_data) > 0:
+            y_start_common = 0
+            for i, (_, row) in enumerate(common_data.iterrows()):
+                y_pos = y_start_common + i * y_spacing
+                plt.scatter(row['success_rate_mean'], y_pos, c=colors['Common'],
+                           label='Common' if i == 0 else "", alpha=0.7, s=120,
+                           edgecolors='black', linewidth=0.5)
+
+                # Add text annotation
+                text = plt.annotate(row['Task'], (row['success_rate_mean'], y_pos),
+                                   xytext=(8, 0), textcoords='offset points', fontsize=10,
+                                   bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.8),
+                                   ha='left', va='center')
+                texts.append(text)
+
+        # Plot Uncommon tasks (top half)
+        if len(uncommon_data) > 0:
+            y_start_uncommon = (len(common_data) * y_spacing) + category_gap
+            for i, (_, row) in enumerate(uncommon_data.iterrows()):
+                y_pos = y_start_uncommon + i * y_spacing
+                plt.scatter(row['success_rate_mean'], y_pos, c=colors['Uncommon'],
+                           label='Uncommon' if i == 0 else "", alpha=0.7, s=120,
+                           edgecolors='black', linewidth=0.5)
+
+                # Add text annotation
+                text = plt.annotate(row['Task'], (row['success_rate_mean'], y_pos),
+                                   xytext=(8, 0), textcoords='offset points', fontsize=10,
+                                   bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.8),
+                                   ha='left', va='center')
+                texts.append(text)
+
+        # Add category separators
+        if len(common_data) > 0 and len(uncommon_data) > 0:
+            separator_y = (len(common_data) * y_spacing) + category_gap/2
+            plt.axhline(y=separator_y, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+
+            # Add category labels on the right side
+            plt.text(1.02, y_start_common + (len(common_data)-1) * y_spacing / 2, 'Common Tasks',
+                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
+                    color='green', ha='left', va='center')
+            plt.text(1.02, y_start_uncommon + (len(uncommon_data)-1) * y_spacing / 2, 'Uncommon Tasks',
+                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
+                    color='blue', ha='left', va='center')
 
         plt.xlabel('Success Rate', fontsize=12, fontweight='bold')
         plt.ylabel('')  # Remove y-axis label
-        plt.title('Task Success Rate Distribution by Category', fontsize=14, fontweight='bold', pad=20)
+        plt.title(f'Task Success Rate Distribution by Category ({method_type.replace("_", " ").title()})', fontsize=14, fontweight='bold', pad=20)
         plt.legend(loc='lower right')
         plt.grid(True, alpha=0.3, axis='x')
-        plt.xlim(0, 1.05)  # Add margin on right side only
+        plt.xlim(-0.05, 1.1)  # Add margins on both sides
 
         # Remove y-axis ticks and labels
         plt.yticks([])
 
         # Save the scatter plot
         plt.tight_layout()
-        output_file = self.output_dir / "success_rate_scatter.png"
+        output_file = self.output_dir / f"success_rate_scatter_{method_type}.png"
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
-        print(f"Saved success rate scatter plot to {output_file}")
+        print(f"Saved {method_type} success rate scatter plot to {output_file}")
         plt.show()
 
-    def _create_efficiency_scatter(self, detailed_df: pd.DataFrame) -> None:
-        """Create scatter plot showing efficiency distribution by task category"""
+    def _create_efficiency_scatter(self, detailed_df: pd.DataFrame, method_type: str) -> None:
+        """Create scatter plot showing efficiency distribution by task category for a specific method type"""
 
-        # Filter out tasks with insufficient data and aggregate by task (average across method types)
-        filtered_df = detailed_df[detailed_df['mean_efficiency_count'] >= 5].copy()
+        # Filter data for this method type and sufficient data
+        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
+        filtered_df = method_data[method_data['mean_efficiency_count'] >= 5].copy()
 
         if len(filtered_df) == 0:
-            print("Not enough data for efficiency scatter plot")
+            print(f"Not enough data for {method_type} efficiency scatter plot")
             return
 
-        # Aggregate by task name to get one point per task
-        task_aggregated = filtered_df.groupby(['Task', 'TaskCategory']).agg({
-            'mean_efficiency_mean': 'mean'
-        }).reset_index()
+        # Use the filtered data directly (no need to aggregate since it's already per method type)
+        task_aggregated = filtered_df[['Task', 'TaskCategory', 'mean_efficiency_mean']].copy()
 
-        plt.figure(figsize=(9, 6))
+        plt.figure(figsize=(12, 8))
 
-        # Create scatter plot with task categories
+        # Create scatter plot with task categories - separate regions for each category
         colors = {'Common': 'green', 'Uncommon': 'blue'}
-        y_positions = {}
-        y_counter = 0
 
-        # Assign y positions to avoid overlap with reduced spacing
-        for category in ['Common', 'Uncommon']:
-            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
-            if len(cat_data) > 0:
-                # Sort by efficiency to create better visual separation
-                cat_data = cat_data.sort_values('mean_efficiency_mean')
+        # Separate data by category
+        common_data = task_aggregated[task_aggregated['TaskCategory'] == 'Common'].copy()
+        uncommon_data = task_aggregated[task_aggregated['TaskCategory'] == 'Uncommon'].copy()
 
-                for i, (_, row) in enumerate(cat_data.iterrows()):
-                    # Add some vertical jitter to prevent overlap
-                    y_positions[row['Task']] = y_counter * 0.3 + (i % 2) * 0.1
-                    y_counter += 1
+        # Sort each category by efficiency for better organization
+        common_data = common_data.sort_values('mean_efficiency_mean') if len(common_data) > 0 else common_data
+        uncommon_data = uncommon_data.sort_values('mean_efficiency_mean') if len(uncommon_data) > 0 else uncommon_data
 
-        # Create the scatter plot
-        for category in ['Common', 'Uncommon']:
-            cat_data = task_aggregated[task_aggregated['TaskCategory'] == category]
-            if len(cat_data) > 0:
-                x_values = cat_data['mean_efficiency_mean']
-                y_values = [y_positions[task] for task in cat_data['Task']]
-                plt.scatter(x_values, y_values, c=colors[category], label=category,
-                           alpha=0.7, s=120, edgecolors='black', linewidth=0.5)
+        # Assign y positions with clear separation between categories
+        y_spacing = 0.8  # Space between individual points
+        category_gap = 2.0  # Gap between categories
 
-        # Add task labels
-        for _, row in task_aggregated.iterrows():
-            plt.annotate(row['Task'],
-                       (row['mean_efficiency_mean'], y_positions[row['Task']]),
-                       xytext=(10, 0), textcoords='offset points', fontsize=9,
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
-                       ha='left', va='center')
+        texts = []
+
+        # Plot Common tasks (bottom half)
+        if len(common_data) > 0:
+            y_start_common = 0
+            for i, (_, row) in enumerate(common_data.iterrows()):
+                y_pos = y_start_common + i * y_spacing
+                plt.scatter(row['mean_efficiency_mean'], y_pos, c=colors['Common'],
+                           label='Common' if i == 0 else "", alpha=0.7, s=120,
+                           edgecolors='black', linewidth=0.5)
+
+                # Add text annotation
+                text = plt.annotate(row['Task'], (row['mean_efficiency_mean'], y_pos),
+                                   xytext=(8, 0), textcoords='offset points', fontsize=10,
+                                   bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.8),
+                                   ha='left', va='center')
+                texts.append(text)
+
+        # Plot Uncommon tasks (top half)
+        if len(uncommon_data) > 0:
+            y_start_uncommon = (len(common_data) * y_spacing) + category_gap
+            for i, (_, row) in enumerate(uncommon_data.iterrows()):
+                y_pos = y_start_uncommon + i * y_spacing
+                plt.scatter(row['mean_efficiency_mean'], y_pos, c=colors['Uncommon'],
+                           label='Uncommon' if i == 0 else "", alpha=0.7, s=120,
+                           edgecolors='black', linewidth=0.5)
+
+                # Add text annotation
+                text = plt.annotate(row['Task'], (row['mean_efficiency_mean'], y_pos),
+                                   xytext=(8, 0), textcoords='offset points', fontsize=10,
+                                   bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.8),
+                                   ha='left', va='center')
+                texts.append(text)
+
+        # Add category separators
+        if len(common_data) > 0 and len(uncommon_data) > 0:
+            separator_y = (len(common_data) * y_spacing) + category_gap/2
+            plt.axhline(y=separator_y, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+
+            # Add category labels on the right side
+            plt.text(1.02, y_start_common + (len(common_data)-1) * y_spacing / 2, 'Common Tasks',
+                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
+                    color='green', ha='left', va='center')
+            plt.text(1.02, y_start_uncommon + (len(uncommon_data)-1) * y_spacing / 2, 'Uncommon Tasks',
+                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
+                    color='blue', ha='left', va='center')
 
         # Get the efficiency range and add margins
         min_eff = task_aggregated['mean_efficiency_mean'].min()
@@ -484,19 +550,21 @@ class TaskDifficultyAnalyzer:
 
         plt.xlabel('Efficiency', fontsize=12, fontweight='bold')
         plt.ylabel('')  # Remove y-axis label
-        plt.title('Task Efficiency Distribution by Category', fontsize=14, fontweight='bold', pad=20)
+        plt.title(f'Task Efficiency Distribution by Category ({method_type.replace("_", " ").title()})', fontsize=14, fontweight='bold', pad=20)
         plt.legend(loc='lower right')
         plt.grid(True, alpha=0.3, axis='x')
-        plt.xlim(min_eff - margin, max_eff + margin)  # Add margins based on data range
+        # Increase margins to prevent points from touching edges
+        margin = max((max_eff - min_eff) * 0.15, 0.5)  # At least 15% margin or 0.5, whichever is larger
+        plt.xlim(min_eff - margin, max_eff + margin)
 
         # Remove y-axis ticks and labels
         plt.yticks([])
 
         # Save the scatter plot
         plt.tight_layout()
-        output_file = self.output_dir / "efficiency_scatter.png"
+        output_file = self.output_dir / f"efficiency_scatter_{method_type}.png"
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
-        print(f"Saved efficiency scatter plot to {output_file}")
+        print(f"Saved {method_type} efficiency scatter plot to {output_file}")
         plt.show()
 
     def save_results(self, agg_df: pd.DataFrame, detailed_df: pd.DataFrame,

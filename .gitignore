@@ -27,3 +27,4 @@ fort.20
 qs_gen/1D_euler icl.py
 dataset_gen/oneD_euler_icl.py
 scripts/inference_eval/inference_eval_euler_1d_icl.sh
+ablation

@@ -337,7 +337,7 @@ def create_aggregated_visualization(comparison_df: pd.DataFrame, metric: str, mo
     plt.style.use('default')
 
     # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    fig, ax = plt.subplots(1, 1, figsize=(14, 5))
 
     # Create horizontal bar plot for comparison
     y_pos = np.arange(len(models))
