@@ -151,42 +151,42 @@ def is_number(v) -> bool:
 def merge_metrics(metrics_list: List[Dict[str, str]]) -> Dict[str, float]:
     """
     Aggregate metrics from multiple test cases with robust handling.
-    
+
     For each metric:
-    - If all values are numeric, return the average
+    - If all values are numeric, return the simple average
     - If values are mixed (numeric/string), prioritize numeric and average them
     - If all values are non-numeric strings, return the first non-empty value
-    
+
     Args:
         metrics_list: List of metrics dictionaries from different test cases
-        
+
     Returns:
         Merged metrics dictionary with aggregated values
     """
     if not metrics_list:
         return {}
-        
+
     merged = {}
     all_keys = set().union(*(m.keys() for m in metrics_list))
 
     for key in all_keys:
         # Collect all values for this key across test cases
         all_values = [m[key] for m in metrics_list if key in m and m[key] is not None]
-        
+
         if not all_values:
             continue
-            
+
         # Separate numeric and non-numeric values
         numeric_values = [float(v) for v in all_values if is_number(v)]
         non_numeric_values = [v for v in all_values if not is_number(v)]
-        
+
         if numeric_values:
-            # If we have numeric values, use their average
+            # If we have numeric values, use their simple average
             merged[key] = mean(numeric_values)
         elif non_numeric_values:
             # If only non-numeric values, use the first non-empty one
             merged[key] = next(v for v in non_numeric_values if str(v).strip())
-            
+
     return merged
 
 
@@ -239,7 +239,7 @@ def collect_rows(dataset: str, tasks: List[str], precision_level: str = None) ->
 
     # Convert aggregated results to rows
     for (model, task, mode), info in agg.items():
-        merged_metrics = merge_metrics(info["metrics_list"])  # Average values
+        merged_metrics = merge_metrics(info["metrics_list"])  # Simple average values
         row = {
             "Model": model,
             "Task": task,

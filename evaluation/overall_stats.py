@@ -4,7 +4,7 @@
 Overall Performance Statistics Generator for SimulCost-Bench
 
 This script aggregates model performance across all datasets in SimulCost-Bench,
-providing comprehensive statistics and visualizations for model comparison.
+providing comprehensive statistics and visualizations for model comparison using simple averages.
 
 Usage
 -----
@@ -146,7 +146,7 @@ class OverallStatsGenerator:
 
     def calculate_overall_statistics(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Calculate overall statistics aggregated across all datasets.
+        Calculate overall statistics aggregated across all datasets using simple averages.
 
         Args:
             df: Combined DataFrame from all datasets
@@ -155,7 +155,7 @@ class OverallStatsGenerator:
             DataFrame with overall statistics per model/mode/precision combination
         """
         # Group by Model, Precision Level, and Inference Mode
-        # Calculate weighted averages across all simulations
+        # Calculate simple averages across all simulations
         aggregated_results = []
 
         grouping_cols = ['Model', 'Precision Level', 'Inference Mode']
@@ -168,18 +168,15 @@ class OverallStatsGenerator:
             # Number of simulations this model was tested on
             num_simulations = len(group['Simulation'].unique())
 
-            # Calculate weighted averages for metrics
-            weights = group['Number of Samples'].tolist()
+            # Calculate simple averages for metrics
 
-            # Success rate: weighted average across all simulations
+            # Success rate: simple average across all simulations
             success_values = [float(val) for val in group['success_rate'] if pd.notnull(val)]
-            success_weights = [weights[i] for i, val in enumerate(group['success_rate']) if pd.notnull(val)]
-            avg_success_rate = self._weighted_average(success_values, success_weights) if success_values else 0.0
+            avg_success_rate = self._simple_average(success_values) if success_values else 0.0
 
-            # Efficiency: weighted average across all simulations
+            # Efficiency: simple average across all simulations
             efficiency_values = [float(val) for val in group['mean_efficiency'] if pd.notnull(val)]
-            efficiency_weights = [weights[i] for i, val in enumerate(group['mean_efficiency']) if pd.notnull(val)]
-            avg_efficiency = self._weighted_average(efficiency_values, efficiency_weights) if efficiency_values else 0.0
+            avg_efficiency = self._simple_average(efficiency_values) if efficiency_values else 0.0
 
             # Create aggregated row
             agg_row = {
@@ -205,15 +202,15 @@ class OverallStatsGenerator:
 
         return result_df
 
-    def _weighted_average(self, values: List[float], weights: List[int]) -> float:
-        """Calculate weighted average."""
-        if not values or not weights or sum(weights) == 0:
+    def _simple_average(self, values: List[float]) -> float:
+        """Calculate simple average."""
+        if not values:
             return 0.0
-        return sum(v * w for v, w in zip(values, weights)) / sum(weights)
+        return sum(values) / len(values)
 
     def calculate_aggregated_statistics(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Calculate aggregated statistics without precision level dimension.
+        Calculate aggregated statistics without precision level dimension using simple averages.
         Aggregates across all precision levels for each model/mode combination.
 
         Args:
@@ -238,18 +235,15 @@ class OverallStatsGenerator:
             # Number of precision levels tested
             num_precision_levels = len(group['Precision Level'].unique())
 
-            # Calculate weighted averages for metrics
-            weights = group['Number of Samples'].tolist()
+            # Calculate simple averages for metrics
 
-            # Success rate: weighted average across all simulations and precision levels
+            # Success rate: simple average across all simulations and precision levels
             success_values = [float(val) for val in group['success_rate'] if pd.notnull(val)]
-            success_weights = [weights[i] for i, val in enumerate(group['success_rate']) if pd.notnull(val)]
-            avg_success_rate = self._weighted_average(success_values, success_weights) if success_values else 0.0
+            avg_success_rate = self._simple_average(success_values) if success_values else 0.0
 
-            # Efficiency: weighted average across all simulations and precision levels
+            # Efficiency: simple average across all simulations and precision levels
             efficiency_values = [float(val) for val in group['mean_efficiency'] if pd.notnull(val)]
-            efficiency_weights = [weights[i] for i, val in enumerate(group['mean_efficiency']) if pd.notnull(val)]
-            avg_efficiency = self._weighted_average(efficiency_values, efficiency_weights) if efficiency_values else 0.0
+            avg_efficiency = self._simple_average(efficiency_values) if efficiency_values else 0.0
 
             # Create aggregated row
             agg_row = {

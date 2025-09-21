@@ -32,7 +32,7 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
+    echo "                   Available: burgers_1d, euler_1d, euler_1d_icl, euler_1d_icl_no_cost, euler_1d_icl_uniform, epoch_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -111,7 +111,7 @@ for DATASET in "${DATASETS[@]}"; do
                 done
             done
             ;;
-            
+
         "euler_1d")
             echo "📋 Running Euler 1D evaluation..."
             tasks=("cfl" "beta" "k" "n_space")
@@ -123,6 +123,54 @@ for DATASET in "${DATASETS[@]}"; do
                     for precision in "${precision_levels[@]}"; do
                         echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode"
                         python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+        
+        "euler_1d_icl")
+            echo "📋 Running Euler 1D ICL evaluation..."
+            tasks=("cfl" "beta" "k" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+        
+        "euler_1d_icl_no_cost")
+            echo "📋 Running Euler 1D ICL No Cost evaluation..."
+            tasks=("cfl" "beta" "k" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_no_cost -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_no_cost -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "euler_1d_icl_uniform")
+            echo "📋 Running Euler 1D ICL Uniform evaluation..."
+            tasks=("cfl" "beta" "k" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+            
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_uniform -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_uniform -t $task -l $precision $mode
                     done
                 done
             done

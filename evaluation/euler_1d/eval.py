@@ -81,13 +81,9 @@ def evaluate(
     logger = setup_logging(log_file)
     
     # Build paths for euler_1d precision_level structure
-    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
+    result_path = f"results_model_attempt/euler_1d/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # Handle ICL dataset path structure
-    if dataset == "euler_1d_icl":
-        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
-    else:
-        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    dummy_path = f"data/euler_1d/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
@@ -285,7 +281,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="euler_1d",
-                        choices=["euler_1d", "euler_1d_icl"],
+                        choices=["euler_1d", "euler_1d_icl", "euler_1d_icl_no_cost", "euler_1d_icl_uniform"],
                         help="Dataset name: euler_1d (standard) or euler_1d_icl (with ICL examples)")
     parser.add_argument("-t", "--task",    default="cfl",
                         help="Task: cfl / k / beta / n_space")
