@@ -25,7 +25,6 @@ run_cmd () {
 # ========= Parameter lists =========
 tasks=("cfl" "n_space")
 precision_levels=("low" "medium" "high")
-# modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 modes=("-z")
 
 # Bayesian Optimization specific models
@@ -33,14 +32,6 @@ model_provider="custom_model"
 models=(
  "bayesian_optimization"
 )
-
-# Note: You can also test with other custom models by uncommenting below:
-# models=(
-#  "qwen3_0_6b"
-#  "qwen3_8b"
-#  "qwen3_32b"
-#  "bayesian_optimization"
-# )
 
 # ========= Main loop =========
 for mode in "${modes[@]}"; do

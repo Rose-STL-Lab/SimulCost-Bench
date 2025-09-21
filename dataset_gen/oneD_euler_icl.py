@@ -101,12 +101,8 @@ def generate_icl_examples_for_precision(task: str, precision_level: str) -> list
         simulation_cost = params.pop("simulation_cost")
         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
         example = (
-            f"**Reference Example 1 (for context only):**\n"
             f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
-            f"the result was is_converged=true, simulation_cost={simulation_cost}. "
-            f"Note that your problem may have different settings (case, precision requirements, etc.), "
-            f"so the same parameters could yield completely different results. "
-            f"This is only provided as a reference to understand the scale of values - do not treat it as ground truth.\n"
+            f"the result was is_converged=true, simulation_cost={simulation_cost}."
         )
         examples.append(example)
 
@@ -141,12 +137,8 @@ def generate_icl_examples_for_precision(task: str, precision_level: str) -> list
         simulation_cost = params.pop("simulation_cost")
         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
         example = (
-            f"**Reference Example 2 (for context only):**\n"
             f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
-            f"the result was is_converged=false, simulation_cost={simulation_cost}. "
-            f"Note that your problem may have different settings (case, precision requirements, etc.), "
-            f"so the same parameters could yield completely different results. "
-            f"This is only provided as a reference to understand the scale of values - do not treat it as ground truth.\n"
+            f"the result was is_converged=false, simulation_cost={simulation_cost}."
         )
         examples.append(example)
 
@@ -158,6 +150,45 @@ def generate_icl_examples(task: str, precision_levels: list) -> list:
     for precision in precision_levels:
         examples.extend(generate_icl_examples_for_precision(task, precision))
     return examples
+
+def generate_specific_icl_examples_with_header(task: str, precision_level: str) -> list:
+    """Generate specific ICL examples with proper numbering and single disclaimer"""
+    raw_examples = generate_icl_examples_for_precision(task, precision_level)
+    formatted_examples = []
+
+    for i, example in enumerate(raw_examples, 1):
+        formatted_examples.append(f"**Reference Example {i}:**\n{example}")
+
+    # Add disclaimer once at the end
+    disclaimer = (
+        "\nNote that your problem may have different settings (case, precision requirements, etc.), "
+        "so the same parameters could yield completely different results. "
+        "This is only provided as a reference to understand the scale of values - do not treat it as ground truth.\n"
+    )
+    formatted_examples.append(disclaimer)
+
+    return formatted_examples
+
+def generate_uniform_icl_examples(task: str) -> list:
+    """Generate uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each) with proper numbering"""
+    all_examples = []
+    example_counter = 1
+
+    for precision in ["low", "medium", "high"]:
+        raw_examples = generate_icl_examples_for_precision(task, precision)
+        for example in raw_examples:
+            all_examples.append(f"**Reference Example {example_counter}:**\n{example}")
+            example_counter += 1
+
+    # Add disclaimer once at the end
+    disclaimer = (
+        "\nNote that your problem may have different settings (case, precision requirements, etc.), "
+        "so the same parameters could yield completely different results. "
+        "This is only provided as a reference to understand the scale of values - do not treat it as ground truth.\n"
+    )
+    all_examples.append(disclaimer)
+
+    return all_examples
 
 # Legacy ICL examples - kept for backward compatibility but simplified
 CFL_ICL_EXAMPLES = generate_icl_examples("cfl", ["low", "medium", "high"])
@@ -269,9 +300,12 @@ def list_cases(task_dir: str):
     """Return all cases in the task directory"""
     return [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
 
-def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, precision_level: str = "low") -> str:
+def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
     """Build the workflow for the first question based on the k0 and beta0"""
-    icl_examples = generate_icl_examples_for_precision("cfl", precision_level)
+    if use_uniform_icl:
+        icl_examples = generate_uniform_icl_examples("cfl")
+    else:
+        icl_examples = generate_specific_icl_examples_with_header("cfl", precision_level)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -300,9 +334,12 @@ def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, 
         )
     return header + body
 
-def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float, precision_level: str = "low") -> str:
+def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
     """Build the workflow for n_space parameter optimization"""
-    icl_examples = generate_icl_examples_for_precision("n_space", precision_level)
+    if use_uniform_icl:
+        icl_examples = generate_uniform_icl_examples("n_space")
+    else:
+        icl_examples = generate_specific_icl_examples_with_header("n_space", precision_level)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -331,9 +368,12 @@ def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float
         )
     return header + body
 
-def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level: str = "low") -> str:
+def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
     """k-task: 0-shot select k, then only adjust n_space; beta is fixed."""
-    icl_examples = generate_icl_examples_for_precision("k", precision_level)
+    if use_uniform_icl:
+        icl_examples = generate_uniform_icl_examples("k")
+    else:
+        icl_examples = generate_specific_icl_examples_with_header("k", precision_level)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -361,9 +401,12 @@ def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level
     return header + body
 
 
-def build_beta_workflow(zero_shot: bool, k0: float, cfl0: float, precision_level: str = "low") -> str:
+def build_beta_workflow(zero_shot: bool, k0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
     """beta-task: 0-shot select beta, then only adjust n_space; k is fixed."""
-    icl_examples = generate_icl_examples_for_precision("beta", precision_level)
+    if use_uniform_icl:
+        icl_examples = generate_uniform_icl_examples("beta")
+    else:
+        icl_examples = generate_specific_icl_examples_with_header("beta", precision_level)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -415,6 +458,11 @@ def main():
                         help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                         help="Enable zero-shot mode (if not specified, generates both modes)")
+    icl_group = parser.add_mutually_exclusive_group()
+    icl_group.add_argument("--specific", action="store_true",
+                          help="Use precision-specific ICL examples (current behavior)")
+    icl_group.add_argument("--uniform", action="store_true",
+                          help="Use uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each)")
     args = parser.parse_args()
     
     # If no specific task is provided, generate all tasks
@@ -429,10 +477,16 @@ def main():
     else:
         modes = [False, True]  # Both iterative and zero-shot
 
+    # Determine ICL mode - default to specific if neither is specified
+    use_uniform_icl = args.uniform
+    if not args.specific and not args.uniform:
+        use_uniform_icl = False  # Default to specific mode
+
     print("🚀 EULER 1D ICL DATASET GENERATOR")
     print("=" * 80)
     print(f"📋 Tasks: {tasks}")
     print(f"🎯 Modes: {'zero-shot only' if len(modes) == 1 else 'iterative + zero-shot'}")
+    print(f"🧠 ICL Mode: {'uniform (6 examples)' if use_uniform_icl else 'specific (2 examples per precision)'}")
     print(f"📂 Output directory: data/euler_1d_icl/human_write/{{precision_level}}/")
     print(f"📂 Source directory: data/euler_1d_icl/{{task}}/{{precision_level}}/")
     
@@ -480,20 +534,20 @@ def main():
                         k0 = fetch_param(q["param_history"][0], "k")
                         beta0 = fetch_param(q["param_history"][0], "beta")
                         n_space0 = fetch_param(q["param_history"][0], "n_space")
-                        wf = build_cfl_workflow(zflag, k0, beta0, n_space0, precision_level)
+                        wf = build_cfl_workflow(zflag, k0, beta0, n_space0, precision_level, use_uniform_icl)
                     elif task == "n_space":
                         k0 = fetch_param(q["param_history"][0], "k")
                         beta0 = fetch_param(q["param_history"][0], "beta")
                         cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        wf = build_n_space_workflow(zflag, k0, beta0, cfl0, precision_level)
+                        wf = build_n_space_workflow(zflag, k0, beta0, cfl0, precision_level, use_uniform_icl)
                     elif task == "k":
                         beta0 = fetch_param(q["param_history"][0][0], "beta")
                         cfl0 = fetch_param(q["param_history"][0][0], "cfl")
-                        wf = build_k_workflow(zflag, beta0, cfl0, precision_level)
+                        wf = build_k_workflow(zflag, beta0, cfl0, precision_level, use_uniform_icl)
                     elif task == "beta":
                         k0 = fetch_param(q["param_history"][0][0], "k")
                         cfl0 = fetch_param(q["param_history"][0][0], "cfl")
-                        wf = build_beta_workflow(zflag, k0, cfl0, precision_level)
+                        wf = build_beta_workflow(zflag, k0, cfl0, precision_level, use_uniform_icl)
 
                     single_ds = generator.generate_dataset(wf, [q], zflag)[0]
                     

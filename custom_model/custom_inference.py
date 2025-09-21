@@ -137,7 +137,7 @@ class BOAgent:
         if optimization_type == "zero-shot":
             final_params, best_score = self.bo.solve(problem, task, profile, qid, tolerance, messages)
             
-            response = str({
+            response = json.dumps({
                 "tool_name": _PROBLEM_TO_TOOL_NAME[problem][task],
                 "tool_reason": "Based on Bayesian optimization with Gaussian process modeling and acquisition function maximization, I propose this parameter value as the optimal solution.",
                 "tool_args": final_params

@@ -367,23 +367,39 @@ class BO:
         
         return bounds
     
-    def get_fixed_params(self, problem, task):
+    def get_fixed_params(self, problem, task, tolerance="medium", qid=None):
         """Get fixed parameters for different problem-task combinations.
-        
+
         Args:
             problem (str): Problem type
             task (str): Task type
-            
+            tolerance (str): Tolerance level
+            qid (str): Question ID to read specific config from
+
         Returns:
             dict: Fixed parameter values
         """
         fixed_params = {}
-        
+
         if problem == "1D_heat_transfer":
+            # Read fixed params from problem configuration
+            dummy_path = f"./data/{NAME_TO_FOLDER[problem]}/{task}/{tolerance}/zero_shot_questions.json"
+            with open(dummy_path, 'r') as f:
+                data = json.load(f)
+            # Find the entry with matching QID
+            target_entry = None
+            for entry in data:
+                if str(entry["QID"]) == str(qid):
+                    target_entry = entry
+                    break
+            if target_entry is None:
+                raise ValueError(f"QID {qid} not found in {dummy_path}")
+
+            sample_params = target_entry["best_params"]
             if task == "cfl":
-                fixed_params = {'n_space': 100}
+                fixed_params = {'n_space': sample_params['n_space']}
             elif task == "n_space":
-                fixed_params = {'cfl': 0.25}
+                fixed_params = {'cfl': sample_params['cfl']}
         elif problem == "euler_1d":
             if task == "cfl":
                 fixed_params = {'beta': 1.0, 'k': -1.0, 'n_space': 256}
@@ -394,7 +410,7 @@ class BO:
             base_params = {'mesh_x': 128, 'mesh_y': 32, 'omega_u': 0.6, 'omega_v': 0.6, 'omega_p': 0.3,
                           'diff_u_threshold': 1e-5, 'diff_v_threshold': 1e-5, 'res_iter_v_threshold': 1e-4}
             fixed_params = {k: v for k, v in base_params.items() if k != task}
-        
+
         return fixed_params
     
     def solve(self, problem, task, profile, qid, tolerance, messages):
@@ -420,7 +436,7 @@ class BO:
         
         # Get parameter bounds and fixed parameters
         pbounds = self.get_parameter_bounds(problem, task)
-        fixed_params = self.get_fixed_params(problem, task)
+        fixed_params = self.get_fixed_params(problem, task, tolerance, qid)
         
         self.vprint(f"Parameter bounds: {pbounds}")
         self.vprint(f"Fixed parameters: {fixed_params}")
