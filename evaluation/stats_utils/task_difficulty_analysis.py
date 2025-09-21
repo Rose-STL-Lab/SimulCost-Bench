@@ -33,15 +33,17 @@ except ImportError:
 class TaskDifficultyAnalyzer:
     """Analyzer for task difficulty across SimulCost-Bench datasets"""
 
-    def __init__(self, eval_results_dir: str = "eval_results"):
+    def __init__(self, eval_results_dir: str = "eval_results", datasets: List[str] = None):
         """
         Initialize the analyzer
 
         Args:
             eval_results_dir: Path to evaluation results directory
+            datasets: List of dataset names to analyze. If None, analyze all datasets.
         """
         self.eval_results_dir = Path(eval_results_dir)
         self.output_dir = Path("eval_results/stats/task_difficulty")
+        self.target_datasets = datasets
 
         # Task difficulty categories
         self.task_categories = {
@@ -63,22 +65,32 @@ class TaskDifficultyAnalyzer:
         print("Discovering datasets and tasks...")
 
         # Find all dataset directories
+        all_available_datasets = []
         for dataset_dir in self.eval_results_dir.iterdir():
             if dataset_dir.is_dir() and dataset_dir.name not in ['overall', 'stats']:
-                self.datasets.append(dataset_dir.name)
+                all_available_datasets.append(dataset_dir.name)
 
-        print(f"Found {len(self.datasets)} datasets: {self.datasets}")
+        # Filter datasets based on target_datasets if specified
+        if self.target_datasets:
+            self.datasets = [d for d in all_available_datasets if d in self.target_datasets]
+            print(f"Using specified datasets: {self.datasets}")
+            if not self.datasets:
+                raise ValueError(f"None of the specified datasets {self.target_datasets} were found!")
+        else:
+            self.datasets = all_available_datasets
+            print(f"Found {len(self.datasets)} datasets: {self.datasets}")
 
-        # Collect all unique tasks
+        # Collect all unique tasks from subdirectories only
         all_tasks = set()
 
         for dataset in self.datasets:
-            for precision in self.precision_levels:
-                summary_file = self.eval_results_dir / dataset / f"{dataset}_{precision}_summary.csv"
-                if summary_file.exists():
-                    df = pd.read_csv(summary_file)
-                    if 'Task' in df.columns:
-                        all_tasks.update(df['Task'].unique())
+            for method_type in ['zero_shot', 'iterative']:
+                for precision in self.precision_levels:
+                    summary_file = self.eval_results_dir / dataset / method_type / f"{dataset}_{precision}_summary.csv"
+                    if summary_file.exists():
+                        df = pd.read_csv(summary_file)
+                        if 'Task' in df.columns:
+                            all_tasks.update(df['Task'].unique())
 
         # Categorize tasks: Common tasks stay Common, all others become Uncommon
         for task in all_tasks:
@@ -100,41 +112,26 @@ class TaskDifficultyAnalyzer:
 
         all_data = []
 
-        # Search for all summary files recursively
-        summary_files = list(self.eval_results_dir.glob("**/*_summary.csv"))
-        print(f"Found {len(summary_files)} summary files")
+        # Only load summary files from method subdirectories
+        for dataset in self.datasets:
+            for method_type in ['zero_shot', 'iterative']:
+                for precision in self.precision_levels:
+                    summary_file = self.eval_results_dir / dataset / method_type / f"{dataset}_{precision}_summary.csv"
 
-        for summary_file in summary_files:
-            # Skip overall and stats directories
-            if 'overall' in str(summary_file) or 'stats' in str(summary_file):
-                continue
+                    if not summary_file.exists():
+                        continue
 
-            try:
-                df = pd.read_csv(summary_file)
+                    try:
+                        df = pd.read_csv(summary_file)
 
-                # Extract dataset, precision, and method type from file path
-                file_parts = summary_file.stem.split('_')
-                if len(file_parts) >= 3:
-                    precision = file_parts[-1]  # last part should be precision
-                    dataset = '_'.join(file_parts[:-1])  # everything before precision
-                else:
-                    continue
-
-                # Determine method type (zero_shot, iterative, or other)
-                method_type = "other"  # default
-                if 'zero_shot' in str(summary_file):
-                    method_type = "zero_shot"
-                elif 'iterative' in str(summary_file):
-                    method_type = "iterative"
-
-                df['Dataset'] = dataset
-                df['Precision'] = precision
-                df['MethodType'] = method_type
-                df['FilePath'] = str(summary_file)
-                all_data.append(df)
-                print(f"  Loaded {len(df)} records from {dataset}_{precision}")
-            except Exception as e:
-                print(f"  Error loading {summary_file}: {e}")
+                        df['Dataset'] = dataset
+                        df['Precision'] = precision
+                        df['MethodType'] = method_type
+                        df['FilePath'] = str(summary_file)
+                        all_data.append(df)
+                        print(f"  Loaded {len(df)} records from {dataset}_{precision}_{method_type}")
+                    except Exception as e:
+                        print(f"  Error loading {summary_file}: {e}")
 
         if not all_data:
             raise ValueError("No summary data found!")
@@ -301,11 +298,12 @@ class TaskDifficultyAnalyzer:
 
         # Create the bar chart with smaller size
         plt.figure(figsize=(4, 4))
-        bars = plt.bar(category_stats['TaskCategory'], category_stats['success_rate_mean'], color=colors, alpha=0.7, width=0.4)
+        bars = plt.bar(category_stats['TaskCategory'], category_stats['success_rate_mean'], color=colors, alpha=0.7, width=0.3)
 
         # Customize the chart
         plt.ylabel('Success Rate', fontsize=12, fontweight='bold')
         plt.ylim(0, 1.05)
+        plt.xlim(-0.8, len(category_stats) - 0.2)  # Center the bars in the plot
         plt.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
@@ -347,7 +345,7 @@ class TaskDifficultyAnalyzer:
 
         # Create the bar chart with smaller size
         plt.figure(figsize=(4, 4))
-        bars = plt.bar(category_stats['TaskCategory'], category_stats['mean_efficiency_mean'], color=colors, alpha=0.7, width=0.4)
+        bars = plt.bar(category_stats['TaskCategory'], category_stats['mean_efficiency_mean'], color=colors, alpha=0.7, width=0.3)
 
         # Customize the chart
         plt.ylabel('Efficiency', fontsize=12, fontweight='bold')
@@ -355,6 +353,7 @@ class TaskDifficultyAnalyzer:
         # Set ylim based on data with extra margin
         max_val = category_stats['mean_efficiency_mean'].max()
         plt.ylim(0, max_val * 1.15)
+        plt.xlim(-0.8, len(category_stats) - 0.2)  # Center the bars in the plot
         plt.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
@@ -672,11 +671,13 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze task difficulty across SimulCost-Bench datasets')
     parser.add_argument('--eval-results-dir', type=str, default='eval_results',
                        help='Path to evaluation results directory')
+    parser.add_argument('-d', '--datasets', type=str, nargs='+', default=None,
+                       help='List of dataset names to analyze (e.g., burgers_1d euler_1d). If not specified, analyze all datasets.')
 
     args = parser.parse_args()
 
     # Initialize and run the analyzer
-    analyzer = TaskDifficultyAnalyzer(eval_results_dir=args.eval_results_dir)
+    analyzer = TaskDifficultyAnalyzer(eval_results_dir=args.eval_results_dir, datasets=args.datasets)
     analyzer.run_analysis()
 
 

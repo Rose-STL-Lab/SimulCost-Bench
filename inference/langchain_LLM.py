@@ -119,6 +119,7 @@ class LLMAgentBase():
         self.agent_name = agent_name
         self.output_field = output_field
         self.logger = logger
+        self._dataset_name = None  # For special dataset handling
         if provider_global == "openai":
             self.llm = ChatOpenAI(
                 model_name=model_name_global,
@@ -182,13 +183,21 @@ class LLMAgentBase():
         request_keys = ",".join(self.output_field)
         return f"{instruction}\n{FORMAT_INST(request_keys)}"
 
-    def query(self, messages: list[dict], instruction: str) -> list:
+    def set_dataset_name(self, dataset_name: str):
+        """Set the dataset name for special handling"""
+        self._dataset_name = dataset_name
+
+    def query(self, messages: list[dict], instruction: str, profile: int = None) -> list:
         messages[-1]["content"] += "\n" + self.generate_output_instruction(instruction)
-        
+
         max_retries = 3
         for attempt in range(max_retries):
             if provider_global == "custom_model":
-                raw_response = self.llm.invoke(messages)
+                # Special handling for heat_1d_bo dataset
+                if hasattr(self, '_dataset_name') and self._dataset_name == "heat_1d_bo":
+                    raw_response = self.llm.invoke(messages, profile)
+                else:
+                    raw_response = self.llm.invoke(messages)
                 json_response = raw_response.strip()
             else:
                 raw_response = self.llm.invoke(messages)
@@ -318,13 +327,17 @@ class AgentSystem():
         self.logger = logger
         self.experiment_agent = None
         
-    def get_experiment_agent(self, output_fields=None):
+    def get_experiment_agent(self, output_fields=None, dataset_name=None):
         if output_fields is None:
             output_fields = ["tool_reason", "tool_name", "tool_args"]
-        
+
         if self.experiment_agent is None or self.experiment_agent.output_field != output_fields:
             self.experiment_agent = LLMAgentBase(output_fields, "Experiment Agent", self.logger)
-        
+
+        # Set dataset name for special handling
+        if dataset_name:
+            self.experiment_agent.set_dataset_name(dataset_name)
+
         return self.experiment_agent
 
 def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.Logger, provider: str, model_name: str, progress_file: str = None, resume_state: dict = None) -> tuple[List[Dict], pd.DataFrame]:
@@ -569,6 +582,7 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 # Dataset-Task compatibility mapping
 DATASET_TASK_MAP = {
     "heat_1d": ["cfl", "n_space"],
+    "heat_1d_bo": ["cfl", "n_space"],  # Bayesian Optimization version for heat_1d
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
@@ -632,12 +646,22 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     """
     # All datasets now use precision_level in path structure
     # Handle dataset directory name mapping
-    data_dir_name = "ns_channel_2d" if dataset == "ns_2d" else dataset
+    if dataset == "ns_2d":
+        data_dir_name = "ns_channel_2d"
+    elif dataset == "heat_1d_bo":
+        data_dir_name = "heat_1d"  # Use heat_1d data directory for heat_1d_bo
+    else:
+        data_dir_name = dataset
     
     result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
     log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
-    dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
-    archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_agent.json"
+    if dataset == "heat_1d_bo":
+        # For heat_1d_bo, use the generated BO dataset files
+        dataset_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_dataset.json"
+        archive_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_agent.json"
+    else:
+        dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
+        archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_agent.json"
     
     # --------------------------------
     os.makedirs(result_dir, exist_ok=True)
@@ -666,6 +690,7 @@ Examples:
 
 Available dataset-task combinations:
   heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
+  heat_1d_bo: cfl, n_space (use -l for precision_level: low/medium/high) [Bayesian Optimization with profile passing]
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
   burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)

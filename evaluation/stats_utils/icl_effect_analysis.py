@@ -38,24 +38,26 @@ from typing import Dict, List, Tuple
 import csv
 
 
-def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load the required CSV files for comparison.
 
     Returns:
-        Tuple of (euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed)
+        Tuple of (euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed, euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed)
     """
     base_path = Path("eval_results")
 
     # Load aggregated data
     euler_1d_agg = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum_aggregated.csv")
     euler_1d_icl_agg = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum_aggregated.csv")
+    euler_1d_icl_no_cost_agg = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_sum_aggregated.csv")
 
     # Load detailed data
     euler_1d_detailed = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum.csv")
     euler_1d_icl_detailed = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum.csv")
+    euler_1d_icl_no_cost_detailed = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_sum.csv")
 
-    return euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed
+    return euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed, euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed
 
 
 def is_number(v) -> bool:
@@ -84,13 +86,14 @@ def calculate_improvement(baseline: float, icl: float) -> float:
     return ((float(icl) - float(baseline)) / float(baseline)) * 100
 
 
-def analyze_aggregated_data(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg: pd.DataFrame) -> pd.DataFrame:
+def analyze_aggregated_data(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg: pd.DataFrame, euler_1d_icl_no_cost_agg: pd.DataFrame) -> pd.DataFrame:
     """
     Analyze aggregated data to compare overall performance.
 
     Args:
         euler_1d_agg: Aggregated euler_1d results
         euler_1d_icl_agg: Aggregated euler_1d_icl results
+        euler_1d_icl_no_cost_agg: Aggregated euler_1d_icl_no_cost results
 
     Returns:
         DataFrame with comparison results
@@ -98,12 +101,8 @@ def analyze_aggregated_data(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg: pd.Dat
     comparison_results = []
 
     # Merge datasets by Model and Inference Mode
-    merged = pd.merge(
-        euler_1d_agg,
-        euler_1d_icl_agg,
-        on=['Model', 'Inference Mode'],
-        suffixes=('_baseline', '_icl')
-    )
+    merged = pd.merge(euler_1d_agg, euler_1d_icl_agg, on=['Model', 'Inference Mode'], suffixes=('_baseline', '_icl'))
+    merged = pd.merge(merged, euler_1d_icl_no_cost_agg, on=['Model', 'Inference Mode'], suffixes=('', '_icl_no_cost'))
 
     for _, row in merged.iterrows():
         model = row['Model']
@@ -112,23 +111,32 @@ def analyze_aggregated_data(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg: pd.Dat
         # Calculate improvements for key metrics
         success_rate_baseline = row.get('success_rate_baseline', 0)
         success_rate_icl = row.get('success_rate_icl', 0)
+        success_rate_icl_no_cost = row.get('success_rate', 0)  # No suffix for the third dataset
         efficiency_baseline = row.get('mean_efficiency_baseline', 0)
         efficiency_icl = row.get('mean_efficiency_icl', 0)
+        efficiency_icl_no_cost = row.get('mean_efficiency', 0)  # No suffix for the third dataset
 
         success_improvement = calculate_improvement(success_rate_baseline, success_rate_icl)
+        success_improvement_no_cost = calculate_improvement(success_rate_baseline, success_rate_icl_no_cost)
         efficiency_improvement = calculate_improvement(efficiency_baseline, efficiency_icl)
+        efficiency_improvement_no_cost = calculate_improvement(efficiency_baseline, efficiency_icl_no_cost)
 
         comparison_results.append({
             'Model': model,
             'Inference Mode': mode,
             'Success Rate (Baseline)': f"{float(success_rate_baseline):.2f}" if is_number(success_rate_baseline) else "N/A",
             'Success Rate (ICL)': f"{float(success_rate_icl):.2f}" if is_number(success_rate_icl) else "N/A",
+            'Success Rate (ICL no cost)': f"{float(success_rate_icl_no_cost):.2f}" if is_number(success_rate_icl_no_cost) else "N/A",
             'Success Rate Improvement (%)': f"{success_improvement:.2f}" if success_improvement != 0 else "N/A",
+            'Success Rate Improvement no cost (%)': f"{success_improvement_no_cost:.2f}" if success_improvement_no_cost != 0 else "N/A",
             'Efficiency (Baseline)': f"{float(efficiency_baseline):.2f}" if is_number(efficiency_baseline) else "N/A",
             'Efficiency (ICL)': f"{float(efficiency_icl):.2f}" if is_number(efficiency_icl) else "N/A",
+            'Efficiency (ICL no cost)': f"{float(efficiency_icl_no_cost):.2f}" if is_number(efficiency_icl_no_cost) else "N/A",
             'Efficiency Improvement (%)': f"{efficiency_improvement:.2f}" if efficiency_improvement != 0 else "N/A",
+            'Efficiency Improvement no cost (%)': f"{efficiency_improvement_no_cost:.2f}" if efficiency_improvement_no_cost != 0 else "N/A",
             'Samples (Baseline)': row.get('Number of Samples_baseline', 0),
-            'Samples (ICL)': row.get('Number of Samples_icl', 0)
+            'Samples (ICL)': row.get('Number of Samples_icl', 0),
+            'Samples (ICL no cost)': row.get('Number of Samples', 0)  # No suffix for the third dataset
         })
 
     return pd.DataFrame(comparison_results)
@@ -289,43 +297,63 @@ def save_comparison_tables(agg_comparison: pd.DataFrame, detailed_comparison: pd
     print(f"   📈 Excel: {excel_path}")
 
 
-def create_aggregated_visualization(comparison_df: pd.DataFrame, metric: str, mode: str) -> None:
+def create_aggregated_visualization(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg: pd.DataFrame, euler_1d_icl_no_cost_agg: pd.DataFrame, metric: str, mode: str) -> None:
     """
-    Create visualization for aggregated ICL effect analysis.
+    Create visualization for aggregated ICL effect analysis with three datasets.
 
     Args:
-        comparison_df: Comparison DataFrame
+        euler_1d_agg: Baseline aggregated results
+        euler_1d_icl_agg: ICL aggregated results
+        euler_1d_icl_no_cost_agg: ICL no cost aggregated results
         metric: Metric type ('success_rate' or 'efficiency')
         mode: Inference mode ('Zero-shot' or 'Iterative')
     """
     output_dir = Path("eval_results/stats/icl_effect")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    mode_data = comparison_df[comparison_df['Inference Mode'] == mode].copy()
+    # Filter data by mode
+    baseline_data = euler_1d_agg[euler_1d_agg['Inference Mode'] == mode].copy()
+    icl_data = euler_1d_icl_agg[euler_1d_icl_agg['Inference Mode'] == mode].copy()
+    icl_no_cost_data = euler_1d_icl_no_cost_agg[euler_1d_icl_no_cost_agg['Inference Mode'] == mode].copy()
 
-    if len(mode_data) == 0:
+    if len(baseline_data) == 0:
         print(f"⚠️  No data available for {mode} mode {metric} visualization")
         return
+
+    # Merge datasets by Model
+    merged = pd.merge(baseline_data, icl_data, on=['Model'], suffixes=('_baseline', '_icl'))
+    merged = pd.merge(merged, icl_no_cost_data, on=['Model'], suffixes=('', '_no_cost'))
 
     models = []
     baseline_values = []
     icl_values = []
+    icl_no_cost_values = []
 
-    baseline_col = f"{metric.replace('_', ' ').title()} (Baseline)"
-    icl_col = f"{metric.replace('_', ' ').title()} (ICL)"
+    # Get metric column names
+    if metric == 'success_rate':
+        baseline_col = 'success_rate_baseline'
+        icl_col = 'success_rate_icl'
+        no_cost_col = 'success_rate'
+    else:  # efficiency
+        baseline_col = 'mean_efficiency_baseline'
+        icl_col = 'mean_efficiency_icl'
+        no_cost_col = 'mean_efficiency'
 
-    for _, row in mode_data.iterrows():
+    for _, row in merged.iterrows():
         model = row['Model']
         baseline = row.get(baseline_col, 'N/A')
         icl = row.get(icl_col, 'N/A')
+        icl_no_cost = row.get(no_cost_col, 'N/A')
 
-        if baseline != 'N/A' and icl != 'N/A':
+        if baseline != 'N/A' and icl != 'N/A' and icl_no_cost != 'N/A':
             try:
                 baseline_val = float(baseline)
                 icl_val = float(icl)
+                icl_no_cost_val = float(icl_no_cost)
                 models.append(model)
                 baseline_values.append(baseline_val)
                 icl_values.append(icl_val)
+                icl_no_cost_values.append(icl_no_cost_val)
             except:
                 continue
 
@@ -336,44 +364,57 @@ def create_aggregated_visualization(comparison_df: pd.DataFrame, metric: str, mo
     # Set up the plot style
     plt.style.use('default')
 
-    # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(14, 5))
+    # Create figure with square dimensions (width = height)
+    fig, ax = plt.subplots(1, 1, figsize=(11, 5))
+
+    # Set fixed subplot parameters to ensure consistent layout
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 
     # Create horizontal bar plot for comparison
     y_pos = np.arange(len(models))
+    bar_width = 0.25
 
-    # Create bars for baseline and ICL data (baseline first, then ICL)
-    bars1 = ax.barh(y_pos + 0.2, baseline_values, 0.4, label='Baseline',
+    # Create bars for three datasets
+    bars1 = ax.barh(y_pos + bar_width, baseline_values, bar_width, label='Baseline',
                     color='gray', alpha=0.8, edgecolor='black', linewidth=1)
-    bars2 = ax.barh(y_pos - 0.2, icl_values, 0.4, label='ICL',
+    bars2 = ax.barh(y_pos, icl_values, bar_width, label='ICL',
                     color='orange', alpha=0.8, edgecolor='black', linewidth=1,
                     hatch='/')
+    bars3 = ax.barh(y_pos - bar_width, icl_no_cost_values, bar_width, label='ICL (no cost)',
+                    color='white', alpha=1.0, edgecolor='blue', linewidth=2)
 
     # Customize plot
     metric_title = metric.replace('_', ' ').title()
     ax.set_xlabel(f'{metric_title}', fontweight='bold', fontsize=12)
-    ax.set_ylabel('Models', fontweight='bold', fontsize=12)
+    ax.set_ylabel('')  # Remove "Models" label
     ax.set_yticks(y_pos)
     ax.set_yticklabels(models, fontsize=10)
     ax.grid(True, alpha=0.3, axis='x')
     ax.legend(loc='best', fontsize=11)
 
+    # Set x-axis limits to provide space for text labels
+    max_value = max(baseline_values + icl_values + icl_no_cost_values)
+    ax.set_xlim(0, max_value * 1.2)  # Add 10% extra space on the right
+
     # Add value labels on bars
     for bar, value in zip(bars1, baseline_values):
         width = bar.get_width()
-        ax.text(width + max(baseline_values + icl_values) * 0.01, bar.get_y() + bar.get_height()/2.,
+        ax.text(width + max_value * 0.01, bar.get_y() + bar.get_height()/2.,
                 f'{value:.2f}', ha='left', va='center', fontsize=9)
 
     for bar, value in zip(bars2, icl_values):
         width = bar.get_width()
-        ax.text(width + max(baseline_values + icl_values) * 0.01, bar.get_y() + bar.get_height()/2.,
+        ax.text(width + max_value * 0.01, bar.get_y() + bar.get_height()/2.,
                 f'{value:.2f}', ha='left', va='center', fontsize=9)
 
-    # Adjust layout and save
-    plt.tight_layout()
+    for bar, value in zip(bars3, icl_no_cost_values):
+        width = bar.get_width()
+        ax.text(width + max_value * 0.01, bar.get_y() + bar.get_height()/2.,
+                f'{value:.2f}', ha='left', va='center', fontsize=9)
 
+    # Save with fixed dimensions instead of tight bbox to ensure consistency
     output_file = output_dir / f"{metric}_{mode.lower().replace('-', '_')}.png"
-    plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.savefig(output_file, dpi=300, bbox_inches=None, facecolor='white')
     plt.close()
 
     print(f"✅ {mode} mode {metric} visualization saved: {output_file}")
@@ -533,28 +574,50 @@ def print_summary_statistics(agg_comparison: pd.DataFrame) -> None:
 
         # Success rate improvements
         success_improvements = []
+        success_improvements_no_cost = []
         efficiency_improvements = []
+        efficiency_improvements_no_cost = []
 
         for _, row in mode_data.iterrows():
             success_imp = row.get('Success Rate Improvement (%)', 'N/A')
+            success_imp_no_cost = row.get('Success Rate Improvement no cost (%)', 'N/A')
             efficiency_imp = row.get('Efficiency Improvement (%)', 'N/A')
+            efficiency_imp_no_cost = row.get('Efficiency Improvement no cost (%)', 'N/A')
 
             if success_imp != 'N/A' and is_number(success_imp):
                 success_improvements.append(float(success_imp))
+            if success_imp_no_cost != 'N/A' and is_number(success_imp_no_cost):
+                success_improvements_no_cost.append(float(success_imp_no_cost))
             if efficiency_imp != 'N/A' and is_number(efficiency_imp):
                 efficiency_improvements.append(float(efficiency_imp))
+            if efficiency_imp_no_cost != 'N/A' and is_number(efficiency_imp_no_cost):
+                efficiency_improvements_no_cost.append(float(efficiency_imp_no_cost))
 
+        print(f"   📈 ICL vs Baseline:")
         if success_improvements:
             avg_success = np.mean(success_improvements)
             positive_success = sum(1 for x in success_improvements if x > 0)
-            print(f"   Success Rate: {avg_success:.2f}% average improvement")
-            print(f"   Success Rate: {positive_success}/{len(success_improvements)} models improved")
+            print(f"      Success Rate: {avg_success:.2f}% average improvement")
+            print(f"      Success Rate: {positive_success}/{len(success_improvements)} models improved")
 
         if efficiency_improvements:
             avg_efficiency = np.mean(efficiency_improvements)
             positive_efficiency = sum(1 for x in efficiency_improvements if x > 0)
-            print(f"   Efficiency: {avg_efficiency:.2f}% average improvement")
-            print(f"   Efficiency: {positive_efficiency}/{len(efficiency_improvements)} models improved")
+            print(f"      Efficiency: {avg_efficiency:.2f}% average improvement")
+            print(f"      Efficiency: {positive_efficiency}/{len(efficiency_improvements)} models improved")
+
+        print(f"   📈 ICL (no cost) vs Baseline:")
+        if success_improvements_no_cost:
+            avg_success_no_cost = np.mean(success_improvements_no_cost)
+            positive_success_no_cost = sum(1 for x in success_improvements_no_cost if x > 0)
+            print(f"      Success Rate: {avg_success_no_cost:.2f}% average improvement")
+            print(f"      Success Rate: {positive_success_no_cost}/{len(success_improvements_no_cost)} models improved")
+
+        if efficiency_improvements_no_cost:
+            avg_efficiency_no_cost = np.mean(efficiency_improvements_no_cost)
+            positive_efficiency_no_cost = sum(1 for x in efficiency_improvements_no_cost if x > 0)
+            print(f"      Efficiency: {avg_efficiency_no_cost:.2f}% average improvement")
+            print(f"      Efficiency: {positive_efficiency_no_cost}/{len(efficiency_improvements_no_cost)} models improved")
 
     print("\n" + "="*80)
 
@@ -566,12 +629,12 @@ def main():
 
     try:
         # Load data
-        euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed = load_data()
+        euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed, euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed = load_data()
         print("✅ Data loaded successfully")
 
         # Analyze aggregated data
         print("\n📊 Analyzing aggregated results...")
-        agg_comparison = analyze_aggregated_data(euler_1d_agg, euler_1d_icl_agg)
+        agg_comparison = analyze_aggregated_data(euler_1d_agg, euler_1d_icl_agg, euler_1d_icl_no_cost_agg)
 
         # Analyze detailed data
         print("📊 Analyzing detailed results...")
@@ -585,13 +648,13 @@ def main():
         print("\n📈 Creating aggregated visualizations...")
         for mode in ['Zero-shot', 'Iterative']:
             for metric in ['success_rate', 'efficiency']:
-                create_aggregated_visualization(agg_comparison, metric, mode)
+                create_aggregated_visualization(euler_1d_agg, euler_1d_icl_agg, euler_1d_icl_no_cost_agg, metric, mode)
 
-        # Create detailed visualizations
+        # Create detailed visualizations (excluding success_rate_detailed_zero_shot.png and efficiency_detailed_zero_shot.png)
         print("\n📈 Creating detailed visualizations...")
         for metric in ['success_rate', 'efficiency']:
-            for mode in ['Zero-shot', 'Iterative']:
-                create_detailed_visualization(detailed_comparison, metric, mode)
+            # Only create iterative mode detailed visualizations
+            create_detailed_visualization(detailed_comparison, metric, 'Iterative')
 
         # Print summary statistics
         print_summary_statistics(agg_comparison)
