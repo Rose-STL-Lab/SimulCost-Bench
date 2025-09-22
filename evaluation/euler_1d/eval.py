@@ -74,16 +74,18 @@ def evaluate(
     """
     flag = "zero_shot" if zero_shot else "iterative"
     
-    # Use precision_level-based paths for euler_1d
+    # Use precision_level-based paths for the specified dataset
     log_dir = f"eval_results/{dataset}/{task}/{precision_level}"
     os.makedirs(log_dir, exist_ok=True)
     log_file = f"{log_dir}/{flag}_{model_name}.log"
     logger = setup_logging(log_file)
-    
-    # Build paths for euler_1d precision_level structure
-    result_path = f"results_model_attempt/euler_1d/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    dummy_path = f"data/euler_1d/{task}/{precision_level}/{flag}_questions.json"
+    # Build paths for the specified dataset with precision_level structure
+    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
+
+    # For ICL variants, all use the same base euler_1d_icl data
+    data_dir = "euler_1d_icl" if dataset.startswith("euler_1d_icl") else dataset
+    dummy_path = f"data/{data_dir}/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):

@@ -9,6 +9,7 @@ providing comprehensive statistics and visualizations for model comparison using
 Usage
 -----
 python evaluation/overall_stats.py
+python evaluation/overall_stats.py -d heat_1d_bo  # Compare models with Bayesian optimization
 
 Output: Creates comprehensive statistics and visualizations in eval_results/overall/:
 - overall_summary.csv (aggregated performance across all datasets)
@@ -17,6 +18,11 @@ Output: Creates comprehensive statistics and visualizations in eval_results/over
 - efficiency_overall.png (efficiency bar chart)
 - line_plot_zero_shot.png (success rate & efficiency line plots for zero-shot mode)
 - line_plot_iterative.png (success rate & efficiency line plots for iterative mode)
+
+For heat_1d_bo comparison:
+- heat_1d_bo_comparison.csv (model vs Bayesian optimization comparison)
+- heat_1d_bo_comparison.xlsx (formatted comparison table)
+- heat_1d_bo_comparison_plots.png (comparison visualizations)
 """
 
 import csv
@@ -24,6 +30,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from statistics import mean
@@ -40,17 +47,19 @@ except ImportError:
 class OverallStatsGenerator:
     """Generate comprehensive statistics and visualizations across all datasets."""
 
-    def __init__(self, base_dir: str = "eval_results", output_dir: str = "eval_results/overall"):
+    def __init__(self, base_dir: str = "eval_results", output_dir: str = "eval_results/overall", target_dataset: Optional[str] = None):
         """
         Initialize the overall statistics generator.
 
         Args:
             base_dir: Base directory containing individual dataset results
             output_dir: Directory to save overall statistics and visualizations
+            target_dataset: Specific dataset to process (e.g., 'heat_1d_bo')
         """
         self.base_dir = Path(base_dir)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.target_dataset = target_dataset
 
         # Set up professional plotting style
         plt.style.use('seaborn-v0_8-whitegrid')
@@ -68,6 +77,7 @@ class OverallStatsGenerator:
             'qwen3_8b': 'Qwen3-8B',
             'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
             'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+            'bayesian_optimization': 'Bayesian Optimization',
         }
 
     def clean_model_name(self, model_name: str) -> str:
@@ -85,6 +95,7 @@ class OverallStatsGenerator:
     def find_available_datasets(self) -> List[str]:
         """
         Find all available datasets with summary CSV files.
+        If target_dataset is specified, only include that dataset.
 
         Returns:
             List of dataset names that have summary files
@@ -93,6 +104,24 @@ class OverallStatsGenerator:
         if not self.base_dir.exists():
             return datasets
 
+        # If target dataset is specified, only look for that one
+        if self.target_dataset:
+            if self.target_dataset == 'heat_1d_bo':
+                # Special handling for heat_1d_bo comparison
+                heat_1d_file = self.base_dir / "heat_1d" / "heat_1d_sum.csv"
+                heat_1d_bo_file = self.base_dir / "heat_1d_bo" / "heat_1d_bo_sum.csv"
+                if heat_1d_file.exists() and heat_1d_bo_file.exists():
+                    return ['heat_1d', 'heat_1d_bo']
+            else:
+                # Standard single dataset processing
+                target_dir = self.base_dir / self.target_dataset
+                if target_dir.exists() and target_dir.is_dir():
+                    summary_file = target_dir / f"{self.target_dataset}_sum.csv"
+                    if summary_file.exists():
+                        return [self.target_dataset]
+            return []
+
+        # Default behavior: find all available datasets
         for item in self.base_dir.iterdir():
             if item.is_dir() and item.name not in ['overall', 'stats']:
                 summary_file = item / f"{item.name}_sum.csv"
@@ -1170,8 +1199,445 @@ class OverallStatsGenerator:
 
         print(f"Combined line plot saved to: {output_path}")
 
+    def generate_heat_1d_bo_comparison(self) -> None:
+        """Generate comparison between models and Bayesian optimization for heat_1d_bo."""
+        print("🚀 Starting heat_1d_bo comparison generation...")
+
+        try:
+            # Create heat_1d_bo specific output directory
+            heat_1d_bo_output_dir = self.output_dir / "heat_1d_bo"
+            heat_1d_bo_output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Load heat_1d data
+            heat_1d_file = self.base_dir / "heat_1d" / "heat_1d_sum.csv"
+            heat_1d_bo_file = self.base_dir / "heat_1d_bo" / "heat_1d_bo_sum.csv"
+
+            if not heat_1d_file.exists() or not heat_1d_bo_file.exists():
+                raise ValueError("Required files for heat_1d_bo comparison not found")
+
+            # Load the datasets
+            heat_1d_df = pd.read_csv(heat_1d_file)
+            heat_1d_bo_df = pd.read_csv(heat_1d_bo_file)
+
+            # Apply model name mapping
+            heat_1d_df['Model'] = heat_1d_df['Model'].apply(self.clean_model_name)
+            heat_1d_bo_df['Model'] = heat_1d_bo_df['Model'].apply(self.clean_model_name)
+
+            print(f"  - Loaded {len(heat_1d_df)} records from heat_1d")
+            print(f"  - Loaded {len(heat_1d_bo_df)} records from heat_1d_bo")
+
+            # Generate comparison statistics and visualizations
+            comparison_df = self.create_heat_1d_bo_comparison_table(heat_1d_df, heat_1d_bo_df)
+
+            # Save results to heat_1d_bo subdirectory
+            self.save_heat_1d_bo_comparison_results(comparison_df, heat_1d_bo_output_dir)
+            self.create_heat_1d_bo_comparison_plots(heat_1d_df, heat_1d_bo_df, heat_1d_bo_output_dir)
+
+            print(f"\n🎉 heat_1d_bo comparison generation completed!")
+            print(f"📁 Results saved to: {heat_1d_bo_output_dir}")
+
+        except Exception as e:
+            print(f"❌ Error generating heat_1d_bo comparison: {e}")
+            raise
+
+    def create_heat_1d_bo_comparison_table(self, heat_1d_df: pd.DataFrame, heat_1d_bo_df: pd.DataFrame) -> pd.DataFrame:
+        """Create comparison table between models and Bayesian optimization."""
+        comparison_data = []
+
+        # Get unique precision levels
+        precision_levels = ['low', 'medium', 'high']
+
+        for precision in precision_levels:
+            # Get Bayesian optimization results for this precision
+            bo_data = heat_1d_bo_df[heat_1d_bo_df['Precision Level'] == precision]
+            if len(bo_data) == 0:
+                continue
+
+            bo_success_rate = bo_data['success_rate'].iloc[0]
+            bo_efficiency = bo_data['mean_efficiency'].iloc[0]
+
+            # Get model results for this precision level
+            precision_models = heat_1d_df[heat_1d_df['Precision Level'] == precision]
+
+            # Group by model and calculate averages across inference modes
+            for model in precision_models['Model'].unique():
+                model_data = precision_models[precision_models['Model'] == model]
+
+                # Calculate averages across inference modes
+                avg_success_rate = model_data['success_rate'].mean()
+                avg_efficiency = model_data['mean_efficiency'].mean()
+
+                # Calculate differences vs Bayesian optimization
+                success_diff = avg_success_rate - bo_success_rate
+                efficiency_diff = avg_efficiency - bo_efficiency
+
+                comparison_data.append({
+                    'Precision Level': precision,
+                    'Model': model,
+                    'Model Success Rate': round(avg_success_rate, 2),
+                    'Model Efficiency': round(avg_efficiency, 2),
+                    'BO Success Rate': round(bo_success_rate, 2),
+                    'BO Efficiency': round(bo_efficiency, 2),
+                    'Success Rate Diff': round(success_diff, 2),
+                    'Efficiency Diff': round(efficiency_diff, 2),
+                    'Model Better (Success)': 'Yes' if success_diff > 0 else 'No',
+                    'Model Better (Efficiency)': 'Yes' if efficiency_diff > 0 else 'No'
+                })
+
+        # Create DataFrame and sort
+        comparison_df = pd.DataFrame(comparison_data)
+        precision_order = {'low': 0, 'medium': 1, 'high': 2}
+        comparison_df['precision_order'] = comparison_df['Precision Level'].map(precision_order)
+        comparison_df = comparison_df.sort_values(['precision_order', 'Model']).drop(['precision_order'], axis=1)
+
+        return comparison_df
+
+    def save_heat_1d_bo_comparison_results(self, df: pd.DataFrame, output_dir: Path) -> None:
+        """Save heat_1d_bo comparison results to CSV and Excel."""
+        # Save CSV
+        csv_path = output_dir / "heat_1d_bo_comparison.csv"
+        df.to_csv(csv_path, index=False)
+        print(f"heat_1d_bo comparison CSV saved to: {csv_path}")
+
+        # Save Excel with formatting
+        excel_path = output_dir / "heat_1d_bo_comparison.xlsx"
+
+        with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
+            wb = writer.book
+            ws = wb.add_worksheet('heat_1d_bo Comparison')
+            writer.sheets['heat_1d_bo Comparison'] = ws
+
+            # Formatting styles
+            header_fmt = wb.add_format({
+                'bold': True,
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': '#F0F0F0'
+            })
+
+            # Model better formatting
+            model_better_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#E8F5E8'  # Light green
+            })
+
+            # BO better formatting
+            bo_better_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#FFE8E8'  # Light red
+            })
+
+            # Neutral formatting
+            neutral_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#F8F8F8'
+            })
+
+            # Write headers
+            for i, col in enumerate(df.columns):
+                ws.write(0, i, col, header_fmt)
+
+            # Write data with conditional formatting
+            for row_idx, (_, row) in enumerate(df.iterrows(), 1):
+                for col_idx, col in enumerate(df.columns):
+                    value = row[col]
+
+                    # Choose formatting based on performance
+                    if col in ['Model Better (Success)', 'Model Better (Efficiency)']:
+                        if value == 'Yes':
+                            cell_fmt = model_better_fmt
+                        else:
+                            cell_fmt = bo_better_fmt
+                    elif col in ['Success Rate Diff', 'Efficiency Diff']:
+                        if value > 0:
+                            cell_fmt = model_better_fmt
+                        elif value < 0:
+                            cell_fmt = bo_better_fmt
+                        else:
+                            cell_fmt = neutral_fmt
+                    else:
+                        cell_fmt = neutral_fmt
+
+                    ws.write(row_idx, col_idx, value, cell_fmt)
+
+            # Auto-adjust column widths
+            for idx, col in enumerate(df.columns):
+                max_len = max(len(str(df[col].max())), len(col)) + 2
+                ws.set_column(idx, idx, min(max_len, 20))
+
+            # Add legend
+            legend_row = len(df) + 3
+            legend_fmt = wb.add_format({'italic': True, 'font_size': 9})
+
+            ws.write(legend_row, 0, "Legend:", legend_fmt)
+            ws.write(legend_row + 1, 0, "Green: Model performs better", model_better_fmt)
+            ws.write(legend_row + 2, 0, "Red: Bayesian Optimization performs better", bo_better_fmt)
+
+        print(f"heat_1d_bo comparison Excel saved to: {excel_path}")
+
+    def create_heat_1d_bo_comparison_plots(self, heat_1d_df: pd.DataFrame, heat_1d_bo_df: pd.DataFrame, output_dir: Path) -> None:
+        """Create comparison line plots between models and Bayesian optimization."""
+        precision_levels = ['low', 'medium', 'high']
+        metrics = ['Success Rate', 'Efficiency']
+        inference_modes = ['Zero-shot', 'Iterative']
+
+        # Get unique models
+        models = sorted(heat_1d_df['Model'].unique())
+
+        # Define three colors: blue, green, pink
+        base_colors = ['#1f77b4', '#2ca02c', '#ff69b4']  # Blue, Green, Pink
+
+        # Define markers: hollow circle and hollow square only
+        base_markers = ['o', 's']
+
+        # Define line styles: solid, dashed with shorter segments
+        line_styles = ['-', (0, (3, 2))]  # solid, short dashed (3pt dash, 2pt gap)
+
+        # Create style mapping for models (similar to the original line plot)
+        model_styles = {}
+        for i, model in enumerate(models):
+            color_idx = i % len(base_colors)
+            marker_idx = i % len(base_markers)
+            line_idx = (i // len(base_colors)) % len(line_styles)
+
+            model_styles[model] = {
+                'color': base_colors[color_idx],
+                'marker': base_markers[marker_idx],
+                'linestyle': line_styles[line_idx]
+            }
+
+        # Add Bayesian Optimization style
+        bo_style = {
+            'color': '#FF6B35',
+            'marker': 'D',
+            'linestyle': '-'
+        }
+
+        # Create single figure with 4 subplots (1x4 horizontal layout)
+        fig = plt.figure(figsize=(16, 5))
+
+        # Create custom layout: legend at top, plots in middle, labels at bottom
+        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.18)
+
+        # Create legend axis (spans full width at top)
+        legend_ax = fig.add_subplot(gs[0, :])
+
+        # Create 4 subplot axes (1x4 horizontal grid)
+        axes = {
+            ('Zero-shot', 'Success Rate'): fig.add_subplot(gs[1, 0]),
+            ('Zero-shot', 'Efficiency'): fig.add_subplot(gs[1, 1]),
+            ('Iterative', 'Success Rate'): fig.add_subplot(gs[1, 2]),
+            ('Iterative', 'Efficiency'): fig.add_subplot(gs[1, 3])
+        }
+
+        # Create bottom label axes
+        label_axes = [
+            fig.add_subplot(gs[2, 0]),
+            fig.add_subplot(gs[2, 1]),
+            fig.add_subplot(gs[2, 2]),
+            fig.add_subplot(gs[2, 3])
+        ]
+
+        # Plot data for all mode-metric combinations
+        for mode in inference_modes:
+            for metric in metrics:
+                ax = axes[(mode, metric)]
+
+                # Plot model lines for this specific inference mode
+                for model in models:
+                    x_values = []
+                    y_values = []
+
+                    for precision_idx, precision in enumerate(precision_levels):
+                        # Get model data for this precision level and specific inference mode
+                        model_data = heat_1d_df[
+                            (heat_1d_df['Model'] == model) &
+                            (heat_1d_df['Precision Level'] == precision) &
+                            (heat_1d_df['Inference Mode'] == mode)
+                        ]
+                        if len(model_data) > 0:
+                            if metric == 'Success Rate':
+                                value = model_data['success_rate'].iloc[0]
+                            else:  # Efficiency
+                                value = model_data['mean_efficiency'].iloc[0]
+
+                            x_values.append(precision_idx)
+                            y_values.append(value)
+
+                    # Plot line for this model
+                    if len(x_values) > 0:
+                        style = model_styles[model]
+
+                        ax.plot(x_values, y_values,
+                               marker=style['marker'],
+                               color=style['color'],
+                               linestyle=style['linestyle'],
+                               linewidth=1.0,
+                               markersize=3,
+                               markerfacecolor='white',
+                               markeredgecolor=style['color'],
+                               markeredgewidth=1.0,
+                               alpha=1.0,
+                               clip_on=False)
+
+                # Plot Bayesian Optimization line (same for all modes)
+                bo_x_values = []
+                bo_y_values = []
+
+                for precision_idx, precision in enumerate(precision_levels):
+                    bo_data = heat_1d_bo_df[heat_1d_bo_df['Precision Level'] == precision]
+                    if len(bo_data) > 0:
+                        if metric == 'Success Rate':
+                            bo_value = bo_data['success_rate'].iloc[0]
+                        else:  # Efficiency
+                            bo_value = bo_data['mean_efficiency'].iloc[0]
+
+                        bo_x_values.append(precision_idx)
+                        bo_y_values.append(bo_value)
+
+                if len(bo_x_values) > 0:
+                    ax.plot(bo_x_values, bo_y_values,
+                           marker=bo_style['marker'],
+                           color=bo_style['color'],
+                           linestyle=bo_style['linestyle'],
+                           linewidth=2.0,
+                           markersize=4,
+                           markerfacecolor=bo_style['color'],
+                           markeredgecolor=bo_style['color'],
+                           markeredgewidth=1.0,
+                           alpha=1.0,
+                           clip_on=False)
+
+                # Customize subplot
+                ax.set_xlabel('Accuracy Level', fontsize=12)
+                ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+                ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='gray')
+
+                # Set x-axis labels and ticks with tighter spacing and extra padding for markers
+                ax.set_xticks(range(len(precision_levels)))
+                ax.set_xticklabels([p.capitalize() for p in precision_levels], fontsize=10)
+                ax.set_xlim(-0.1, len(precision_levels) - 0.9)
+
+                # Set y-axis limits with more padding to prevent marker cropping
+                all_y_values = []
+
+                # Collect all model values for this specific mode
+                for model in models:
+                    for precision in precision_levels:
+                        model_data = heat_1d_df[
+                            (heat_1d_df['Model'] == model) &
+                            (heat_1d_df['Precision Level'] == precision) &
+                            (heat_1d_df['Inference Mode'] == mode)
+                        ]
+                        if len(model_data) > 0:
+                            if metric == 'Success Rate':
+                                all_y_values.append(model_data['success_rate'].iloc[0])
+                            else:
+                                all_y_values.append(model_data['mean_efficiency'].iloc[0])
+
+                # Collect BO values
+                for precision in precision_levels:
+                    bo_data = heat_1d_bo_df[heat_1d_bo_df['Precision Level'] == precision]
+                    if len(bo_data) > 0:
+                        if metric == 'Success Rate':
+                            all_y_values.append(bo_data['success_rate'].iloc[0])
+                        else:
+                            all_y_values.append(bo_data['mean_efficiency'].iloc[0])
+
+                if all_y_values:
+                    y_min = min(all_y_values)
+                    y_max = max(all_y_values)
+                    y_range = y_max - y_min
+
+                    if metric == 'Success Rate':
+                        # Allow negative lower bound to show markers at 0 values properly
+                        lower_bound = y_min - 0.08
+                        if y_min <= 0.05:  # If minimum value is close to 0
+                            lower_bound = -0.05
+                        ax.set_ylim(lower_bound, min(1, y_max + 0.08))
+                    else:  # Efficiency
+                        # Allow negative lower bound to show markers at 0 values properly
+                        lower_bound = y_min - 0.5
+                        if y_min <= 1.0:  # If minimum value is close to 0
+                            lower_bound = -1.0
+                        ax.set_ylim(lower_bound, y_max + max(0.5, y_range * 0.1))
+
+        # Create custom legend in top area
+        legend_ax.axis('off')
+
+        # Create legend elements for all models + BO
+        legend_elements = []
+        for model in models:
+            style = model_styles[model]
+            from matplotlib.lines import Line2D
+
+            legend_elements.append(Line2D([0], [0],
+                                         marker=style['marker'],
+                                         color=style['color'],
+                                         linestyle=style['linestyle'],
+                                         linewidth=1.0,
+                                         markersize=3,
+                                         markerfacecolor='white',
+                                         markeredgecolor=style['color'],
+                                         markeredgewidth=1.0,
+                                         label=model))
+
+        # Add Bayesian Optimization to legend
+        legend_elements.append(Line2D([0], [0],
+                                     marker=bo_style['marker'],
+                                     color=bo_style['color'],
+                                     linestyle=bo_style['linestyle'],
+                                     linewidth=2.0,
+                                     markersize=4,
+                                     markerfacecolor=bo_style['color'],
+                                     markeredgecolor=bo_style['color'],
+                                     markeredgewidth=1.0,
+                                     label='Bayesian Optimization'))
+
+        # Display legend horizontally
+        ncols = len(legend_elements)
+        if len(legend_elements) > 6:  # If too many models, split into 2 rows
+            ncols = 4
+
+        legend_ax.legend(handles=legend_elements,
+                       loc='center',
+                       ncol=ncols,
+                       frameon=False,
+                       fontsize=11,
+                       columnspacing=2.0,
+                       handlelength=2.5)
+
+        # Add bottom labels for each subplot
+        subplot_labels = [
+            ('a', 'Zero-shot - Success Rate'),
+            ('b', 'Zero-shot - Efficiency'),
+            ('c', 'Iterative - Success Rate'),
+            ('d', 'Iterative - Efficiency')
+        ]
+
+        for i, (letter, description) in enumerate(subplot_labels):
+            label_ax = label_axes[i]
+            label_ax.axis('off')
+            label_ax.text(0.5, 0.5, f'({letter}) {description}',
+                         ha='center', va='center',
+                         fontsize=13, fontweight='bold',
+                         transform=label_ax.transAxes)
+
+        # Save line plot with extra padding
+        plot_path = output_dir / "heat_1d_bo_comparison_line_plot.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight', pad_inches=0.2)
+        plt.close()
+
+        print(f"heat_1d_bo comparison line plot saved to: {plot_path}")
+
     def generate_overall_statistics(self) -> None:
         """Generate comprehensive overall statistics and visualizations."""
+        # Special handling for heat_1d_bo comparison
+        if self.target_dataset == 'heat_1d_bo':
+            self.generate_heat_1d_bo_comparison()
+            return
+
         print("🚀 Starting overall statistics generation...")
 
         try:
@@ -1225,7 +1691,14 @@ class OverallStatsGenerator:
 
 def main():
     """Main function to generate overall performance statistics."""
-    generator = OverallStatsGenerator()
+    parser = argparse.ArgumentParser(description='Generate overall performance statistics for SimulCost-Bench')
+    parser.add_argument('-d', '--dataset', type=str, default=None,
+                       help='Specific dataset to process (e.g., heat_1d_bo for model vs BO comparison)')
+
+    args = parser.parse_args()
+
+    # Create generator with target dataset
+    generator = OverallStatsGenerator(target_dataset=args.dataset)
     generator.generate_overall_statistics()
 
 

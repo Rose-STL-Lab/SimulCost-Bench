@@ -1,4 +1,3 @@
-用中文解释并完全理解以下脚本的所有代码逻辑：
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -58,18 +57,56 @@ UNCOMMON_TASKS = ['beta', 'k']
 
 def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Load task-specific high-level summary data for baseline and all ICL variants.
+    Load task-specific summary data for all precision levels for baseline and all ICL variants.
 
     Returns:
         Tuple of (baseline_task_data, icl_task_data, icl_no_cost_task_data, icl_uniform_task_data)
+        Each DataFrame contains data from all precision levels (low, medium, high)
     """
     base_path = Path("eval_results")
 
-    # Load high-level summary data for task-specific analysis
-    baseline_task_data = pd.read_csv(base_path / "euler_1d" / "euler_1d_high_summary.csv")
-    icl_task_data = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_high_summary.csv")
-    icl_no_cost_task_data = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_high_summary.csv")
-    icl_uniform_task_data = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_high_summary.csv")
+    # Load and combine all precision levels for each dataset
+    precision_levels = ['low', 'medium', 'high']
+
+    baseline_dfs = []
+    icl_dfs = []
+    icl_no_cost_dfs = []
+    icl_uniform_dfs = []
+
+    for precision in precision_levels:
+        # Load baseline data
+        baseline_file = base_path / "euler_1d" / f"euler_1d_{precision}_summary.csv"
+        if baseline_file.exists():
+            df = pd.read_csv(baseline_file)
+            df['Precision Level'] = precision
+            baseline_dfs.append(df)
+
+        # Load ICL data
+        icl_file = base_path / "euler_1d_icl" / f"euler_1d_icl_{precision}_summary.csv"
+        if icl_file.exists():
+            df = pd.read_csv(icl_file)
+            df['Precision Level'] = precision
+            icl_dfs.append(df)
+
+        # Load ICL no cost data
+        icl_no_cost_file = base_path / "euler_1d_icl_no_cost" / f"euler_1d_icl_no_cost_{precision}_summary.csv"
+        if icl_no_cost_file.exists():
+            df = pd.read_csv(icl_no_cost_file)
+            df['Precision Level'] = precision
+            icl_no_cost_dfs.append(df)
+
+        # Load ICL uniform data
+        icl_uniform_file = base_path / "euler_1d_icl_uniform" / f"euler_1d_icl_uniform_{precision}_summary.csv"
+        if icl_uniform_file.exists():
+            df = pd.read_csv(icl_uniform_file)
+            df['Precision Level'] = precision
+            icl_uniform_dfs.append(df)
+
+    # Combine all precision levels for each dataset
+    baseline_task_data = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else pd.DataFrame()
+    icl_task_data = pd.concat(icl_dfs, ignore_index=True) if icl_dfs else pd.DataFrame()
+    icl_no_cost_task_data = pd.concat(icl_no_cost_dfs, ignore_index=True) if icl_no_cost_dfs else pd.DataFrame()
+    icl_uniform_task_data = pd.concat(icl_uniform_dfs, ignore_index=True) if icl_uniform_dfs else pd.DataFrame()
 
     return baseline_task_data, icl_task_data, icl_no_cost_task_data, icl_uniform_task_data
 
@@ -88,14 +125,14 @@ def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,
     # Load aggregated data
     euler_1d_agg = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum_aggregated.csv")
     euler_1d_icl_agg = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum_aggregated.csv")
-    euler_1d_icl_no_cost_agg = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_sum_aggregated.csv")
-    euler_1d_icl_uniform_agg = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_sum_aggregated.csv")
+    euler_1d_icl_no_cost_agg = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_no_cost_sum_aggregated.csv")
+    euler_1d_icl_uniform_agg = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_uniform_sum_aggregated.csv")
 
     # Load detailed data
     euler_1d_detailed = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum.csv")
     euler_1d_icl_detailed = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum.csv")
-    euler_1d_icl_no_cost_detailed = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_sum.csv")
-    euler_1d_icl_uniform_detailed = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_sum.csv")
+    euler_1d_icl_no_cost_detailed = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_no_cost_sum.csv")
+    euler_1d_icl_uniform_detailed = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_uniform_sum.csv")
 
     return (euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed,
             euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed,
@@ -293,26 +330,52 @@ def analyze_task_category_data(baseline_task_data: pd.DataFrame, icl_task_data: 
         icl_no_cost_filtered = icl_no_cost_task_data[icl_no_cost_task_data['Task'].isin(tasks)]
         icl_uniform_filtered = icl_uniform_task_data[icl_uniform_task_data['Task'].isin(tasks)]
 
-        # Group by Model and Inference Mode, sum the metrics across tasks
-        baseline_grouped = baseline_filtered.groupby(['Model', 'Inference Mode']).agg({
+        # Group by Model, Inference Mode, and Precision Level, then aggregate metrics across tasks
+        # This preserves precision level information while aggregating task data
+        baseline_grouped = baseline_filtered.groupby(['Model', 'Inference Mode', 'Precision Level']).agg({
             'Number of Samples': 'sum',
             'success_rate': 'mean',
             'mean_efficiency': 'mean'
         }).reset_index()
 
-        icl_grouped = icl_filtered.groupby(['Model', 'Inference Mode']).agg({
+        # Then aggregate across precision levels for the final comparison
+        baseline_grouped = baseline_grouped.groupby(['Model', 'Inference Mode']).agg({
             'Number of Samples': 'sum',
             'success_rate': 'mean',
             'mean_efficiency': 'mean'
         }).reset_index()
 
-        icl_no_cost_grouped = icl_no_cost_filtered.groupby(['Model', 'Inference Mode']).agg({
+        # Apply the same two-level grouping for ICL data
+        icl_grouped = icl_filtered.groupby(['Model', 'Inference Mode', 'Precision Level']).agg({
+            'Number of Samples': 'sum',
+            'success_rate': 'mean',
+            'mean_efficiency': 'mean'
+        }).reset_index()
+        icl_grouped = icl_grouped.groupby(['Model', 'Inference Mode']).agg({
             'Number of Samples': 'sum',
             'success_rate': 'mean',
             'mean_efficiency': 'mean'
         }).reset_index()
 
-        icl_uniform_grouped = icl_uniform_filtered.groupby(['Model', 'Inference Mode']).agg({
+        # Apply the same two-level grouping for ICL no cost data
+        icl_no_cost_grouped = icl_no_cost_filtered.groupby(['Model', 'Inference Mode', 'Precision Level']).agg({
+            'Number of Samples': 'sum',
+            'success_rate': 'mean',
+            'mean_efficiency': 'mean'
+        }).reset_index()
+        icl_no_cost_grouped = icl_no_cost_grouped.groupby(['Model', 'Inference Mode']).agg({
+            'Number of Samples': 'sum',
+            'success_rate': 'mean',
+            'mean_efficiency': 'mean'
+        }).reset_index()
+
+        # Apply the same two-level grouping for ICL uniform data
+        icl_uniform_grouped = icl_uniform_filtered.groupby(['Model', 'Inference Mode', 'Precision Level']).agg({
+            'Number of Samples': 'sum',
+            'success_rate': 'mean',
+            'mean_efficiency': 'mean'
+        }).reset_index()
+        icl_uniform_grouped = icl_uniform_grouped.groupby(['Model', 'Inference Mode']).agg({
             'Number of Samples': 'sum',
             'success_rate': 'mean',
             'mean_efficiency': 'mean'
