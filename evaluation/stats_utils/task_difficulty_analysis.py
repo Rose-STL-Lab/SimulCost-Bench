@@ -324,9 +324,9 @@ class TaskDifficultyAnalyzer:
 
         gap = 0.05  # gap between the two bars
         bars1 = ax.bar(x - width/2 - gap/2, common_values, width, label='Common',
-                       color=category_colors['Common'], alpha=0.7)
+                       color=category_colors['Common'], alpha=0.7, edgecolor='black')
         bars2 = ax.bar(x + width/2 + gap/2, uncommon_values, width, label='Uncommon',
-                       color=category_colors['Uncommon'], alpha=0.7, hatch='///')
+                       color=category_colors['Uncommon'], alpha=0.7, hatch='///', edgecolor='black')
 
         # Customize the chart
         ax.set_ylabel('Success Rate', fontsize=12, fontweight='bold')
@@ -406,9 +406,9 @@ class TaskDifficultyAnalyzer:
 
         gap = 0.05  # gap between the two bars
         bars1 = ax.bar(x - width/2 - gap/2, common_values, width, label='Common',
-                       color=category_colors['Common'], alpha=0.7)
+                       color=category_colors['Common'], alpha=0.7, edgecolor='black')
         bars2 = ax.bar(x + width/2 + gap/2, uncommon_values, width, label='Uncommon',
-                       color=category_colors['Uncommon'], alpha=0.7, hatch='///')
+                       color=category_colors['Uncommon'], alpha=0.7, hatch='///', edgecolor='black')
 
         # Customize the chart
         ax.set_ylabel('Efficiency', fontsize=12, fontweight='bold')

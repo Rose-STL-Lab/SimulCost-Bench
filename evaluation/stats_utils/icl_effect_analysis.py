@@ -28,10 +28,6 @@ Output:
     - eval_results/stats/icl_effect/success_rate_iterative.png (iterative success rate)
     - eval_results/stats/icl_effect/efficiency_zero_shot.png (zero-shot efficiency)
     - eval_results/stats/icl_effect/efficiency_iterative.png (iterative efficiency)
-    - eval_results/stats/icl_effect/success_rate_detailed_zero_shot.png (detailed success rate by precision - zero-shot)
-    - eval_results/stats/icl_effect/success_rate_detailed_iterative.png (detailed success rate by precision - iterative)
-    - eval_results/stats/icl_effect/efficiency_detailed_zero_shot.png (detailed efficiency by precision - zero-shot)
-    - eval_results/stats/icl_effect/efficiency_detailed_iterative.png (detailed efficiency by precision - iterative)
     - eval_results/stats/icl_effect/common_success_rate_zero_shot.png (common tasks success rate - zero-shot)
     - eval_results/stats/icl_effect/common_success_rate_iterative.png (common tasks success rate - iterative)
     - eval_results/stats/icl_effect/common_efficiency_zero_shot.png (common tasks efficiency - zero-shot)
@@ -53,6 +49,28 @@ import csv
 # Task categorization
 COMMON_TASKS = ['cfl', 'n_space']
 UNCOMMON_TASKS = ['beta', 'k']
+
+# Model name mapping for shorter x-axis labels
+MODEL_NAME_MAP = {
+    'Claude-3.7-Sonnet': 'Claude',
+    'GPT-5': 'GPT',
+    'Llama-3-70B-Instruct': 'Llama',
+    'Mistral-Large': 'Mistral',
+    'Nova-Premier': 'Nova',
+    'Qwen3-32B': 'Qwen'
+}
+
+def map_model_name(model_name: str) -> str:
+    """
+    Map full model name to simplified name for display.
+
+    Args:
+        model_name: Full model name
+
+    Returns:
+        Simplified model name for display
+    """
+    return MODEL_NAME_MAP.get(model_name, model_name)
 
 
 def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -605,7 +623,8 @@ def create_aggregated_visualization(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg
                 icl_val = float(icl)
                 icl_no_cost_val = float(icl_no_cost)
                 icl_uniform_val = float(icl_uniform)
-                models.append(model)
+                mapped_model = map_model_name(model)
+                models.append(mapped_model)
                 baseline_values.append(baseline_val)
                 icl_values.append(icl_val)
                 icl_no_cost_values.append(icl_no_cost_val)
@@ -620,40 +639,40 @@ def create_aggregated_visualization(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg
     # Set up the plot style
     plt.style.use('default')
 
-    # Create figure with square dimensions (width = height)
-    fig, ax = plt.subplots(1, 1, figsize=(11, 5))
+    # Create figure with adjusted dimensions for vertical bars
+    fig, ax = plt.subplots(1, 1, figsize=(9, 6))
 
-    # Set fixed subplot parameters to ensure consistent layout
+    # Set fixed subplot parameters to ensure consistent layout with more bottom margin for rotated labels
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 
-    # Create horizontal bar plot for comparison
-    y_pos = np.arange(len(models)) * 1.2  # Increase spacing between models
-    bar_width = 0.15
-    bar_gap = 0.1
+    # Create vertical bar plot for comparison with improved spacing
+    x_pos = np.arange(len(models)) * 1.4  # Increase spacing between different models
+    bar_width = 0.2  # Slightly reduce bar width
+    bar_gap = 0.05    # Small gap between bars of the same model
 
     # Create bars for four datasets with gaps
-    bars1 = ax.barh(y_pos + 1.5*(bar_width + bar_gap), baseline_values, bar_width, label='Baseline',
-                    color='gray', alpha=0.8, edgecolor='black', linewidth=1)
-    bars2 = ax.barh(y_pos + 0.5*(bar_width + bar_gap), icl_values, bar_width, label='ICL',
-                    color='orange', alpha=0.8, edgecolor='black', linewidth=1)
-    bars3 = ax.barh(y_pos - 0.5*(bar_width + bar_gap), icl_no_cost_values, bar_width, label='ICL (no cost)',
-                    color='white', alpha=1.0, edgecolor='orange', linewidth=2)
-    bars4 = ax.barh(y_pos - 1.5*(bar_width + bar_gap), icl_uniform_values, bar_width, label='ICL (uniform)',
-                    color='orange', alpha=0.8, edgecolor='black', linewidth=1,
-                    hatch='///')
+    bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width, label='Baseline',
+                   color='gray', alpha=0.8, edgecolor='black', linewidth=1)
+    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='ICL',
+                   color='#DAA520', alpha=0.8, edgecolor='black', linewidth=1)
+    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='ICL (no cost)',
+                   color='white', alpha=1.0, edgecolor='#DAA520', linewidth=2)
+    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='ICL (uniform)',
+                   color='#DAA520', alpha=0.8, edgecolor='black', linewidth=1,
+                   hatch='///')
 
     # Customize plot
     metric_title = metric.replace('_', ' ').title()
-    ax.set_xlabel(f'{metric_title}', fontweight='bold', fontsize=12)
-    ax.set_ylabel('')  # Remove "Models" label
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(models, fontsize=10)
-    ax.grid(True, alpha=0.3, axis='x')
+    ax.set_ylabel(f'{metric_title}', fontweight='bold', fontsize=12)
+    # ax.set_xlabel('Models', fontweight='bold', fontsize=12)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(models, fontsize=10, rotation=0, ha='center')
+    ax.grid(True, alpha=0.3, axis='y')
     ax.legend(bbox_to_anchor=(0.5, 1), loc='lower center', ncol=4, fontsize=11, frameon=False, columnspacing=2.5)
 
-    # Set x-axis limits
+    # Set y-axis limits
     max_value = max(baseline_values + icl_values + icl_no_cost_values + icl_uniform_values)
-    ax.set_xlim(0, max_value * 1.05)  # Add 5% extra space on the right
+    ax.set_ylim(0, max_value * 1.05)  # Add 5% extra space on the top
 
 
     # Save with fixed dimensions instead of tight bbox to ensure consistency
@@ -662,138 +681,6 @@ def create_aggregated_visualization(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg
     plt.close()
 
     print(f"✅ {mode} mode {metric} visualization saved: {output_file}")
-
-
-def create_detailed_visualization(detailed_comparison: pd.DataFrame, metric: str, mode: str) -> None:
-    """
-    Create detailed visualization showing ICL effects across precision levels for a specific mode.
-
-    Args:
-        detailed_comparison: Detailed comparison DataFrame
-        metric: Metric type ('success_rate' or 'efficiency')
-        mode: Inference mode ('Zero-shot' or 'Iterative')
-    """
-    output_dir = Path("eval_results/stats/icl_effect")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    baseline_col = f"{metric.replace('_', ' ').title()} (Baseline)"
-    icl_col = f"{metric.replace('_', ' ').title()} (ICL)"
-
-    # Prepare data for visualization
-    baseline_data = []
-    icl_data = []
-
-    for _, row in detailed_comparison.iterrows():
-        if row['Inference Mode'] != mode:
-            continue
-
-        baseline = row.get(baseline_col, 'N/A')
-        icl = row.get(icl_col, 'N/A')
-
-        if baseline != 'N/A' and icl != 'N/A':
-            try:
-                baseline_val = float(baseline)
-                icl_val = float(icl)
-                baseline_data.append({
-                    'Model': row['Model'],
-                    'Precision Level': row['Precision Level'],
-                    'Value': baseline_val,
-                    'Type': 'Baseline'
-                })
-                icl_data.append({
-                    'Model': row['Model'],
-                    'Precision Level': row['Precision Level'],
-                    'Value': icl_val,
-                    'Type': 'ICL'
-                })
-            except:
-                continue
-
-    if not baseline_data or not icl_data:
-        print(f"⚠️  No valid data for detailed {metric} {mode} visualization")
-        return
-
-    # Combine data
-    plot_data = baseline_data + icl_data
-    df_plot = pd.DataFrame(plot_data)
-
-    # Set up the plot style
-    plt.style.use('default')
-
-    # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(12, 10))
-
-    # Create grouped bar chart
-    unique_models = df_plot['Model'].unique()
-    unique_precisions = sorted(df_plot['Precision Level'].unique())  # Sort for consistent order
-
-    # Define colors and patterns - updated color scheme
-    precision_colors = {'low': '#2E8B57', 'medium': '#4169E1', 'high': '#FF69B4'}
-
-    # Create horizontal grouped bar chart
-    y_models = np.arange(len(unique_models))
-    n_precisions = len(unique_precisions)
-
-    # Calculate positions for bars with gaps between precision groups
-    group_height = 0.15  # Height of each bar
-    group_gap = 0.05     # Gap between baseline and ICL within same precision
-    precision_gap = 0.1  # Gap between different precision levels
-
-    total_group_height = 2 * group_height + group_gap  # Height for one precision level (baseline + ICL)
-    total_height_per_model = n_precisions * total_group_height + (n_precisions - 1) * precision_gap
-
-    # Offset to center all bars for each model
-    offset_start = -total_height_per_model / 2 + group_height / 2
-
-    # Create bars for each precision level and type combination
-    for i, precision in enumerate(unique_precisions):
-        baseline_values = []
-        icl_values = []
-
-        for model in unique_models:
-            baseline_val = df_plot[(df_plot['Model'] == model) &
-                                 (df_plot['Precision Level'] == precision) &
-                                 (df_plot['Type'] == 'Baseline')]['Value']
-            icl_val = df_plot[(df_plot['Model'] == model) &
-                            (df_plot['Precision Level'] == precision) &
-                            (df_plot['Type'] == 'ICL')]['Value']
-
-            baseline_values.append(baseline_val.iloc[0] if len(baseline_val) > 0 else 0)
-            icl_values.append(icl_val.iloc[0] if len(icl_val) > 0 else 0)
-
-        # Calculate y positions for this precision level
-        baseline_y = y_models + offset_start + i * (total_group_height + precision_gap)
-        icl_y = baseline_y + group_height + group_gap
-
-        # Plot baseline bars (first)
-        ax.barh(baseline_y, baseline_values, group_height,
-               label=f'{precision.title()} - Baseline' if i < len(unique_precisions) else '',
-               color=precision_colors.get(precision, 'gray'), alpha=0.8,
-               edgecolor='black', linewidth=0.5)
-
-        # Plot ICL bars with hatching (second)
-        ax.barh(icl_y, icl_values, group_height,
-               label=f'{precision.title()} - ICL' if i < len(unique_precisions) else '',
-               color=precision_colors.get(precision, 'gray'), alpha=0.8,
-               edgecolor='black', linewidth=0.5, hatch='/')
-
-    # Customize plot
-    metric_title = metric.replace('_', ' ').title()
-    ax.set_xlabel(f'{metric_title}', fontweight='bold', fontsize=12)
-    ax.set_ylabel('Models', fontweight='bold', fontsize=12)
-    ax.set_yticks(y_models)
-    ax.set_yticklabels(unique_models, fontsize=10)
-    ax.grid(True, alpha=0.3, axis='x')
-    ax.legend(bbox_to_anchor=(0.5, 1), loc='lower center', ncol=6, fontsize=9, frameon=False, columnspacing=2.0)
-
-    # Adjust layout and save
-    plt.tight_layout()
-
-    output_file = output_dir / f"{metric}_detailed_{mode.lower().replace('-', '_')}.png"
-    plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
-
-    print(f"✅ Detailed {metric} {mode} visualization saved: {output_file}")
 
 
 def create_task_category_visualization(category_data: pd.DataFrame, category_name: str, metric: str, mode: str) -> None:
@@ -847,7 +734,8 @@ def create_task_category_visualization(category_data: pd.DataFrame, category_nam
                 icl_val = float(icl)
                 icl_no_cost_val = float(icl_no_cost)
                 icl_uniform_val = float(icl_uniform)
-                models.append(model)
+                mapped_model = map_model_name(model)
+                models.append(mapped_model)
                 baseline_values.append(baseline_val)
                 icl_values.append(icl_val)
                 icl_no_cost_values.append(icl_no_cost_val)
@@ -862,46 +750,46 @@ def create_task_category_visualization(category_data: pd.DataFrame, category_nam
     # Set up the plot style
     plt.style.use('default')
 
-    # Create figure with same dimensions as main visualization
-    fig, ax = plt.subplots(1, 1, figsize=(11, 5))
+    # Create figure with adjusted dimensions for vertical bars
+    fig, ax = plt.subplots(1, 1, figsize=(9, 6))
 
-    # Set fixed subplot parameters to ensure consistent layout
+    # Set fixed subplot parameters to ensure consistent layout with more bottom margin for rotated labels
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 
-    # Create horizontal bar plot for comparison - match exact style from create_aggregated_visualization
-    y_pos = np.arange(len(models)) * 1.2  # Increase spacing between models (same as original)
-    bar_width = 0.15
-    bar_gap = 0.1
+    # Create vertical bar plot for comparison with improved spacing
+    x_pos = np.arange(len(models)) * 1.4  # Increase spacing between different models
+    bar_width = 0.2  # Slightly reduce bar width
+    bar_gap = 0.05    # Small gap between bars of the same model
 
     # Use category-specific colors for ICL bars while keeping the exact same style
     if category_name.lower() == 'common':
-        icl_color = 'lightgreen'
+        icl_color = '#2E8B57'
     else:  # uncommon
-        icl_color = 'steelblue'
+        icl_color = '#B22222'
 
-    # Create bars for four datasets with gaps - exact same positioning as original
-    bars1 = ax.barh(y_pos + 1.5*(bar_width + bar_gap), baseline_values, bar_width, label='Baseline',
-                    color='gray', alpha=0.8, edgecolor='black', linewidth=1)
-    bars2 = ax.barh(y_pos + 0.5*(bar_width + bar_gap), icl_values, bar_width, label='ICL',
-                    color=icl_color, alpha=0.8, edgecolor='black', linewidth=1)
-    bars3 = ax.barh(y_pos - 0.5*(bar_width + bar_gap), icl_no_cost_values, bar_width, label='ICL (no cost)',
-                    color='white', alpha=1.0, edgecolor=icl_color, linewidth=2)
-    bars4 = ax.barh(y_pos - 1.5*(bar_width + bar_gap), icl_uniform_values, bar_width, label='ICL (uniform)',
-                    color=icl_color, alpha=0.8, edgecolor='black', linewidth=1,
-                    hatch='///')
+    # Create bars for four datasets with gaps and improved spacing
+    bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width, label='Baseline',
+                   color='gray', alpha=0.8, edgecolor='black', linewidth=1)
+    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='ICL',
+                   color=icl_color, alpha=0.8, edgecolor='black', linewidth=1)
+    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='ICL (no cost)',
+                   color='white', alpha=1.0, edgecolor=icl_color, linewidth=2)
+    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='ICL (uniform)',
+                   color=icl_color, alpha=0.8, edgecolor='black', linewidth=1,
+                   hatch='///')
 
     # Customize plot - match exact style from original
     metric_title = metric.replace('_', ' ').title()
-    ax.set_xlabel(f'{metric_title}', fontweight='bold', fontsize=12)
-    ax.set_ylabel('')  # Remove "Models" label
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(models, fontsize=10)
-    ax.grid(True, alpha=0.3, axis='x')
+    ax.set_ylabel(f'{metric_title}', fontweight='bold', fontsize=12)
+    ax.set_xlabel('Models', fontweight='bold', fontsize=12)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(models, fontsize=10, rotation=0, ha='center')
+    ax.grid(True, alpha=0.3, axis='y')
     ax.legend(bbox_to_anchor=(0.5, 1), loc='lower center', ncol=4, fontsize=11, frameon=False, columnspacing=2.5)
 
-    # Set x-axis limits
+    # Set y-axis limits
     max_value = max(baseline_values + icl_values + icl_no_cost_values + icl_uniform_values)
-    ax.set_xlim(0, max_value * 1.05)  # Add 5% extra space on the right
+    ax.set_ylim(0, max_value * 1.05)  # Add 5% extra space on the top
 
     # Save with fixed dimensions instead of tight bbox to ensure consistency
     output_file = output_dir / f"{category_name.lower()}_{metric}_{mode.lower().replace('-', '_')}.png"
@@ -1065,6 +953,131 @@ def save_improvement_summary(agg_comparison: pd.DataFrame) -> None:
     print(f"✅ Improvement summary saved: {output_file}")
 
 
+def create_category_comparison_chart(agg_comparison: pd.DataFrame, common_comparison: pd.DataFrame,
+                                    uncommon_comparison: pd.DataFrame, metric: str, mode: str) -> None:
+    """
+    Create bar chart comparing overall, common, and uncommon task performance.
+
+    Args:
+        agg_comparison: Overall aggregated comparison results
+        common_comparison: Common tasks comparison results
+        uncommon_comparison: Uncommon tasks comparison results
+        metric: Metric type ('success_rate' or 'efficiency')
+        mode: Inference mode ('Zero-shot' or 'Iterative')
+    """
+    output_dir = Path("eval_results/stats/icl_effect")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Filter data by mode
+    overall_data = agg_comparison[agg_comparison['Inference Mode'] == mode].copy()
+    common_data = common_comparison[common_comparison['Inference Mode'] == mode].copy()
+    uncommon_data = uncommon_comparison[uncommon_comparison['Inference Mode'] == mode].copy()
+
+    if len(overall_data) == 0:
+        print(f"⚠️  No data available for {mode} mode {metric} category comparison")
+        return
+
+    # Calculate averages across all models for each category
+    categories = ['Overall', 'Common', 'Uncommon']
+    baseline_values = []
+    icl_values = []
+    icl_no_cost_values = []
+    icl_uniform_values = []
+
+    # Get metric column names based on metric type
+    if metric == 'success_rate':
+        baseline_col = 'Success Rate (Baseline)'
+        icl_col = 'Success Rate (ICL)'
+        no_cost_col = 'Success Rate (ICL no cost)'
+        uniform_col = 'Success Rate (ICL uniform)'
+        ylabel = 'Success Rate'
+    else:  # efficiency
+        baseline_col = 'Efficiency (Baseline)'
+        icl_col = 'Efficiency (ICL)'
+        no_cost_col = 'Efficiency (ICL no cost)'
+        uniform_col = 'Efficiency (ICL uniform)'
+        ylabel = 'Efficiency'
+
+    # Calculate averages for each category
+    for data_source in [overall_data, common_data, uncommon_data]:
+        baseline_vals = []
+        icl_vals = []
+        icl_no_cost_vals = []
+        icl_uniform_vals = []
+
+        for _, row in data_source.iterrows():
+            baseline = row.get(baseline_col, 'N/A')
+            icl = row.get(icl_col, 'N/A')
+            icl_no_cost = row.get(no_cost_col, 'N/A')
+            icl_uniform = row.get(uniform_col, 'N/A')
+
+            if baseline != 'N/A' and is_number(baseline):
+                baseline_vals.append(float(baseline))
+            if icl != 'N/A' and is_number(icl):
+                icl_vals.append(float(icl))
+            if icl_no_cost != 'N/A' and is_number(icl_no_cost):
+                icl_no_cost_vals.append(float(icl_no_cost))
+            if icl_uniform != 'N/A' and is_number(icl_uniform):
+                icl_uniform_vals.append(float(icl_uniform))
+
+        # Calculate means
+        baseline_values.append(np.mean(baseline_vals) if baseline_vals else 0)
+        icl_values.append(np.mean(icl_vals) if icl_vals else 0)
+        icl_no_cost_values.append(np.mean(icl_no_cost_vals) if icl_no_cost_vals else 0)
+        icl_uniform_values.append(np.mean(icl_uniform_vals) if icl_uniform_vals else 0)
+
+    # Set up the plot style
+    plt.style.use('default')
+
+    # Create figure
+    fig, ax = plt.subplots(1, 1, figsize=(9, 6))
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+
+    # Create bar plot
+    x_pos = np.arange(len(categories)) * 1.5  # Increase spacing between categories
+    bar_width = 0.2
+    bar_gap = 0.05
+
+    # Create bars with the same styling as other functions
+    bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width,
+                   label='Baseline', color='gray', alpha=0.8, edgecolor='black', linewidth=1)
+    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width,
+                   label='ICL', color='#DAA520', alpha=0.8, edgecolor='black', linewidth=1)
+    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width,
+                   label='ICL (no cost)', color='white', alpha=1.0, edgecolor='#DAA520', linewidth=2)
+    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width,
+                   label='ICL (uniform)', color='#DAA520', alpha=0.8, edgecolor='black',
+                   linewidth=1, hatch='///')
+
+    # Customize plot
+    ax.set_ylabel(ylabel, fontweight='bold', fontsize=12)
+    # ax.set_xlabel('Task Category', fontweight='bold', fontsize=12)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(categories, fontsize=11)
+
+    # Set different colors for x-axis labels
+    for i, (tick, category) in enumerate(zip(ax.get_xticklabels(), categories)):
+        if category.lower() == 'common':
+            tick.set_color('#2E8B57')  # SeaGreen color for common
+        elif category.lower() == 'uncommon':
+            tick.set_color('#B22222')  # FireBrick color for uncommon
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.legend(bbox_to_anchor=(0.5, 1), loc='lower center', ncol=4, fontsize=11,
+              frameon=False, columnspacing=2.5)
+
+    # Set y-axis limits
+    all_values = baseline_values + icl_values + icl_no_cost_values + icl_uniform_values
+    max_value = max(all_values) if all_values else 1
+    ax.set_ylim(0, max_value * 1.05)
+
+    # Save the plot
+    output_file = output_dir / f"category_comparison_{metric}_{mode.lower().replace('-', '_')}.png"
+    plt.savefig(output_file, dpi=300, bbox_inches=None, facecolor='white')
+    plt.close()
+
+    print(f"✅ Category comparison {mode} mode {metric} visualization saved: {output_file}")
+
+
 def print_summary_statistics(agg_comparison: pd.DataFrame) -> None:
     """
     Print summary statistics of ICL effects.
@@ -1222,11 +1235,6 @@ def main():
                                               euler_1d_icl_no_cost_agg, euler_1d_icl_uniform_agg,
                                               metric, mode)
 
-        # Create detailed visualizations (excluding success_rate_detailed_zero_shot.png and efficiency_detailed_zero_shot.png)
-        print("\n📈 Creating detailed visualizations...")
-        for metric in ['success_rate', 'efficiency']:
-            # Only create iterative mode detailed visualizations
-            create_detailed_visualization(detailed_comparison, metric, 'Iterative')
 
         # Create task category visualizations
         print("\n📈 Creating task category visualizations...")
@@ -1234,6 +1242,13 @@ def main():
             for metric in ['success_rate', 'efficiency']:
                 create_task_category_visualization(common_comparison, 'Common', metric, mode)
                 create_task_category_visualization(uncommon_comparison, 'Uncommon', metric, mode)
+
+        # Create category comparison charts (overall vs common vs uncommon)
+        print("\n📈 Creating category comparison charts...")
+        for mode in ['Zero-shot', 'Iterative']:
+            for metric in ['success_rate', 'efficiency']:
+                create_category_comparison_chart(agg_comparison, common_comparison,
+                                               uncommon_comparison, metric, mode)
 
         # Print summary statistics
         print_summary_statistics(agg_comparison)

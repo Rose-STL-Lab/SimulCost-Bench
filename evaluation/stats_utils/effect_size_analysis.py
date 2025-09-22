@@ -592,14 +592,18 @@ class EffectSizeAnalyzer:
         cbar.ax.axhline(y=-0.8, color='gray', linestyle='--', alpha=0.7)
         
         # Set titles and labels
-        dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
-        plt.title(f'Effect Sizes: Iterative vs Zero-shot Performance\nDataset(s): {dataset_title}', 
-                 fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
         ax.set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
-        
-        # Adjust layout
-        plt.tight_layout()
+
+        # Adjust layout to leave space for interpretation guide
+        plt.subplots_adjust(top=0.89)
+
+        # Add interpretation guide at the top, aligned with the heatmap center
+        # Get the position of the axes to align the text with the heatmap center
+        ax_pos = ax.get_position()
+        heatmap_center_x = (ax_pos.x0 + ax_pos.x1) / 2
+        plt.figtext(heatmap_center_x, 0.92, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
+                   ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
         
         # Save plot
         heatmap_path = self.output_path / "effect_size_heatmap.png"
@@ -683,13 +687,16 @@ class EffectSizeAnalyzer:
         axes[-1].legend(loc='upper right')
         
         # Set overall title and x-label
-        dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
-        fig.suptitle(f'Effect Size Distribution: Iterative vs Zero-shot\nDataset(s): {dataset_title}', 
-                    fontsize=16, fontweight='bold')
         axes[-1].set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
-        
-        # Adjust layout
-        plt.tight_layout()
+
+        # Adjust layout to leave space for interpretation guide
+        plt.subplots_adjust(top=0.9)
+
+        # Add interpretation guide at the top, aligned with the plot center
+        # For multi-subplot figure, center the text over the main plotting area
+        fig.text(0.5, 0.95, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
+                ha='center', va='center', fontsize=10, style='italic', transform=fig.transFigure,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
         
         # Save plot
         violin_path = self.output_path / "effect_size_violin_plot.png"
@@ -751,23 +758,27 @@ class EffectSizeAnalyzer:
         ax.axhline(y=-0.8, color='red', linestyle='--', alpha=0.5)
         
         # Set labels and title
-        dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
-        ax.set_title(f'Effect Sizes by Metric and Precision Level\nDataset(s): {dataset_title}', 
-                    fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
         ax.set_ylabel('Cohen\'s d Effect Size', fontsize=12, fontweight='bold')
         ax.legend(title='Precision Level', title_fontsize=12, fontsize=10)
         ax.grid(True, alpha=0.3, axis='y')
-        
+
         # Keep x-axis labels horizontal
         plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
-        
+
         # Add value labels on bars (horizontal)
         for container in ax.containers:
             ax.bar_label(container, fmt='%.3f', rotation=0, fontsize=8)
-        
-        # Adjust layout
-        plt.tight_layout()
+
+        # Adjust layout to leave space for interpretation guide
+        plt.subplots_adjust(top=0.85)
+
+        # Add interpretation guide at the top, aligned with the bar chart center
+        # Get the position of the axes to align the text with the chart center
+        ax_pos = ax.get_position()
+        chart_center_x = (ax_pos.x0 + ax_pos.x1) / 2
+        plt.figtext(chart_center_x, 0.92, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
+                   ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
         
         # Save plot
         bar_chart_path = self.output_path / "effect_size_bar_chart.png"

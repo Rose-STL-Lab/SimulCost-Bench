@@ -646,14 +646,18 @@ class PearsonCorrelationAnalyzer:
         cbar.set_label('Pearson Correlation Coefficient', rotation=270, labelpad=20)
         
         # Set titles and labels
-        dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
-        plt.title(f'Zero-shot vs Iterative Performance Correlations\nDataset(s): {dataset_title}', 
-                 fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
         ax.set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
-        
-        # Adjust layout
-        plt.tight_layout()
+
+        # Adjust layout to leave space for interpretation guide
+        plt.subplots_adjust(top=0.89)
+
+        # Add interpretation guide at the top, aligned with the heatmap center
+        # Get the position of the axes to align the text with the heatmap center
+        ax_pos = ax.get_position()
+        heatmap_center_x = (ax_pos.x0 + ax_pos.x1) / 2
+        plt.figtext(heatmap_center_x, 0.92, '|r| ≥ 0.7: Strong correlation  |  0.5 ≤ |r| < 0.7: Moderate  |  0.3 ≤ |r| < 0.5: Weak  |  |r| < 0.3: Very weak',
+                   ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.7))
         
         # Save plot
         heatmap_path = self.output_path / "correlation_heatmap.png"
@@ -734,14 +738,18 @@ class PearsonCorrelationAnalyzer:
             cbar.set_label('Pearson Correlation Coefficient', rotation=270, labelpad=20)
             
             # Set titles and labels
-            dataset_title = ', '.join([d.upper() for d in self.datasets]) if len(self.datasets) > 1 else self.datasets[0].upper()
-            plt.title(f'Zero-shot vs Iterative Performance Correlations\nModel: {model_name} | Dataset(s): {dataset_title}', 
-                     fontsize=16, fontweight='bold', pad=20)
             ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
             ax.set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
-            
-            # Adjust layout
-            plt.tight_layout()
+
+            # Adjust layout to leave space for interpretation guide
+            plt.subplots_adjust(top=0.89)
+
+            # Add interpretation guide at the top, aligned with the heatmap center
+            # Get the position of the axes to align the text with the heatmap center
+            ax_pos = ax.get_position()
+            heatmap_center_x = (ax_pos.x0 + ax_pos.x1) / 2
+            plt.figtext(heatmap_center_x, 0.92, '|r| ≥ 0.7: Strong correlation  |  0.5 ≤ |r| < 0.7: Moderate  |  0.3 ≤ |r| < 0.5: Weak  |  |r| < 0.3: Very weak',
+                       ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.7))
             
             # Save plot with model name in filename
             safe_model_name = model_name.replace('/', '_').replace('\\', '_').replace(':', '_')
