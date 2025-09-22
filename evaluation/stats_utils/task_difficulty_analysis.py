@@ -250,13 +250,14 @@ class TaskDifficultyAnalyzer:
 
         return detailed_df
 
-    def create_visualizations(self, agg_df: pd.DataFrame, detailed_df: pd.DataFrame) -> None:
+    def create_visualizations(self, agg_df: pd.DataFrame, detailed_df: pd.DataFrame, combined_df: pd.DataFrame) -> None:
         """
         Create bar charts and visualizations for task difficulty analysis
 
         Args:
             agg_df: Aggregated statistics by category
             detailed_df: Detailed statistics by individual task
+            combined_df: Combined DataFrame with all evaluation results
         """
         print("Creating visualizations...")
 
@@ -264,53 +265,88 @@ class TaskDifficultyAnalyzer:
         plt.style.use('default')
 
         # Create separate charts for success rate and efficiency
-        self._create_success_rate_chart(detailed_df)
-        self._create_efficiency_chart(detailed_df)
+        self._create_success_rate_chart(combined_df)
+        self._create_efficiency_chart(combined_df)
 
         # Create detailed task performance scatter plots for each method type
         for method_type in ['zero_shot', 'iterative']:
             self._create_success_rate_scatter(detailed_df, method_type)
             self._create_efficiency_scatter(detailed_df, method_type)
 
-    def _create_success_rate_chart(self, detailed_df: pd.DataFrame) -> None:
+    def _create_success_rate_chart(self, combined_df: pd.DataFrame) -> None:
         """Create bar chart for success rate by task categories for different method types"""
         # Create charts for each method type
         for method_type in ['zero_shot', 'iterative']:
-            self._create_method_success_rate_chart(detailed_df, method_type)
+            self._create_method_success_rate_chart(combined_df, method_type)
 
-    def _create_method_success_rate_chart(self, detailed_df: pd.DataFrame, method_type: str) -> None:
-        """Create success rate chart for a specific method type"""
+    def _create_method_success_rate_chart(self, combined_df: pd.DataFrame, method_type: str) -> None:
+        """Create success rate chart for a specific method type by precision levels"""
+
         # Filter data for this method type and sufficient data
-        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
-        filtered_df = method_data[method_data['success_rate_count'] >= 5].copy()
+        method_data = combined_df[combined_df['MethodType'] == method_type].copy()
 
-        if len(filtered_df) == 0:
+        # Calculate aggregated success rate by precision and category
+        precision_category_stats = method_data.groupby(['Precision', 'TaskCategory'])['success_rate'].mean().reset_index()
+
+        if len(precision_category_stats) == 0:
             print(f"Not enough data for {method_type} success rate chart")
             return
 
-        # Calculate aggregated success rate by category
-        category_stats = filtered_df.groupby('TaskCategory')['success_rate_mean'].mean().reset_index()
-        category_stats = category_stats.sort_values('TaskCategory')  # Ensure Common comes first
-
         # Define colors for task categories
-        category_colors = {'Common': 'green', 'Uncommon': 'blue'}
-        colors = [category_colors[cat] for cat in category_stats['TaskCategory']]
+        category_colors = {'Common': '#2E8B57', 'Uncommon': '#B22222'}
 
-        # Create the bar chart with smaller size
-        plt.figure(figsize=(4, 4))
-        bars = plt.bar(category_stats['TaskCategory'], category_stats['success_rate_mean'], color=colors, alpha=0.7, width=0.3)
+        # Prepare data for grouped bar chart
+        precision_order = ['low', 'medium', 'high']
+        categories = ['Common', 'Uncommon']
+
+        # Create data structure for plotting
+        data_dict = {}
+        for precision in precision_order:
+            data_dict[precision] = {}
+            for category in categories:
+                subset = precision_category_stats[
+                    (precision_category_stats['Precision'] == precision) &
+                    (precision_category_stats['TaskCategory'] == category)
+                ]
+                if len(subset) > 0:
+                    data_dict[precision][category] = subset['success_rate'].iloc[0]
+                else:
+                    data_dict[precision][category] = 0
+
+        # Create the grouped bar chart
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        x = np.arange(len(precision_order)) * 0.6  # the label locations (closer spacing)
+        width = 0.15  # the width of the bars (narrower)
+
+        common_values = [data_dict[p]['Common'] for p in precision_order]
+        uncommon_values = [data_dict[p]['Uncommon'] for p in precision_order]
+
+        gap = 0.05  # gap between the two bars
+        bars1 = ax.bar(x - width/2 - gap/2, common_values, width, label='Common',
+                       color=category_colors['Common'], alpha=0.7)
+        bars2 = ax.bar(x + width/2 + gap/2, uncommon_values, width, label='Uncommon',
+                       color=category_colors['Uncommon'], alpha=0.7, hatch='///')
 
         # Customize the chart
-        plt.ylabel('Success Rate', fontsize=12, fontweight='bold')
-        plt.ylim(0, 1.05)
-        plt.xlim(-0.8, len(category_stats) - 0.2)  # Center the bars in the plot
-        plt.grid(True, alpha=0.3, axis='y')
+        ax.set_ylabel('Success Rate', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Precision Level', fontsize=12, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(precision_order)
+        ax.set_ylim(0, 1.05)
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
-        for bar, val in zip(bars, category_stats['success_rate_mean']):
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, height + 0.02,
-                    f'{val:.3f}', ha='center', va='bottom', fontsize=12)
+        def add_value_labels(bars, values):
+            for bar, val in zip(bars, values):
+                if val > 0:  # Only add label if there's data
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2, height + 0.02,
+                           f'{val:.3f}', ha='center', va='bottom', fontsize=10)
+
+        add_value_labels(bars1, common_values)
+        add_value_labels(bars2, uncommon_values)
 
         # Save the plot
         plt.tight_layout()
@@ -319,48 +355,84 @@ class TaskDifficultyAnalyzer:
         print(f"Saved {method_type} success rate chart to {output_file}")
         plt.show()
 
-    def _create_efficiency_chart(self, detailed_df: pd.DataFrame) -> None:
+    def _create_efficiency_chart(self, combined_df: pd.DataFrame) -> None:
         """Create bar chart for efficiency by task categories for different method types"""
         # Create charts for each method type
         for method_type in ['zero_shot', 'iterative']:
-            self._create_method_efficiency_chart(detailed_df, method_type)
+            self._create_method_efficiency_chart(combined_df, method_type)
 
-    def _create_method_efficiency_chart(self, detailed_df: pd.DataFrame, method_type: str) -> None:
-        """Create efficiency chart for a specific method type"""
+    def _create_method_efficiency_chart(self, combined_df: pd.DataFrame, method_type: str) -> None:
+        """Create efficiency chart for a specific method type by precision levels"""
+
         # Filter data for this method type and sufficient data
-        method_data = detailed_df[detailed_df['MethodType'] == method_type].copy()
-        filtered_df = method_data[method_data['mean_efficiency_count'] >= 5].copy()
+        method_data = combined_df[combined_df['MethodType'] == method_type].copy()
 
-        if len(filtered_df) == 0:
+        # Calculate aggregated efficiency by precision and category
+        precision_category_stats = method_data.groupby(['Precision', 'TaskCategory'])['mean_efficiency'].mean().reset_index()
+
+        if len(precision_category_stats) == 0:
             print(f"Not enough data for {method_type} efficiency chart")
             return
 
-        # Calculate aggregated efficiency by category
-        category_stats = filtered_df.groupby('TaskCategory')['mean_efficiency_mean'].mean().reset_index()
-        category_stats = category_stats.sort_values('TaskCategory')  # Ensure Common comes first
-
         # Define colors for task categories
-        category_colors = {'Common': 'green', 'Uncommon': 'blue'}
-        colors = [category_colors[cat] for cat in category_stats['TaskCategory']]
+        category_colors = {'Common': '#2E8B57', 'Uncommon': '#B22222'}
 
-        # Create the bar chart with smaller size
-        plt.figure(figsize=(4, 4))
-        bars = plt.bar(category_stats['TaskCategory'], category_stats['mean_efficiency_mean'], color=colors, alpha=0.7, width=0.3)
+        # Prepare data for grouped bar chart
+        precision_order = ['low', 'medium', 'high']
+        categories = ['Common', 'Uncommon']
+
+        # Create data structure for plotting
+        data_dict = {}
+        for precision in precision_order:
+            data_dict[precision] = {}
+            for category in categories:
+                subset = precision_category_stats[
+                    (precision_category_stats['Precision'] == precision) &
+                    (precision_category_stats['TaskCategory'] == category)
+                ]
+                if len(subset) > 0:
+                    data_dict[precision][category] = subset['mean_efficiency'].iloc[0]
+                else:
+                    data_dict[precision][category] = 0
+
+        # Create the grouped bar chart
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        x = np.arange(len(precision_order)) * 0.6  # the label locations (closer spacing)
+        width = 0.15  # the width of the bars (narrower)
+
+        common_values = [data_dict[p]['Common'] for p in precision_order]
+        uncommon_values = [data_dict[p]['Uncommon'] for p in precision_order]
+
+        gap = 0.05  # gap between the two bars
+        bars1 = ax.bar(x - width/2 - gap/2, common_values, width, label='Common',
+                       color=category_colors['Common'], alpha=0.7)
+        bars2 = ax.bar(x + width/2 + gap/2, uncommon_values, width, label='Uncommon',
+                       color=category_colors['Uncommon'], alpha=0.7, hatch='///')
 
         # Customize the chart
-        plt.ylabel('Efficiency', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Efficiency', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Precision Level', fontsize=12, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(precision_order)
 
         # Set ylim based on data with extra margin
-        max_val = category_stats['mean_efficiency_mean'].max()
-        plt.ylim(0, max_val * 1.15)
-        plt.xlim(-0.8, len(category_stats) - 0.2)  # Center the bars in the plot
-        plt.grid(True, alpha=0.3, axis='y')
+        all_values = common_values + uncommon_values
+        max_val = max([v for v in all_values if v > 0]) if any(v > 0 for v in all_values) else 1
+        ax.set_ylim(0, max_val * 1.1)
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
 
         # Add value labels on bars
-        for bar, val in zip(bars, category_stats['mean_efficiency_mean']):
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2, height + max_val * 0.05,
-                    f'{val:.2f}', ha='center', va='bottom', fontsize=12)
+        def add_value_labels(bars, values):
+            for bar, val in zip(bars, values):
+                if val > 0:  # Only add label if there's data
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2, height + max_val * 0.02,
+                           f'{val:.2f}', ha='center', va='bottom', fontsize=10)
+
+        add_value_labels(bars1, common_values)
+        add_value_labels(bars2, uncommon_values)
 
         # Save the plot
         plt.tight_layout()
@@ -386,7 +458,7 @@ class TaskDifficultyAnalyzer:
         plt.figure(figsize=(12, 8))
 
         # Create scatter plot with task categories - separate regions for each category
-        colors = {'Common': 'green', 'Uncommon': 'blue'}
+        colors = {'Common': '#2E8B57', 'Uncommon': '#B22222'}
 
         # Separate data by category
         common_data = task_aggregated[task_aggregated['TaskCategory'] == 'Common'].copy()
@@ -439,17 +511,9 @@ class TaskDifficultyAnalyzer:
             separator_y = (len(common_data) * y_spacing) + category_gap/2
             plt.axhline(y=separator_y, color='gray', linestyle='--', alpha=0.5, linewidth=1)
 
-            # Add category labels on the right side
-            plt.text(1.02, y_start_common + (len(common_data)-1) * y_spacing / 2, 'Common Tasks',
-                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
-                    color='green', ha='left', va='center')
-            plt.text(1.02, y_start_uncommon + (len(uncommon_data)-1) * y_spacing / 2, 'Uncommon Tasks',
-                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
-                    color='blue', ha='left', va='center')
 
         plt.xlabel('Success Rate', fontsize=12, fontweight='bold')
         plt.ylabel('')  # Remove y-axis label
-        plt.title(f'Task Success Rate Distribution by Category ({method_type.replace("_", " ").title()})', fontsize=14, fontweight='bold', pad=20)
         plt.legend(loc='lower right')
         plt.grid(True, alpha=0.3, axis='x')
         plt.xlim(-0.05, 1.1)  # Add margins on both sides
@@ -481,7 +545,7 @@ class TaskDifficultyAnalyzer:
         plt.figure(figsize=(12, 8))
 
         # Create scatter plot with task categories - separate regions for each category
-        colors = {'Common': 'green', 'Uncommon': 'blue'}
+        colors = {'Common': '#2E8B57', 'Uncommon': '#B22222'}
 
         # Separate data by category
         common_data = task_aggregated[task_aggregated['TaskCategory'] == 'Common'].copy()
@@ -534,13 +598,6 @@ class TaskDifficultyAnalyzer:
             separator_y = (len(common_data) * y_spacing) + category_gap/2
             plt.axhline(y=separator_y, color='gray', linestyle='--', alpha=0.5, linewidth=1)
 
-            # Add category labels on the right side
-            plt.text(1.02, y_start_common + (len(common_data)-1) * y_spacing / 2, 'Common Tasks',
-                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
-                    color='green', ha='left', va='center')
-            plt.text(1.02, y_start_uncommon + (len(uncommon_data)-1) * y_spacing / 2, 'Uncommon Tasks',
-                    transform=plt.gca().get_yaxis_transform(), fontsize=12, fontweight='bold',
-                    color='blue', ha='left', va='center')
 
         # Get the efficiency range and add margins
         min_eff = task_aggregated['mean_efficiency_mean'].min()
@@ -549,7 +606,6 @@ class TaskDifficultyAnalyzer:
 
         plt.xlabel('Efficiency', fontsize=12, fontweight='bold')
         plt.ylabel('')  # Remove y-axis label
-        plt.title(f'Task Efficiency Distribution by Category ({method_type.replace("_", " ").title()})', fontsize=14, fontweight='bold', pad=20)
         plt.legend(loc='lower right')
         plt.grid(True, alpha=0.3, axis='x')
         # Increase margins to prevent points from touching edges
@@ -655,7 +711,7 @@ class TaskDifficultyAnalyzer:
         detailed_df = self.generate_detailed_task_stats(combined_df)
 
         # Step 6: Create visualizations
-        self.create_visualizations(agg_df, detailed_df)
+        self.create_visualizations(agg_df, detailed_df, combined_df)
 
         # Step 7: Save results
         self.save_results(agg_df, detailed_df, combined_df)

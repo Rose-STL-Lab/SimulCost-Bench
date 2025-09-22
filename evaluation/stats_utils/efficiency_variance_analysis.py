@@ -309,56 +309,83 @@ class EfficiencyVarianceAnalyzer:
     def create_distribution_plots(self, data: Dict[str, Dict[str, List[float]]],
                                 dataset: str, task_type: str) -> None:
         """
-        Create distribution density plots for efficiency across precision levels.
+        Create three separate normal distribution plots for each precision level.
 
         Args:
             data: Efficiency data by precision and model
             dataset: Dataset name for title
             task_type: Task type for title
         """
-        # Prepare data
-        plot_data = []
-        for precision, models in data.items():
-            all_values = []
-            for values in models.values():
-                all_values.extend(values)
-            if all_values:
-                for value in all_values:
-                    plot_data.append({
-                        'precision': precision.capitalize(),
-                        'efficiency': value
-                    })
+        # Define colors
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
 
-        df = pd.DataFrame(plot_data)
-
-        if df.empty:
-            print("No data available for distribution plots")
-            return
-
-        # Create distribution plots
-        plt.figure(figsize=(12, 8))
-
-        precision_order = ['Low', 'Medium', 'High']
-        colors = ['skyblue', 'lightgreen', 'salmon']
+        precision_order = ['low', 'medium', 'high']
+        precision_titles = ['Low', 'Medium', 'High']
 
         for i, precision in enumerate(precision_order):
-            data_subset = df[df['precision'] == precision]['efficiency']
-            if not data_subset.empty:
-                plt.hist(data_subset, bins=30, alpha=0.7, label=f'{precision} Precision',
-                        color=colors[i], density=True)
+            if precision not in data:
+                continue
 
-        plt.xlabel('Efficiency', fontsize=12)
-        plt.ylabel('Density', fontsize=12)
-        plt.title(f'Efficiency Distribution by Precision Level\n{dataset.replace("_", " ").title()} - {task_type.upper()}',
-                 fontsize=14, fontweight='bold')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
+            models = data[precision]
+            if not models:
+                continue
 
-        # Save plot
-        output_path = self.output_dir / f'{dataset}_{task_type}_distribution.png'
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"📊 Distribution plot saved to: {output_path}")
-        plt.close()
+            # Separate data by mode
+            zero_shot_values = []
+            iterative_values = []
+
+            for model_key, values in models.items():
+                if '_zero_shot' in model_key:
+                    zero_shot_values.extend(values)
+                elif '_iterative' in model_key:
+                    iterative_values.extend(values)
+
+            if not zero_shot_values and not iterative_values:
+                continue
+
+            # Create individual plot for this precision level
+            plt.figure(figsize=(10, 6))
+
+            # Plot histograms with normal distribution overlay
+            if zero_shot_values:
+                # Histogram
+                plt.hist(zero_shot_values, bins=30, alpha=0.6, label='Zero-shot',
+                        color=zero_shot_color, density=True, edgecolor='black', linewidth=0.5)
+
+                # Normal distribution overlay
+                if len(zero_shot_values) > 1:
+                    mu_zs = np.mean(zero_shot_values)
+                    sigma_zs = np.std(zero_shot_values)
+                    x_zs = np.linspace(min(zero_shot_values), max(zero_shot_values), 100)
+                    y_zs = (1 / (sigma_zs * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_zs - mu_zs) / sigma_zs) ** 2)
+                    plt.plot(x_zs, y_zs, color=zero_shot_color, linewidth=2, linestyle='--')
+
+            if iterative_values:
+                # Histogram
+                plt.hist(iterative_values, bins=30, alpha=0.6, label='Iterative',
+                        color=iterative_color, density=True, edgecolor='black', linewidth=0.5)
+
+                # Normal distribution overlay
+                if len(iterative_values) > 1:
+                    mu_it = np.mean(iterative_values)
+                    sigma_it = np.std(iterative_values)
+                    x_it = np.linspace(min(iterative_values), max(iterative_values), 100)
+                    y_it = (1 / (sigma_it * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_it - mu_it) / sigma_it) ** 2)
+                    plt.plot(x_it, y_it, color=iterative_color, linewidth=2, linestyle='--')
+
+            plt.xlabel('Efficiency', fontsize=12)
+            plt.ylabel('Density', fontsize=12)
+            plt.title(f'{precision_titles[i]} Precision - Efficiency Distribution\n{dataset.replace("_", " ").title()} - {task_type.upper()}',
+                     fontsize=14, fontweight='bold')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+
+            # Save individual plot
+            output_path = self.output_dir / f'{dataset}_{task_type}_{precision}_precision_distribution.png'
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            print(f"📊 {precision_titles[i]} precision distribution saved to: {output_path}")
+            plt.close()
 
     def save_statistics_report(self, stats_df: pd.DataFrame,
                               dataset: str, task_type: str) -> None:
@@ -610,8 +637,14 @@ class EfficiencyVarianceAnalyzer:
 
         # 1. Create and save box plot
         fig1, ax1 = plt.subplots(1, 1, figsize=(8, 5))
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
+
+        # Create custom palette for box plot
+        box_palette = {'Zero-shot': zero_shot_color, 'Iterative': iterative_color}
+
         sns.boxplot(data=df, x='precision', y='efficiency', hue='mode',
-                   order=precision_order, hue_order=mode_order, ax=ax1)
+                   order=precision_order, hue_order=mode_order, palette=box_palette, ax=ax1)
         ax1.set_xlabel('Accuracy Level', fontsize=12)
         ax1.set_ylabel('Efficiency', fontsize=12)
         ax1.grid(True, alpha=0.3)
@@ -621,46 +654,92 @@ class EfficiencyVarianceAnalyzer:
         legend.set_title('')
 
         plt.tight_layout()
-        boxplot_path = self.output_dir / 'efficiency_boxplot.png'
-        plt.savefig(boxplot_path, dpi=300, bbox_inches='tight')
-        print(f"📊 Box plot saved to: {boxplot_path}")
         plt.close()
 
-        # 2. Create and save scatter plot
+        # 2. Create and save scatter plot with density background
         fig2, ax2 = plt.subplots(1, 1, figsize=(8, 5))
-        mode_colors = {'Iterative': 'blue', 'Zero-shot': 'hotpink', 'Unknown': 'gray'}
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
+        mode_colors = {'Iterative': iterative_color, 'Zero-shot': zero_shot_color, 'Unknown': 'gray'}
         mode_markers = {'Iterative': 'o', 'Zero-shot': 's', 'Unknown': '^'}
 
         # Configurable spacing parameters
         precision_spacing = 0.3  # Controls distance between precision levels
-        mode_spacing_ratio = 0.15  # Mode separation relative to precision spacing
+        mode_spacing_ratio = 0.25  # Mode separation relative to precision spacing
         jitter_ratio = 0.04  # Random noise relative to precision spacing
 
-        # Process modes in the desired order for legend
+        # Collect all data points for density estimation and plotting
+        all_zero_shot_x = []
+        all_zero_shot_y = []
+        all_iterative_x = []
+        all_iterative_y = []
+        all_plot_data = []  # Store plotting data for later use
+
+        # Process data for density estimation and collect plot data
         for precision in precision_order:
             for mode in mode_order:
                 subset = df[(df['precision'] == precision) & (df['mode'] == mode)]
                 if not subset.empty:
-                    # Add jitter to x-axis for better visibility with proportional spacing
                     x_pos = precision_order.index(precision) * precision_spacing
                     offset = (precision_spacing * mode_spacing_ratio) if mode == 'Iterative' else -(precision_spacing * mode_spacing_ratio) if mode == 'Zero-shot' else 0
                     x_jitter = x_pos + offset + np.random.normal(0, precision_spacing * jitter_ratio, len(subset))
 
-                    ax2.scatter(x_jitter, subset['efficiency'],
-                               alpha=0.7, s=25,
-                               color=mode_colors.get(mode, 'gray'),
-                               marker=mode_markers.get(mode, 'o'),
-                               label=f'{mode}' if precision == 'Low' else "",
-                               edgecolors='black', linewidth=0.5)
+                    # Store for density estimation
+                    if mode == 'Zero-shot':
+                        all_zero_shot_x.extend(x_jitter)
+                        all_zero_shot_y.extend(subset['efficiency'])
+                    elif mode == 'Iterative':
+                        all_iterative_x.extend(x_jitter)
+                        all_iterative_y.extend(subset['efficiency'])
+
+                    # Store for plotting
+                    all_plot_data.append({
+                        'precision': precision,
+                        'mode': mode,
+                        'x_jitter': x_jitter,
+                        'efficiency': subset['efficiency'].values
+                    })
+
+        # Determine proper axis ranges
+        all_x = all_zero_shot_x + all_iterative_x
+        all_y = all_zero_shot_y + all_iterative_y
+
+        if all_x and all_y:
+            x_min = min(all_x) - 0.1
+            x_max = max(all_x) + 0.1
+            y_min = min(all_y) - 10
+            y_max = max(all_y) + 10
+        else:
+            x_min, x_max = -0.2, 0.8
+            y_min, y_max = 0, 1
+
+
+        # Plot scatter points
+        for plot_data in all_plot_data:
+            precision = plot_data['precision']
+            mode = plot_data['mode']
+            x_jitter = plot_data['x_jitter']
+            efficiency = plot_data['efficiency']
+
+            ax2.scatter(x_jitter, efficiency,
+                       alpha=0.8, s=30,
+                       color=mode_colors.get(mode, 'gray'),
+                       marker=mode_markers.get(mode, 'o'),
+                       label=f'{mode}' if precision == 'Low' else "",
+                       edgecolors='black', linewidth=0.5, zorder=10)
+
+        # Set proper axis limits to prevent truncation
+        ax2.set_xlim(x_min, x_max)
+        ax2.set_ylim(y_min, y_max)
 
         ax2.set_xticks([i * precision_spacing for i in range(len(precision_order))])
         ax2.set_xticklabels(precision_order)
         ax2.set_xlabel('Accuracy Level', fontsize=12)
         ax2.set_ylabel('Efficiency', fontsize=12)
-        ax2.grid(True, alpha=0.3)
+        ax2.grid(True, alpha=0.3, zorder=1)
 
         # Move legend to upper right and remove title
-        legend = ax2.legend(loc='upper right')
+        legend = ax2.legend(loc='upper right', framealpha=0.9, edgecolor='black')
         legend.set_title('')
 
         plt.tight_layout()
@@ -668,6 +747,80 @@ class EfficiencyVarianceAnalyzer:
         plt.savefig(scatterplot_path, dpi=300, bbox_inches='tight')
         print(f"📊 Scatter plot saved to: {scatterplot_path}")
         plt.close()
+
+        # 3. Generate three separate normal distribution plots for each precision level
+        self.create_overall_distribution_plots(data)
+
+    def create_overall_distribution_plots(self, data: Dict[str, List[Dict]]) -> None:
+        """
+        Create three separate normal distribution plots for each precision level across all datasets.
+
+        Args:
+            data: Dictionary with precision levels as keys and data_list with mode info as values
+        """
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
+
+        precision_order = ['low', 'medium', 'high']
+        precision_titles = ['Low', 'Medium', 'High']
+
+        for i, precision in enumerate(precision_order):
+            if precision not in data:
+                continue
+
+            data_list = data[precision]
+            if not data_list:
+                continue
+
+            # Separate data by mode
+            zero_shot_values = [item['efficiency'] for item in data_list if item['mode'] == 'zero_shot']
+            iterative_values = [item['efficiency'] for item in data_list if item['mode'] == 'iterative']
+
+            if not zero_shot_values and not iterative_values:
+                continue
+
+            # Create individual plot for this precision level
+            plt.figure(figsize=(10, 6))
+
+            # Plot histograms with normal distribution overlay
+            if zero_shot_values:
+                # Histogram
+                plt.hist(zero_shot_values, bins=30, alpha=0.6, label='Zero-shot',
+                        color=zero_shot_color, density=True, edgecolor='black', linewidth=0.5)
+
+                # Normal distribution overlay
+                if len(zero_shot_values) > 1:
+                    mu_zs = np.mean(zero_shot_values)
+                    sigma_zs = np.std(zero_shot_values)
+                    x_zs = np.linspace(min(zero_shot_values), max(zero_shot_values), 100)
+                    y_zs = (1 / (sigma_zs * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_zs - mu_zs) / sigma_zs) ** 2)
+                    plt.plot(x_zs, y_zs, color=zero_shot_color, linewidth=2, linestyle='--')
+
+            if iterative_values:
+                # Histogram
+                plt.hist(iterative_values, bins=30, alpha=0.6, label='Iterative',
+                        color=iterative_color, density=True, edgecolor='black', linewidth=0.5)
+
+                # Normal distribution overlay
+                if len(iterative_values) > 1:
+                    mu_it = np.mean(iterative_values)
+                    sigma_it = np.std(iterative_values)
+                    x_it = np.linspace(min(iterative_values), max(iterative_values), 100)
+                    y_it = (1 / (sigma_it * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_it - mu_it) / sigma_it) ** 2)
+                    plt.plot(x_it, y_it, color=iterative_color, linewidth=2, linestyle='--')
+
+            plt.xlabel('Efficiency', fontsize=12)
+            plt.ylabel('Density', fontsize=12)
+            plt.title(f'{precision_titles[i]} Accuracy - Efficiency Distribution',
+                     fontsize=14, fontweight='bold')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+
+            # Save individual plot
+            output_path = self.output_dir / f'{precision}_accuracy_efficiency_distribution.png'
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            print(f"📊 {precision_titles[i]} accuracy distribution saved to: {output_path}")
+            plt.close()
 
     def save_overall_report(self, stats: Dict[str, Dict], combinations: List[Tuple[str, str]], data: Dict[str, List[Dict]] = None) -> None:
         """

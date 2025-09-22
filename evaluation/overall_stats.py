@@ -662,14 +662,14 @@ class OverallStatsGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.12
+        bar_width = 0.12 * 0.85
         precision_spacing = 0.12
         mode_spacing = 0.01
         model_spacing = 0.4
 
         # Colors
-        zero_shot_color = '#BBBBBB'
-        iterative_color = '#4169E1'
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
 
         # Calculate positions
         total_group_width = len(precision_levels) * (2 * bar_width + mode_spacing) + (len(precision_levels) - 1) * precision_spacing
@@ -694,19 +694,18 @@ class OverallStatsGenerator:
                         # Choose color and pattern
                         if mode == 'Zero-shot':
                             color = zero_shot_color
-                            hatch = '///'
                         else:  # Iterative
                             color = iterative_color
-                            hatch = None
 
                         # Calculate position
                         precision_offset = j * (2 * bar_width + mode_spacing + precision_spacing)
                         mode_offset = k * (bar_width + mode_spacing)
                         bar_pos = x_positions[i] + precision_offset + mode_offset - (len(precision_levels) * (2 * bar_width + mode_spacing + precision_spacing) - precision_spacing) / 2
 
-                        # Create bar
+                        # Create bar with hatching for iterative mode
+                        hatch = '///' if mode == 'Iterative' else None
                         ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
-                              hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+                              edgecolor='black', linewidth=0.8, hatch=hatch)
 
                         # Add precision label
                         ax.text(bar_pos, value/2, precision_labels[j],
@@ -720,9 +719,7 @@ class OverallStatsGenerator:
         # Customize chart
         ax.set_xlabel('Model', fontsize=10, fontweight='bold')
         ax.set_ylabel('Success Rate', fontsize=10, fontweight='bold')
-        ax.set_title('Success Rate Across All Datasets',
-                    fontsize=10, fontweight='bold')  # Match y-axis font size
-        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_ylim(0, max_val * 1.05)  # Add 10% padding to the maximum value
         ax.set_xticks(x_positions)
         ax.set_xticklabels(models, rotation=0)  # Horizontal labels
         ax.grid(True, alpha=0.3)
@@ -730,11 +727,12 @@ class OverallStatsGenerator:
         # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
-            Patch(facecolor=iterative_color, label='Iterative')
+            Patch(facecolor=zero_shot_color, edgecolor='black', label='Zero-shot'),
+            Patch(facecolor=iterative_color, edgecolor='black', hatch='///', label='Iterative')
         ]
-        ax.legend(handles=legend_elements, title='Inference Mode',
-                 title_fontsize=8, fontsize=7, loc='upper right', frameon=True)
+        ax.legend(handles=legend_elements,
+                 bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2,
+                 fontsize=10, frameon=False)
 
         plt.tight_layout()
 
@@ -760,12 +758,12 @@ class OverallStatsGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.35
+        bar_width = 0.35 * 0.85
         model_spacing = 0.8
 
         # Colors
-        zero_shot_color = '#BBBBBB'
-        iterative_color = '#4169E1'
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
 
         # Calculate positions
         x_positions = np.arange(len(models))
@@ -785,17 +783,17 @@ class OverallStatsGenerator:
                     # Choose color and pattern
                     if mode == 'Zero-shot':
                         color = zero_shot_color
-                        hatch = '///'
                     else:  # Iterative
                         color = iterative_color
-                        hatch = None
 
-                    # Calculate position
-                    bar_pos = x_positions[i] + (j - 0.5) * bar_width
+                    # Calculate position with spacing between bars
+                    bar_spacing = 0.05  # Small gap between the two bars of same model
+                    bar_pos = x_positions[i] + (j - 0.5) * (bar_width + bar_spacing)
 
-                    # Create bar
+                    # Create bar with hatching for iterative mode
+                    hatch = '///' if mode == 'Iterative' else None
                     ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
-                          hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+                          edgecolor='black', linewidth=0.8, hatch=hatch)
 
                     # Add value label
                     ax.text(bar_pos, value + 0.01, f'{value:.2f}',
@@ -804,8 +802,7 @@ class OverallStatsGenerator:
         # Customize chart
         ax.set_xlabel('Model', fontsize=12, fontweight='bold')
         ax.set_ylabel('Success Rate', fontsize=12, fontweight='bold')
-        ax.set_title('Success Rate Across All Datasets (Aggregated)', fontsize=14, fontweight='bold')
-        ax.set_ylim(0, max_val * 1.15)  # Add 15% padding to the maximum value
+        ax.set_ylim(0, max_val * 1.05)  # Add 15% padding to the maximum value
         ax.set_xticks(x_positions)
         ax.set_xticklabels(models, rotation=0)
         ax.grid(True, alpha=0.3)
@@ -813,11 +810,12 @@ class OverallStatsGenerator:
         # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
-            Patch(facecolor=iterative_color, label='Iterative')
+            Patch(facecolor=zero_shot_color, edgecolor='black', label='Zero-shot'),
+            Patch(facecolor=iterative_color, edgecolor='black', hatch='///', label='Iterative')
         ]
-        ax.legend(handles=legend_elements, title='Inference Mode',
-                 title_fontsize=10, fontsize=9, loc='upper right', frameon=True)
+        ax.legend(handles=legend_elements,
+                 bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2,
+                 fontsize=10, frameon=False)
 
         plt.tight_layout()
 
@@ -844,14 +842,14 @@ class OverallStatsGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.12
+        bar_width = 0.12 * 0.85
         precision_spacing = 0.12
         mode_spacing = 0.01
         model_spacing = 0.4
 
         # Colors
-        zero_shot_color = '#BBBBBB'
-        iterative_color = '#4169E1'
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
 
         # Calculate positions
         total_group_width = len(precision_levels) * (2 * bar_width + mode_spacing) + (len(precision_levels) - 1) * precision_spacing
@@ -876,19 +874,18 @@ class OverallStatsGenerator:
                         # Choose color and pattern
                         if mode == 'Zero-shot':
                             color = zero_shot_color
-                            hatch = '///'
                         else:  # Iterative
                             color = iterative_color
-                            hatch = None
-
+                
                         # Calculate position
                         precision_offset = j * (2 * bar_width + mode_spacing + precision_spacing)
                         mode_offset = k * (bar_width + mode_spacing)
                         bar_pos = x_positions[i] + precision_offset + mode_offset - (len(precision_levels) * (2 * bar_width + mode_spacing + precision_spacing) - precision_spacing) / 2
 
-                        # Create bar
+                        # Create bar with hatching for iterative mode
+                        hatch = '///' if mode == 'Iterative' else None
                         ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
-                              hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+                              edgecolor='black', linewidth=0.8, hatch=hatch)
 
                         # Add precision label
                         ax.text(bar_pos, value/2, precision_labels[j],
@@ -902,9 +899,7 @@ class OverallStatsGenerator:
         # Customize chart
         ax.set_xlabel('Model', fontsize=10, fontweight='bold')
         ax.set_ylabel('Efficiency', fontsize=10, fontweight='bold')
-        ax.set_title('Efficiency Across All Datasets',
-                    fontsize=10, fontweight='bold')  # Match y-axis font size
-        ax.set_ylim(0, max_val * 1.1)  # Add 10% padding to the maximum value
+        ax.set_ylim(0, max_val * 1.05)  # Add 10% padding to the maximum value
         ax.set_xticks(x_positions)
         ax.set_xticklabels(models, rotation=0)  # Horizontal labels
         ax.grid(True, alpha=0.3)
@@ -912,11 +907,12 @@ class OverallStatsGenerator:
         # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
-            Patch(facecolor=iterative_color, label='Iterative')
+            Patch(facecolor=zero_shot_color, edgecolor='black', label='Zero-shot'),
+            Patch(facecolor=iterative_color, edgecolor='black', hatch='///', label='Iterative')
         ]
-        ax.legend(handles=legend_elements, title='Inference Mode',
-                 title_fontsize=8, fontsize=7, loc='upper right', frameon=True)
+        ax.legend(handles=legend_elements,
+                 bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2,
+                 fontsize=10, frameon=False)
 
         plt.tight_layout()
 
@@ -942,12 +938,12 @@ class OverallStatsGenerator:
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.35
+        bar_width = 0.35 * 0.85
         model_spacing = 0.8
 
         # Colors
-        zero_shot_color = '#BBBBBB'
-        iterative_color = '#4169E1'
+        zero_shot_color = '#4682B4'
+        iterative_color = '#FF7F32'
 
         # Calculate positions
         x_positions = np.arange(len(models))
@@ -967,17 +963,17 @@ class OverallStatsGenerator:
                     # Choose color and pattern
                     if mode == 'Zero-shot':
                         color = zero_shot_color
-                        hatch = '///'
                     else:  # Iterative
                         color = iterative_color
-                        hatch = None
 
-                    # Calculate position
-                    bar_pos = x_positions[i] + (j - 0.5) * bar_width
+                    # Calculate position with spacing between bars
+                    bar_spacing = 0.05  # Small gap between the two bars of same model
+                    bar_pos = x_positions[i] + (j - 0.5) * (bar_width + bar_spacing)
 
-                    # Create bar
+                    # Create bar with hatching for iterative mode
+                    hatch = '///' if mode == 'Iterative' else None
                     ax.bar(bar_pos, value, bar_width, color=color, alpha=0.8,
-                          hatch=hatch, edgecolor='lightgray', linewidth=0.3)
+                          edgecolor='black', linewidth=0.8, hatch=hatch)
 
                     # Add value label
                     ax.text(bar_pos, value + max_val * 0.01, f'{value:.2f}',
@@ -986,8 +982,7 @@ class OverallStatsGenerator:
         # Customize chart
         ax.set_xlabel('Model', fontsize=12, fontweight='bold')
         ax.set_ylabel('Efficiency', fontsize=12, fontweight='bold')
-        ax.set_title('Efficiency Across All Datasets (Aggregated)', fontsize=14, fontweight='bold')
-        ax.set_ylim(0, max_val * 1.15)  # Add 15% padding to the maximum value
+        ax.set_ylim(0, max_val * 1.05)  # Add 15% padding to the maximum value
         ax.set_xticks(x_positions)
         ax.set_xticklabels(models, rotation=0)
         ax.grid(True, alpha=0.3)
@@ -995,11 +990,12 @@ class OverallStatsGenerator:
         # Create custom legend with patterns
         from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor=zero_shot_color, hatch='///', edgecolor='lightgray', label='Zero-shot'),
-            Patch(facecolor=iterative_color, label='Iterative')
+            Patch(facecolor=zero_shot_color, edgecolor='black', label='Zero-shot'),
+            Patch(facecolor=iterative_color, edgecolor='black', hatch='///', label='Iterative')
         ]
-        ax.legend(handles=legend_elements, title='Inference Mode',
-                 title_fontsize=10, fontsize=9, loc='upper right', frameon=True)
+        ax.legend(handles=legend_elements,
+                 bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2,
+                 fontsize=10, frameon=False)
 
         plt.tight_layout()
 
