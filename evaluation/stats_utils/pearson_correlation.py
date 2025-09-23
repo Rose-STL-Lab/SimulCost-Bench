@@ -626,7 +626,9 @@ class PearsonCorrelationAnalyzer:
         # Set ticks and labels
         ax.set_xticks(range(len(METRICS_TO_ANALYZE)))
         ax.set_yticks(range(len(precision_labels)))
-        ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
+        # Bold labels for x-axis
+        metric_labels = [r'$\mathbf{Success\ Rate}$', r'$\mathbf{Mean\ Efficiency}$']
+        ax.set_xticklabels(metric_labels)
         ax.set_yticklabels(precision_labels)
         
         # Keep x-axis labels horizontal for better readability
@@ -712,7 +714,9 @@ class PearsonCorrelationAnalyzer:
             # Set ticks and labels
             ax.set_xticks(range(len(METRICS_TO_ANALYZE)))
             ax.set_yticks(range(len(precision_labels)))
-            ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
+            # Bold labels for x-axis
+            metric_labels = [r'$\mathbf{Success\ Rate}$', r'$\mathbf{Mean\ Efficiency}$']
+            ax.set_xticklabels(metric_labels)
             ax.set_yticklabels(precision_labels)
             
             # Rotate x-axis labels for better readability

@@ -93,17 +93,17 @@ def evaluate(
     zero_shot: bool = False,
 ) -> Dict:
     """Evaluate model performance against reference solutions for ns_transient_2d.
-    
+
     Args:
-        dataset: Dataset name (should be 'ns_transient_2d')
+        dataset: Dataset name ('ns_transient_2d', 'ns_transient_2d_icl', 'ns_transient_2d_icl_no_cost', or 'ns_transient_2d_icl_uniform')
         task: Task type (one of the 4 NS Transient 2D tasks)
         model_name: Name of the model being evaluated
         precision_level: Precision level ('low', 'medium', 'high')
         zero_shot: Whether to use zero-shot evaluation
-        
+
     Returns:
         Dictionary containing evaluation metrics
-        
+
     Raises:
         RuntimeError: If required files are not found or data loading fails
     """
@@ -117,7 +117,12 @@ def evaluate(
     
     # Build paths for ns_transient_2d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
-    dummy_path = f"data/ns_transient_2d/{task}/{precision_level}/{flag}_questions.json"
+
+    # For ICL datasets, use the original ns_transient_2d reference files
+    if dataset.startswith("ns_transient_2d_icl"):
+        dummy_path = f"data/ns_transient_2d/{task}/{precision_level}/{flag}_questions.json"
+    else:
+        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
@@ -322,7 +327,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="ns_transient_2d",
-                        help="Dataset name (should be 'ns_transient_2d')")
+                        choices=["ns_transient_2d", "ns_transient_2d_icl", "ns_transient_2d_icl_no_cost", "ns_transient_2d_icl_uniform"],
+                        help="Dataset name: ns_transient_2d, ns_transient_2d_icl, ns_transient_2d_icl_no_cost, or ns_transient_2d_icl_uniform")
     parser.add_argument("-t", "--task", default="resolution",
                         choices=list(VALID_TASKS),
                         help="Task: one of the 4 NS Transient 2D tasks")

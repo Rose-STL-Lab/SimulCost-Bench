@@ -377,6 +377,52 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     # Process remaining samples
     for i, data in enumerate(tqdm(dataset[start_idx:], desc="Running inference", initial=start_idx, total=len(dataset))):
         try:
+            # Special handling for NS Transient 2D ICL datasets: read norm_rmse_tolerance from original dataset
+            if ('target_parameter' in data and
+                'precision_level' in data and
+                'norm_rmse_tolerance' not in data and
+                any(task in data.get('target_parameter', '') for task in ['resolution', 'cfl', 'relaxation_factor', 'residual_threshold'])):
+
+                # Read tolerance from corresponding original ns_transient_2d dataset
+                target_parameter = data.get('target_parameter')
+                precision_level = data.get('precision_level', 'medium')
+                zero_shot = data.get('zero_shot', False)
+                flag = "zero_shot" if zero_shot else "iterative"
+
+                original_dataset_path = f"data/ns_transient_2d/human_write/{precision_level}/{target_parameter}_{flag}_dataset.json"
+
+                try:
+                    with open(original_dataset_path, 'r', encoding='utf-8') as f:
+                        original_dataset = json.load(f)
+
+                    # Find matching QID or use first entry if QID doesn't match
+                    current_qid = data.get('QID')
+                    tolerance_value = None
+
+                    for orig_data in original_dataset:
+                        if orig_data.get('QID') == current_qid:
+                            tolerance_value = orig_data.get('norm_rmse_tolerance')
+                            break
+
+                    # If no matching QID found, use the first entry's tolerance
+                    if tolerance_value is None and original_dataset:
+                        tolerance_value = original_dataset[0].get('norm_rmse_tolerance')
+
+                    if tolerance_value is not None:
+                        data['norm_rmse_tolerance'] = tolerance_value
+                        logger.info(f"Loaded norm_rmse_tolerance={tolerance_value} from original dataset {original_dataset_path}")
+                    else:
+                        logger.warning(f"Could not find norm_rmse_tolerance in {original_dataset_path}, using fallback")
+                        # Fallback to hardcoded values if reading fails
+                        fallback_tolerances = {"low": 0.6, "medium": 0.3, "high": 0.15}
+                        data['norm_rmse_tolerance'] = fallback_tolerances.get(precision_level, 0.3)
+
+                except Exception as e:
+                    logger.warning(f"Error reading tolerance from {original_dataset_path}: {e}, using fallback")
+                    # Fallback to hardcoded values if reading fails
+                    fallback_tolerances = {"low": 0.6, "medium": 0.3, "high": 0.15}
+                    data['norm_rmse_tolerance'] = fallback_tolerances.get(precision_level, 0.3)
+
             result, tool_df = agent.forward(data)
             
             # Preserve additional fields from dataset
@@ -583,6 +629,9 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 DATASET_TASK_MAP = {
     "heat_1d": ["cfl", "n_space"],
     "heat_1d_bo": ["cfl", "n_space"],  # Bayesian Optimization version for heat_1d
+    "heat_1d_icl": ["cfl", "n_space"],  # ICL version for heat_1d
+    "heat_1d_icl_no_cost": ["cfl", "n_space"],  # ICL no cost version for heat_1d
+    "heat_1d_icl_uniform": ["cfl", "n_space"],  # ICL uniform version for heat_1d
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
@@ -590,6 +639,9 @@ DATASET_TASK_MAP = {
     "ns_2d": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p",
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
     "ns_transient_2d": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
+    "ns_transient_2d_icl": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL version
+    "ns_transient_2d_icl_no_cost": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL no cost version
+    "ns_transient_2d_icl_uniform": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL uniform version
     "epoch_1d": ["dt_multiplier", "nx", "npart", "field_order", "particle_order"]
 }
 
@@ -691,11 +743,18 @@ Examples:
 Available dataset-task combinations:
   heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
   heat_1d_bo: cfl, n_space (use -l for precision_level: low/medium/high) [Bayesian Optimization with profile passing]
+  heat_1d_icl: cfl, n_space (use -l for precision_level: low/medium/high) [ICL version]
+  heat_1d_icl_no_cost: cfl, n_space (use -l for precision_level: low/medium/high) [ICL no cost version]
+  heat_1d_icl_uniform: cfl, n_space (use -l for precision_level: low/medium/high) [ICL uniform version]
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
   burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d_icl: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL version]
   ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (use -l for precision_level: low/medium/high)
+  ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high)
+  ns_transient_2d_icl: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL version]
+  ns_transient_2d_icl_no_cost: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL no cost version]
+  ns_transient_2d_icl_uniform: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL uniform version]
   epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (use -l for precision_level: low/medium/high)
 
 Note: All datasets now use precision_level structure for better organization.

@@ -3,9 +3,10 @@
 """
 Effect Size Analysis for Zero-shot vs Iterative Model Performance
 
-This script computes effect sizes (Cohen's d, Glass's Δ, Hedges' g) to quantify 
-the magnitude of performance differences between zero-shot and iterative inference 
-modes across different models and precision levels.
+This script computes appropriate effect sizes to quantify the magnitude of
+performance differences between zero-shot and iterative inference modes:
+- Cohen's h for success rates (proportion-based metrics)
+- Cohen's d for efficiency measures (continuous metrics)
 
 Usage
 -----
@@ -17,7 +18,6 @@ Output: Creates analysis results with:
 - effect_size_summary.csv: Numerical effect size coefficients and interpretations
 - effect_size_summary.xlsx: Excel version with formatting
 - effect_size_heatmap.png: Heatmap visualization of effect sizes across metrics
-- effect_size_bar_chart.png: Bar chart comparing effect sizes by precision level
 - effect_size_report.txt: Detailed interpretation report
 """
 
@@ -216,15 +216,15 @@ class EffectSizeAnalyzer:
     
     def compute_cohens_d(self, group1: np.ndarray, group2: np.ndarray) -> float:
         """
-        Compute Cohen's d effect size.
-        
+        Compute Cohen's d effect size for continuous metrics (e.g., efficiency).
+
         Cohen's d = (mean1 - mean2) / pooled_standard_deviation
-        
+
         Parameters
         ----------
         group1, group2 : np.ndarray
             Two groups to compare
-            
+
         Returns
         -------
         float
@@ -232,89 +232,62 @@ class EffectSizeAnalyzer:
         """
         if len(group1) == 0 or len(group2) == 0:
             return np.nan
-            
+
         mean1, mean2 = np.mean(group1), np.mean(group2)
         var1, var2 = np.var(group1, ddof=1), np.var(group2, ddof=1)
         n1, n2 = len(group1), len(group2)
-        
+
         # Pooled standard deviation
         pooled_std = np.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
-        
+
         if pooled_std == 0:
             return np.nan
-            
+
         return (mean1 - mean2) / pooled_std
-    
-    def compute_hedges_g(self, group1: np.ndarray, group2: np.ndarray) -> float:
+
+    def compute_cohens_h(self, p1: np.ndarray, p2: np.ndarray) -> float:
         """
-        Compute Hedges' g effect size (bias-corrected Cohen's d).
-        
+        Compute Cohen's h effect size for proportions (e.g., success rates).
+
+        Cohen's h = 2 * (arcsin(sqrt(p1)) - arcsin(sqrt(p2)))
+
         Parameters
         ----------
-        group1, group2 : np.ndarray
-            Two groups to compare
-            
+        p1, p2 : np.ndarray
+            Two proportion arrays to compare
+
         Returns
         -------
         float
-            Hedges' g effect size
+            Cohen's h effect size
         """
-        cohens_d = self.compute_cohens_d(group1, group2)
-        if np.isnan(cohens_d):
+        if len(p1) == 0 or len(p2) == 0:
             return np.nan
-            
-        n1, n2 = len(group1), len(group2)
-        df = n1 + n2 - 2
-        
-        # Bias correction factor
-        j = 1 - (3 / (4 * df - 1))
-        
-        return cohens_d * j
+
+        mean_p1, mean_p2 = np.mean(p1), np.mean(p2)
+
+        # Ensure proportions are in valid range [0, 1]
+        mean_p1 = np.clip(mean_p1, 0, 1)
+        mean_p2 = np.clip(mean_p2, 0, 1)
+
+        # Cohen's h formula
+        h = 2 * (np.arcsin(np.sqrt(mean_p1)) - np.arcsin(np.sqrt(mean_p2)))
+
+        return h
     
-    def compute_glass_delta(self, group1: np.ndarray, group2: np.ndarray, control_is_group2: bool = True) -> float:
-        """
-        Compute Glass's Δ effect size.
-        
-        Glass's Δ = (mean1 - mean2) / std_control
-        
-        Parameters
-        ----------
-        group1, group2 : np.ndarray
-            Two groups to compare
-        control_is_group2 : bool
-            If True, group2 is the control group; otherwise group1
-            
-        Returns
-        -------
-        float
-            Glass's Δ effect size
-        """
-        if len(group1) == 0 or len(group2) == 0:
-            return np.nan
-            
-        mean1, mean2 = np.mean(group1), np.mean(group2)
-        
-        if control_is_group2:
-            control_std = np.std(group2, ddof=1)
-        else:
-            control_std = np.std(group1, ddof=1)
-            
-        if control_std == 0:
-            return np.nan
-            
-        return (mean1 - mean2) / control_std
+    
     
     def interpret_effect_size(self, effect_size: float, metric_name: str = "Cohen's d") -> str:
         """
         Interpret effect size magnitude according to Cohen's conventions.
-        
+
         Parameters
         ----------
         effect_size : float
             The computed effect size
         metric_name : str
-            Name of the effect size metric
-            
+            Name of the effect size metric ("Cohen's d" or "Cohen's h")
+
         Returns
         -------
         str
@@ -322,10 +295,11 @@ class EffectSizeAnalyzer:
         """
         if np.isnan(effect_size):
             return "Cannot determine (insufficient data)"
-            
+
         abs_effect = abs(effect_size)
         direction = "favoring iterative" if effect_size > 0 else "favoring zero-shot"
-        
+
+        # Use same thresholds for both Cohen's d and Cohen's h
         if abs_effect < 0.2:
             magnitude = "negligible"
         elif abs_effect < 0.5:
@@ -334,7 +308,7 @@ class EffectSizeAnalyzer:
             magnitude = "medium"
         else:
             magnitude = "large"
-            
+
         return f"{magnitude} effect {direction}"
     
     def compute_statistical_tests(self, iterative_vals: np.ndarray, zero_shot_vals: np.ndarray) -> Dict:
@@ -446,9 +420,9 @@ class EffectSizeAnalyzer:
                 if len(iterative_vals) < 3:
                     level_results[metric] = {
                         'n_samples': len(iterative_vals),
+                        'primary_effect_size': np.nan,
+                        'effect_size_name': "Cohen's h" if 'success_rate' in metric else "Cohen's d",
                         'cohens_d': np.nan,
-                        'hedges_g': np.nan,
-                        'glass_delta': np.nan,
                         'interpretation': "Insufficient data for analysis",
                         'mean_difference': np.nan,
                         'mean_iterative': np.nan,
@@ -457,27 +431,36 @@ class EffectSizeAnalyzer:
                     }
                     continue
                 
-                # Compute effect sizes
-                cohens_d = self.compute_cohens_d(iterative_vals, zero_shot_vals)
-                hedges_g = self.compute_hedges_g(iterative_vals, zero_shot_vals)
-                glass_delta = self.compute_glass_delta(iterative_vals, zero_shot_vals, control_is_group2=True)
-                
+                # Choose appropriate effect size measure based on metric
+                if 'success_rate' in metric:
+                    # Use Cohen's h for proportions/success rates
+                    primary_effect_size = self.compute_cohens_h(iterative_vals, zero_shot_vals)
+                    effect_size_name = "Cohen's h"
+                    # Also compute Cohen's d for completeness
+                    cohens_d = self.compute_cohens_d(iterative_vals, zero_shot_vals)
+                else:
+                    # Use Cohen's d for continuous metrics (efficiency)
+                    primary_effect_size = self.compute_cohens_d(iterative_vals, zero_shot_vals)
+                    effect_size_name = "Cohen's d"
+                    cohens_d = primary_effect_size
+
+
                 # Compute statistical tests
                 statistical_tests = self.compute_statistical_tests(iterative_vals, zero_shot_vals)
-                
+
                 level_results[metric] = {
                     'n_samples': len(iterative_vals),
+                    'primary_effect_size': primary_effect_size,
+                    'effect_size_name': effect_size_name,
                     'cohens_d': cohens_d,
-                    'hedges_g': hedges_g,
-                    'glass_delta': glass_delta,
-                    'interpretation': self.interpret_effect_size(cohens_d),
+                    'interpretation': self.interpret_effect_size(primary_effect_size, effect_size_name),
                     'mean_difference': np.mean(iterative_vals) - np.mean(zero_shot_vals),
                     'mean_iterative': np.mean(iterative_vals),
                     'mean_zero_shot': np.mean(zero_shot_vals),
                     'statistical_tests': statistical_tests
                 }
-                
-                print(f"  {metric}: Cohen's d = {cohens_d:.3f} ({self.interpret_effect_size(cohens_d)}, n = {len(iterative_vals)})")
+
+                print(f"  {metric}: {effect_size_name} = {primary_effect_size:.3f} ({self.interpret_effect_size(primary_effect_size, effect_size_name)}, n = {len(iterative_vals)})")
             
             results[precision_level] = level_results
         
@@ -490,13 +473,13 @@ class EffectSizeAnalyzer:
     def save_effect_size_summary(self) -> None:
         """Save effect size summary to CSV and Excel files."""
         summary_data = []
-        
+
         for precision_level, metrics in self.effect_size_results.items():
             for metric, stats in metrics.items():
                 # Statistical test results
                 t_test_p = stats['statistical_tests'].get('paired_t_test', {}).get('p_value', np.nan)
                 wilcoxon_p = stats['statistical_tests'].get('wilcoxon', {}).get('p_value', np.nan)
-                
+
                 summary_data.append({
                     'Precision_Level': precision_level,
                     'Metric': metric,
@@ -504,12 +487,14 @@ class EffectSizeAnalyzer:
                     'Mean_Iterative': stats['mean_iterative'],
                     'Mean_Zero_Shot': stats['mean_zero_shot'],
                     'Mean_Difference': stats['mean_difference'],
+                    'Effect_Size_Type': stats['effect_size_name'],
+                    'Primary_Effect_Size': stats['primary_effect_size'],
                     'Cohens_d': stats['cohens_d'],
-                    'Hedges_g': stats['hedges_g'],
-                    'Glass_Delta': stats['glass_delta'],
                     'Interpretation': stats['interpretation'],
                     'T_Test_P_Value': t_test_p,
-                    'Wilcoxon_P_Value': wilcoxon_p
+                    'T_Test_Note': 'Paired t-test (parametric)',
+                    'Wilcoxon_P_Value': wilcoxon_p,
+                    'Wilcoxon_Note': 'Wilcoxon signed-rank test (non-parametric)'
                 })
         
         summary_df = pd.DataFrame(summary_data)
@@ -530,262 +515,108 @@ class EffectSizeAnalyzer:
     
     def create_effect_size_heatmap(self) -> None:
         """Create and save effect size heatmap visualization."""
-        # Prepare effect size matrix for Cohen's d
-        cohens_d_matrix = []
+        # Prepare effect size matrix using primary effect sizes (h for success_rate, d for efficiency)
+        effect_size_matrix = []
         precision_labels = []
-        
+        metric_labels = []
+        effect_size_types = []
+
         for precision_level in PRECISION_LEVELS:
             if precision_level in self.effect_size_results:
-                cohens_d_values = [
-                    self.effect_size_results[precision_level][metric]['cohens_d']
-                    for metric in METRICS_TO_ANALYZE
-                ]
-                cohens_d_matrix.append(cohens_d_values)
+                effect_size_values = []
+                for metric in METRICS_TO_ANALYZE:
+                    if metric in self.effect_size_results[precision_level]:
+                        effect_size_values.append(self.effect_size_results[precision_level][metric]['primary_effect_size'])
+                    else:
+                        effect_size_values.append(np.nan)
+                effect_size_matrix.append(effect_size_values)
                 precision_labels.append(precision_level.capitalize())
-        
-        if not cohens_d_matrix:
+
+        # Prepare metric labels and effect size types
+        for metric in METRICS_TO_ANALYZE:
+            metric_labels.append(metric.replace('_', ' ').title())
+            if 'success_rate' in metric:
+                effect_size_types.append('h')
+            else:
+                effect_size_types.append('d')
+
+        if not effect_size_matrix:
             print("⚠ No data available for heatmap generation")
             return
-            
-        cohens_d_matrix = np.array(cohens_d_matrix)
-        
-        # Create heatmap
-        plt.figure(figsize=(12, 8))
-        
-        # Create subplot with space for colorbar
-        ax = plt.subplot(111)
-        
-        # Plot heatmap with diverging colormap
-        im = ax.imshow(cohens_d_matrix, cmap='RdBu_r', aspect='auto', 
-                      vmin=-2, vmax=2)
-        
-        # Set ticks and labels
-        ax.set_xticks(range(len(METRICS_TO_ANALYZE)))
-        ax.set_yticks(range(len(precision_labels)))
-        ax.set_xticklabels([metric.replace('_', ' ').title() for metric in METRICS_TO_ANALYZE])
-        ax.set_yticklabels(precision_labels)
-        
-        # Set x-axis labels to horizontal for better readability
-        plt.setp(ax.get_xticklabels(), rotation=0, ha="center")
-        
-        # Add Cohen's d values as text with interpretations
+
+        effect_size_matrix = np.array(effect_size_matrix)
+
+        # Create figure with subplots for different metrics
+        fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+
+        # Split data by metric type
+        success_rate_data = effect_size_matrix[:, 0:1]  # First column (success_rate)
+        efficiency_data = effect_size_matrix[:, 1:2]    # Second column (efficiency)
+
+        # Plot success rate heatmap with viridis colormap
+        im1 = axes[0].imshow(success_rate_data, cmap='viridis', aspect='auto',
+                            vmin=-2, vmax=2)
+        axes[0].set_title(r'$\mathbf{Success\ Rate\ (Cohen\'s\ h)}$', fontsize=14, fontweight='bold')
+        axes[0].set_xticks([0])
+        axes[0].set_yticks(range(len(precision_labels)))
+        axes[0].set_xticklabels(['Success Rate'])
+        axes[0].set_yticklabels(precision_labels)
+        axes[0].set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
+
+        # Add text annotations for success rate
         for i in range(len(precision_labels)):
-            for j in range(len(METRICS_TO_ANALYZE)):
-                if i < len(cohens_d_matrix) and j < len(cohens_d_matrix[i]):
-                    cohens_d = cohens_d_matrix[i, j]
-                    if not np.isnan(cohens_d):
-                        text = f"{cohens_d:.3f}"
-                        ax.text(j, i, text, ha="center", va="center",
-                               color="white" if abs(cohens_d) > 1.0 else "black",
-                               fontsize=10, fontweight='bold')
-        
-        # Add colorbar
-        cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-        cbar.set_label("Cohen's d Effect Size", rotation=270, labelpad=20)
-        
-        # Add reference lines for effect size thresholds
-        cbar.ax.axhline(y=0.2, color='gray', linestyle='--', alpha=0.7)
-        cbar.ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7)
-        cbar.ax.axhline(y=0.8, color='gray', linestyle='--', alpha=0.7)
-        cbar.ax.axhline(y=-0.2, color='gray', linestyle='--', alpha=0.7)
-        cbar.ax.axhline(y=-0.5, color='gray', linestyle='--', alpha=0.7)
-        cbar.ax.axhline(y=-0.8, color='gray', linestyle='--', alpha=0.7)
-        
-        # Set titles and labels
-        ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
+            if not np.isnan(success_rate_data[i, 0]):
+                effect_size = success_rate_data[i, 0]
+                text = f"{effect_size:.3f}"
+                axes[0].text(0, i, text, ha="center", va="center",
+                           color="white" if abs(effect_size) > 1.0 else "black",
+                           fontsize=12, fontweight='bold')
 
-        # Adjust layout to leave space for interpretation guide
-        plt.subplots_adjust(top=0.89)
+        # Plot efficiency heatmap with RdBu_r colormap
+        im2 = axes[1].imshow(efficiency_data, cmap='RdBu_r', aspect='auto',
+                            vmin=-2, vmax=2)
+        axes[1].set_title(r'$\mathbf{Efficiency\ (Cohen\'s\ d)}$', fontsize=14, fontweight='bold')
+        axes[1].set_xticks([0])
+        axes[1].set_yticks(range(len(precision_labels)))
+        axes[1].set_xticklabels(['Efficiency'])
+        axes[1].set_yticklabels(precision_labels)
 
-        # Add interpretation guide at the top, aligned with the heatmap center
-        # Get the position of the axes to align the text with the heatmap center
-        ax_pos = ax.get_position()
-        heatmap_center_x = (ax_pos.x0 + ax_pos.x1) / 2
-        plt.figtext(heatmap_center_x, 0.92, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
-                   ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
-        
+        # Add text annotations for efficiency
+        for i in range(len(precision_labels)):
+            if not np.isnan(efficiency_data[i, 0]):
+                effect_size = efficiency_data[i, 0]
+                text = f"{effect_size:.3f}"
+                axes[1].text(0, i, text, ha="center", va="center",
+                           color="white" if abs(effect_size) > 1.0 else "black",
+                           fontsize=12, fontweight='bold')
+
+        # Add colorbars for both subplots
+        cbar1 = plt.colorbar(im1, ax=axes[0], shrink=0.8)
+        cbar1.set_label("Effect Size (Cohen's h)", rotation=270, labelpad=20)
+
+        cbar2 = plt.colorbar(im2, ax=axes[1], shrink=0.8)
+        cbar2.set_label("Effect Size (Cohen's d)", rotation=270, labelpad=20)
+
+        # Add reference lines for effect size thresholds on both colorbars
+        for cbar in [cbar1, cbar2]:
+            cbar.ax.axhline(y=0.2, color='gray', linestyle='--', alpha=0.7)
+            cbar.ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7)
+            cbar.ax.axhline(y=0.8, color='gray', linestyle='--', alpha=0.7)
+            cbar.ax.axhline(y=-0.2, color='gray', linestyle='--', alpha=0.7)
+            cbar.ax.axhline(y=-0.5, color='gray', linestyle='--', alpha=0.7)
+            cbar.ax.axhline(y=-0.8, color='gray', linestyle='--', alpha=0.7)
+
+        # Adjust layout
+        plt.tight_layout()
+
         # Save plot
         heatmap_path = self.output_path / "effect_size_heatmap.png"
         plt.savefig(heatmap_path, dpi=300, bbox_inches='tight')
         plt.close()
-        
+
         print(f"✓ Effect size heatmap saved: {heatmap_path}")
     
-    def create_effect_size_violin_plot(self) -> None:
-        """Create and save violin plot showing distribution of effect sizes."""
-        # Prepare data for violin plot
-        plot_data = []
-        
-        for precision_level, metrics in self.effect_size_results.items():
-            for metric, stats in metrics.items():
-                if not np.isnan(stats['cohens_d']):
-                    plot_data.append({
-                        'Precision Level': precision_level.capitalize(),
-                        'Metric': metric.replace('_', ' ').title(),
-                        'Cohen\'s d': stats['cohens_d'],
-                        'Sample Size': stats['n_samples']
-                    })
-        
-        if not plot_data:
-            print("⚠ No data available for violin plot generation")
-            return
-            
-        plot_df = pd.DataFrame(plot_data)
-        
-        # Create violin plot
-        plt.figure(figsize=(14, 10))
-        
-        # Create subplots: one for each precision level
-        precision_levels_available = plot_df['Precision Level'].unique()
-        n_precision = len(precision_levels_available)
-        
-        fig, axes = plt.subplots(n_precision, 1, figsize=(14, 4 * n_precision), sharex=True)
-        if n_precision == 1:
-            axes = [axes]
-        
-        for i, precision in enumerate(precision_levels_available):
-            precision_data = plot_df[plot_df['Precision Level'] == precision]
-            
-            # Create violin plot
-            parts = axes[i].violinplot([precision_data[precision_data['Metric'] == metric]['Cohen\'s d'].values 
-                                       for metric in precision_data['Metric'].unique()],
-                                     positions=range(len(precision_data['Metric'].unique())),
-                                     widths=0.6, showmeans=True, showextrema=True)
-            
-            # Customize violin plot colors
-            for pc in parts['bodies']:
-                pc.set_facecolor('lightblue')
-                pc.set_alpha(0.7)
-            
-            # Add reference lines for effect size interpretations
-            axes[i].axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=1)
-            axes[i].axhline(y=0.2, color='green', linestyle='--', alpha=0.5, label='Small effect')
-            axes[i].axhline(y=0.5, color='orange', linestyle='--', alpha=0.5, label='Medium effect')
-            axes[i].axhline(y=0.8, color='red', linestyle='--', alpha=0.5, label='Large effect')
-            axes[i].axhline(y=-0.2, color='green', linestyle='--', alpha=0.5)
-            axes[i].axhline(y=-0.5, color='orange', linestyle='--', alpha=0.5)
-            axes[i].axhline(y=-0.8, color='red', linestyle='--', alpha=0.5)
-            
-            # Set labels and title
-            axes[i].set_title(f'{precision} Precision Level', fontsize=14, fontweight='bold')
-            axes[i].set_ylabel('Cohen\'s d Effect Size', fontsize=12)
-            axes[i].set_xticks(range(len(precision_data['Metric'].unique())))
-            axes[i].set_xticklabels(precision_data['Metric'].unique(), rotation=45, ha='right')
-            axes[i].grid(True, alpha=0.3)
-            
-            # Add sample size annotations
-            for j, metric in enumerate(precision_data['Metric'].unique()):
-                metric_data = precision_data[precision_data['Metric'] == metric]
-                if not metric_data.empty:
-                    sample_size = metric_data['Sample Size'].iloc[0]
-                    cohens_d = metric_data['Cohen\'s d'].iloc[0]
-                    axes[i].text(j, cohens_d + 0.1, f'n={sample_size}', 
-                               ha='center', va='bottom', fontsize=9, fontweight='bold')
-        
-        # Add legend to the last subplot
-        axes[-1].legend(loc='upper right')
-        
-        # Set overall title and x-label
-        axes[-1].set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
-
-        # Adjust layout to leave space for interpretation guide
-        plt.subplots_adjust(top=0.9)
-
-        # Add interpretation guide at the top, aligned with the plot center
-        # For multi-subplot figure, center the text over the main plotting area
-        fig.text(0.5, 0.95, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
-                ha='center', va='center', fontsize=10, style='italic', transform=fig.transFigure,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
-        
-        # Save plot
-        violin_path = self.output_path / "effect_size_violin_plot.png"
-        plt.savefig(violin_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        print(f"✓ Effect size violin plot saved: {violin_path}")
     
-    def create_effect_size_bar_chart(self) -> None:
-        """Create and save bar chart showing effect sizes across metrics and precision levels."""
-        # Prepare data for bar chart
-        plot_data = []
-        
-        for precision_level, metrics in self.effect_size_results.items():
-            for metric, stats in metrics.items():
-                if not np.isnan(stats['cohens_d']):
-                    plot_data.append({
-                        'Precision Level': precision_level.capitalize(),
-                        'Metric': metric.replace('_', ' ').title(),
-                        'Cohen\'s d': stats['cohens_d'],
-                        'Error': 0.1,  # Placeholder for error bars (could be confidence intervals)
-                        'Interpretation': stats['interpretation']
-                    })
-        
-        if not plot_data:
-            print("⚠ No data available for bar chart generation")
-            return
-            
-        plot_df = pd.DataFrame(plot_data)
-        
-        # Create grouped bar chart
-        plt.figure(figsize=(16, 10))
-        
-        # Pivot data for grouped bar chart
-        pivot_df = plot_df.pivot(index='Metric', columns='Precision Level', values='Cohen\'s d')
-        
-        # Reorder columns to desired precision level order
-        desired_column_order = ['Low', 'Medium', 'High', 'Overall']
-        available_columns = [col for col in desired_column_order if col in pivot_df.columns]
-        pivot_df = pivot_df[available_columns]
-        
-        # Reorder rows (metrics) to desired order: success_rate first, then efficiency
-        desired_metric_order = ['Success Rate', 'Mean Hard Efficiency']
-        available_metrics = [metric for metric in desired_metric_order if metric in pivot_df.index]
-        pivot_df = pivot_df.reindex(available_metrics)
-        
-        # Create bar chart with colors matching the order
-        color_map = {'Low': 'lightblue', 'Medium': 'lightgreen', 'High': 'salmon', 'Overall': 'gold'}
-        colors = [color_map[col] for col in pivot_df.columns]
-        ax = pivot_df.plot(kind='bar', figsize=(16, 10), width=0.8, color=colors)
-        
-        # Customize the chart
-        ax.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=1)
-        ax.axhline(y=0.2, color='green', linestyle='--', alpha=0.5, label='Small effect')
-        ax.axhline(y=0.5, color='orange', linestyle='--', alpha=0.5, label='Medium effect')
-        ax.axhline(y=0.8, color='red', linestyle='--', alpha=0.5, label='Large effect')
-        ax.axhline(y=-0.2, color='green', linestyle='--', alpha=0.5)
-        ax.axhline(y=-0.5, color='orange', linestyle='--', alpha=0.5)
-        ax.axhline(y=-0.8, color='red', linestyle='--', alpha=0.5)
-        
-        # Set labels and title
-        ax.set_xlabel('Performance Metrics', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Cohen\'s d Effect Size', fontsize=12, fontweight='bold')
-        ax.legend(title='Precision Level', title_fontsize=12, fontsize=10)
-        ax.grid(True, alpha=0.3, axis='y')
-
-        # Keep x-axis labels horizontal
-        plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
-
-        # Add value labels on bars (horizontal)
-        for container in ax.containers:
-            ax.bar_label(container, fmt='%.3f', rotation=0, fontsize=8)
-
-        # Adjust layout to leave space for interpretation guide
-        plt.subplots_adjust(top=0.85)
-
-        # Add interpretation guide at the top, aligned with the bar chart center
-        # Get the position of the axes to align the text with the chart center
-        ax_pos = ax.get_position()
-        chart_center_x = (ax_pos.x0 + ax_pos.x1) / 2
-        plt.figtext(chart_center_x, 0.92, '|d| ≥ 0.8: Large effect  |  0.5 ≤ |d| < 0.8: Medium  |  0.2 ≤ |d| < 0.5: Small  |  |d| < 0.2: Negligible  |  Positive: Iterative > Zero-shot',
-                   ha='center', va='center', fontsize=10, style='italic', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightblue', alpha=0.7))
-        
-        # Save plot
-        bar_chart_path = self.output_path / "effect_size_bar_chart.png"
-        plt.savefig(bar_chart_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        print(f"✓ Effect size bar chart saved: {bar_chart_path}")
     
     def generate_interpretation_report(self) -> None:
         """Generate a comprehensive interpretation report of effect size results."""
@@ -802,10 +633,12 @@ class EffectSizeAnalyzer:
             # Statistical Principles
             f.write("STATISTICAL PRINCIPLES AND METHODOLOGY\n")
             f.write("-"*50 + "\n")
-            f.write("This analysis employs effect size metrics to quantify the magnitude of performance\n")
-            f.write("differences between iterative and zero-shot inference approaches. Effect sizes\n")
-            f.write("provide standardized measures independent of sample size, enabling meaningful\n")
-            f.write("comparison across different conditions and datasets.\n\n")
+            f.write("This analysis employs appropriate effect size metrics to quantify the magnitude of\n")
+            f.write("performance differences between iterative and zero-shot inference approaches:\n")
+            f.write("- Cohen's h for success rates (proportion-based metrics)\n")
+            f.write("- Cohen's d for efficiency measures (continuous metrics)\n")
+            f.write("Effect sizes provide standardized measures independent of sample size, enabling\n")
+            f.write("meaningful comparison across different conditions and datasets.\n\n")
 
             f.write("Mathematical Formulations:\n\n")
             f.write("1. Cohen's d = (μ_iterative - μ_zero_shot) / σ_pooled\n")
@@ -813,24 +646,29 @@ class EffectSizeAnalyzer:
             f.write("   - Measures standardized mean difference using pooled standard deviation\n")
             f.write("   - Positive values indicate iterative > zero-shot performance\n\n")
 
-            f.write("2. Hedges' g = Cohen's d × J\n")
-            f.write("   Where J = 1 - 3/(4(n₁+n₂-2)-1) (bias correction factor)\n")
-            f.write("   - Bias-corrected version of Cohen's d for small samples\n\n")
+            f.write("2. Cohen's h = 2 * (arcsin(√p₁) - arcsin(√p₂))\n")
+            f.write("   Where p₁ and p₂ are the two proportions being compared\n")
+            f.write("   - Measures standardized difference between proportions (success rates)\n")
+            f.write("   - Uses arcsine transformation for proper variance stabilization\n")
+            f.write("   - Positive values indicate iterative > zero-shot success rate\n\n")
 
-            f.write("3. Glass's Δ = (μ_iterative - μ_zero_shot) / σ_control\n")
-            f.write("   - Uses only control group (zero-shot) standard deviation\n")
-            f.write("   - Appropriate when control group represents baseline variability\n\n")
 
             f.write("Effect Size Interpretation (Cohen's conventions):\n")
-            f.write("• |d| < 0.2:  Negligible effect\n")
-            f.write("• 0.2 ≤ |d| < 0.5:  Small effect\n")
-            f.write("• 0.5 ≤ |d| < 0.8:  Medium effect  \n")
-            f.write("• |d| ≥ 0.8:  Large effect\n\n")
+            f.write("Both Cohen's d and Cohen's h use the same interpretation thresholds:\n")
+            f.write("• |effect| < 0.2:  Negligible effect\n")
+            f.write("• 0.2 ≤ |effect| < 0.5:  Small effect\n")
+            f.write("• 0.5 ≤ |effect| < 0.8:  Medium effect  \n")
+            f.write("• |effect| ≥ 0.8:  Large effect\n\n")
 
             f.write("Statistical Significance Testing:\n")
             f.write("• Paired t-test: Parametric test for mean differences (assumes normality)\n")
+            f.write("  - Tests null hypothesis that mean difference = 0\n")
+            f.write("  - Requires normally distributed differences\n")
             f.write("• Wilcoxon signed-rank test: Non-parametric alternative (robust to outliers)\n")
-            f.write("• p < 0.05: Statistically significant difference\n\n")
+            f.write("  - Tests null hypothesis that median difference = 0\n")
+            f.write("  - Does not assume normal distribution\n")
+            f.write("• p < 0.05: Statistically significant difference\n")
+            f.write("• Both tests performed on paired samples (same models compared across conditions)\n\n")
 
             # Performance Improvement Analysis
             f.write("ITERATIVE vs ZERO-SHOT PERFORMANCE ANALYSIS\n")
@@ -848,9 +686,9 @@ class EffectSizeAnalyzer:
             
             for precision_level, metrics in self.effect_size_results.items():
                 for metric, stats in metrics.items():
-                    if not np.isnan(stats['cohens_d']):
-                        abs_effect = abs(stats['cohens_d'])
-                        effect_info = (precision_level, metric, stats['cohens_d'], stats['interpretation'])
+                    if not np.isnan(stats['primary_effect_size']):
+                        abs_effect = abs(stats['primary_effect_size'])
+                        effect_info = (precision_level, metric, stats['primary_effect_size'], stats['effect_size_name'], stats['interpretation'])
                         
                         if abs_effect >= 0.8:
                             large_effects.append(effect_info)
@@ -882,47 +720,56 @@ class EffectSizeAnalyzer:
                 significant_degradations = []
                 
                 for metric, stats in precision_results.items():
-                    if np.isnan(stats['cohens_d']):
+                    if np.isnan(stats['primary_effect_size']):
                         f.write(f"  {metric}: Insufficient data for analysis\n")
                         continue
-                        
-                    cohens_d = stats['cohens_d']
+
+                    primary_effect = stats['primary_effect_size']
+                    effect_type = stats['effect_size_name']
                     mean_diff = stats['mean_difference']
                     interpretation = stats['interpretation']
-                    
+
                     # Statistical significance
                     t_test_result = stats['statistical_tests'].get('paired_t_test', {})
                     t_significant = t_test_result.get('significant', False)
                     t_p = t_test_result.get('p_value', np.nan)
-                    
-                    significance_note = f"(p = {t_p:.3f})" if not np.isnan(t_p) else ""
-                    
+
+                    wilcoxon_result = stats['statistical_tests'].get('wilcoxon', {})
+                    w_significant = wilcoxon_result.get('significant', False)
+                    w_p = wilcoxon_result.get('p_value', np.nan)
+
+                    t_significance_note = f"(p = {t_p:.3f})" if not np.isnan(t_p) else ""
+                    w_significance_note = f"(p = {w_p:.3f})" if not np.isnan(w_p) else ""
+
                     f.write(f"  {metric}:\n")
-                    f.write(f"    • Cohen's d = {cohens_d:.3f} ({interpretation})\n")
+                    f.write(f"    • {effect_type} = {primary_effect:.3f} ({interpretation})\n")
                     f.write(f"    • Mean difference = {mean_diff:.3f}\n")
-                    f.write(f"    • Statistical significance: {'Yes' if t_significant else 'No'} {significance_note}\n")
+                    f.write(f"    • Paired t-test: {'Significant' if t_significant else 'Not significant'} {t_significance_note}\n")
+                    f.write(f"    • Wilcoxon test: {'Significant' if w_significant else 'Not significant'} {w_significance_note}\n")
                     f.write(f"    • Iterative mean: {stats['mean_iterative']:.3f}\n")
                     f.write(f"    • Zero-shot mean: {stats['mean_zero_shot']:.3f}\n")
-                    
-                    if abs(cohens_d) >= 0.5:  # Medium or large effect
-                        if cohens_d > 0:
-                            significant_improvements.append((metric, cohens_d, mean_diff))
+
+                    if abs(primary_effect) >= 0.5:  # Medium or large effect
+                        if primary_effect > 0:
+                            significant_improvements.append((metric, primary_effect, mean_diff))
                         else:
-                            significant_degradations.append((metric, cohens_d, mean_diff))
+                            significant_degradations.append((metric, primary_effect, mean_diff))
                     
                     f.write("\n")
                 
                 # Summary for this precision level
                 if significant_improvements:
                     f.write(f"  SIGNIFICANT IMPROVEMENTS in {precision_level} precision:\n")
-                    for metric, d, diff in significant_improvements:
-                        f.write(f"    - {metric}: {diff:+.3f} improvement (Cohen's d = {d:.3f})\n")
+                    for metric, effect, diff in significant_improvements:
+                        effect_type = self.effect_size_results[precision_level][metric]['effect_size_name']
+                        f.write(f"    - {metric}: {diff:+.3f} improvement ({effect_type} = {effect:.3f})\n")
                     f.write("\n")
-                
+
                 if significant_degradations:
                     f.write(f"  SIGNIFICANT DEGRADATIONS in {precision_level} precision:\n")
-                    for metric, d, diff in significant_degradations:
-                        f.write(f"    - {metric}: {diff:+.3f} degradation (Cohen's d = {d:.3f})\n")
+                    for metric, effect, diff in significant_degradations:
+                        effect_type = self.effect_size_results[precision_level][metric]['effect_size_name']
+                        f.write(f"    - {metric}: {diff:+.3f} degradation ({effect_type} = {effect:.3f})\n")
                     f.write("\n")
             
             # Performance Improvement Quantification
@@ -934,21 +781,21 @@ class EffectSizeAnalyzer:
             all_degradations = []
             for precision_level, metrics in self.effect_size_results.items():
                 for metric, stats in metrics.items():
-                    if not np.isnan(stats['cohens_d']):
-                        if stats['cohens_d'] > 0:
-                            all_improvements.append((precision_level, metric, stats['cohens_d'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
-                        elif stats['cohens_d'] < 0:
-                            all_degradations.append((precision_level, metric, stats['cohens_d'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
+                    if not np.isnan(stats['primary_effect_size']):
+                        if stats['primary_effect_size'] > 0:
+                            all_improvements.append((precision_level, metric, stats['primary_effect_size'], stats['effect_size_name'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
+                        elif stats['primary_effect_size'] < 0:
+                            all_degradations.append((precision_level, metric, stats['primary_effect_size'], stats['effect_size_name'], stats['mean_difference'], stats['mean_iterative'], stats['mean_zero_shot']))
 
             if all_improvements:
-                all_improvements.sort(key=lambda x: x[2], reverse=True)  # Sort by Cohen's d
+                all_improvements.sort(key=lambda x: x[2], reverse=True)  # Sort by effect size
                 f.write("ITERATIVE INFERENCE PERFORMANCE GAINS:\n")
                 f.write("(Ranked by effect size magnitude)\n\n")
-                for i, (precision, metric, d, diff, iter_mean, zero_mean) in enumerate(all_improvements, 1):
+                for i, (precision, metric, effect_size, effect_type, diff, iter_mean, zero_mean) in enumerate(all_improvements, 1):
                     # Calculate relative improvement percentage
                     rel_improvement = (diff / zero_mean * 100) if zero_mean != 0 else 0
                     f.write(f"{i}. {precision.capitalize()} precision - {metric}:\n")
-                    f.write(f"   • Effect size (Cohen's d): {d:.3f} ({self.interpret_effect_size(d)})\n")
+                    f.write(f"   • Effect size ({effect_type}): {effect_size:.3f} ({self.interpret_effect_size(effect_size, effect_type)})\n")
                     f.write(f"   • Absolute improvement: {diff:+.3f}\n")
                     f.write(f"   • Relative improvement: {rel_improvement:+.1f}%\n")
                     f.write(f"   • Iterative performance: {iter_mean:.3f}\n")
@@ -956,14 +803,14 @@ class EffectSizeAnalyzer:
                 f.write("\n")
             
             if all_degradations:
-                all_degradations.sort(key=lambda x: x[2])  # Sort by Cohen's d (most negative first)
+                all_degradations.sort(key=lambda x: x[2])  # Sort by effect size (most negative first)
                 f.write("CASES WHERE ZERO-SHOT OUTPERFORMS ITERATIVE:\n")
                 f.write("(Areas where iterative inference shows performance decline)\n\n")
-                for i, (precision, metric, d, diff, iter_mean, zero_mean) in enumerate(all_degradations, 1):
+                for i, (precision, metric, effect_size, effect_type, diff, iter_mean, zero_mean) in enumerate(all_degradations, 1):
                     # Calculate relative degradation percentage
                     rel_degradation = (diff / zero_mean * 100) if zero_mean != 0 else 0
                     f.write(f"{i}. {precision.capitalize()} precision - {metric}:\n")
-                    f.write(f"   • Effect size (Cohen's d): {d:.3f} ({self.interpret_effect_size(d)})\n")
+                    f.write(f"   • Effect size ({effect_type}): {effect_size:.3f} ({self.interpret_effect_size(effect_size, effect_type)})\n")
                     f.write(f"   • Absolute degradation: {diff:.3f}\n")
                     f.write(f"   • Relative degradation: {rel_degradation:.1f}%\n")
                     f.write(f"   • Iterative performance: {iter_mean:.3f}\n")
@@ -979,23 +826,23 @@ class EffectSizeAnalyzer:
             # Calculate overall performance improvement statistics
             if all_improvements:
                 avg_effect_size = np.mean([x[2] for x in all_improvements])
-                avg_abs_improvement = np.mean([x[3] for x in all_improvements])
+                avg_abs_improvement = np.mean([x[4] for x in all_improvements])  # mean_difference is now at index 4
                 max_improvement = max(all_improvements, key=lambda x: x[2])
 
                 f.write("OVERALL ITERATIVE INFERENCE BENEFITS:\n")
                 f.write(f"• Average effect size across all improvements: {avg_effect_size:.3f}\n")
                 f.write(f"• Average absolute performance gain: {avg_abs_improvement:+.3f}\n")
-                f.write(f"• Maximum improvement observed: {max_improvement[3]:+.3f} ")
-                f.write(f"({max_improvement[1]} at {max_improvement[0]} precision, d = {max_improvement[2]:.3f})\n\n")
+                f.write(f"• Maximum improvement observed: {max_improvement[4]:+.3f} ")
+                f.write(f"({max_improvement[1]} at {max_improvement[0]} precision, {max_improvement[3]} = {max_improvement[2]:.3f})\n\n")
 
             # Analyze patterns by precision level
             precision_analysis = {}
             for precision_level in ['low', 'medium', 'high']:
                 if precision_level in self.effect_size_results:
-                    effects = [stats['cohens_d'] for stats in self.effect_size_results[precision_level].values()
-                             if not np.isnan(stats['cohens_d'])]
+                    effects = [stats['primary_effect_size'] for stats in self.effect_size_results[precision_level].values()
+                             if not np.isnan(stats['primary_effect_size'])]
                     improvements = [stats['mean_difference'] for stats in self.effect_size_results[precision_level].values()
-                                  if not np.isnan(stats['cohens_d']) and stats['cohens_d'] > 0]
+                                  if not np.isnan(stats['primary_effect_size']) and stats['primary_effect_size'] > 0]
 
                     if effects:
                         precision_analysis[precision_level] = {
@@ -1026,8 +873,8 @@ class EffectSizeAnalyzer:
                     for precision_level in ['low', 'medium', 'high']:
                         if (precision_level in self.effect_size_results and
                             metric in self.effect_size_results[precision_level] and
-                            not np.isnan(self.effect_size_results[precision_level][metric]['cohens_d'])):
-                            effect = self.effect_size_results[precision_level][metric]['cohens_d']
+                            not np.isnan(self.effect_size_results[precision_level][metric]['primary_effect_size'])):
+                            effect = self.effect_size_results[precision_level][metric]['primary_effect_size']
                             improvement = self.effect_size_results[precision_level][metric]['mean_difference']
                             metric_effects.append(effect)
                             if effect > 0:
@@ -1057,14 +904,14 @@ class EffectSizeAnalyzer:
                 large_improvements = [x for x in all_improvements if x[2] >= 0.8]  # Large effect sizes
                 if large_improvements:
                     f.write("   • Strongly recommended for:\n")
-                    for precision, metric, d, diff, _, _ in large_improvements:
-                        f.write(f"     - {precision.capitalize()} precision {metric} tasks (d = {d:.3f}, improvement = {diff:+.3f})\n")
+                    for precision, metric, effect_size, effect_type, diff, _, _ in large_improvements:
+                        f.write(f"     - {precision.capitalize()} precision {metric} tasks ({effect_type} = {effect_size:.3f}, improvement = {diff:+.3f})\n")
 
             if all_degradations:
                 f.write("\n2. WHEN TO PREFER ZERO-SHOT:\n")
                 f.write("   • Consider zero-shot for:\n")
-                for precision, metric, d, diff, _, _ in all_degradations:
-                    f.write(f"     - {precision.capitalize()} precision {metric} tasks (performance may decline by {abs(diff):.3f})\n")
+                for precision, metric, effect_size, effect_type, diff, _, _ in all_degradations:
+                    f.write(f"     - {precision.capitalize()} precision {metric} tasks (performance may decline by {abs(diff):.3f}, {effect_type} = {effect_size:.3f})\n")
 
             f.write(f"\n3. COST-BENEFIT CONSIDERATIONS:\n")
             f.write("   • Iterative inference requires additional computational resources\n")
@@ -1092,8 +939,8 @@ class EffectSizeAnalyzer:
         
         for precision_level, metrics in self.effect_size_results.items():
             for metric, stats in metrics.items():
-                if not np.isnan(stats['cohens_d']):
-                    abs_effect = abs(stats['cohens_d'])
+                if not np.isnan(stats['primary_effect_size']):
+                    abs_effect = abs(stats['primary_effect_size'])
                     if abs_effect >= 0.8:
                         large_count += 1
                     elif abs_effect >= 0.5:
@@ -1104,25 +951,30 @@ class EffectSizeAnalyzer:
                         negligible_count += 1
         
         print(f"\n📊 EFFECT SIZE DISTRIBUTION:")
-        print(f"   Large effects (|d| ≥ 0.8):    {large_count}")
-        print(f"   Medium effects (|d| ≥ 0.5):   {medium_count}")
-        print(f"   Small effects (|d| ≥ 0.2):    {small_count}")
-        print(f"   Negligible effects (|d| < 0.2): {negligible_count}")
+        print(f"   Large effects (|effect| ≥ 0.8):    {large_count}")
+        print(f"   Medium effects (|effect| ≥ 0.5):   {medium_count}")
+        print(f"   Small effects (|effect| ≥ 0.2):    {small_count}")
+        print(f"   Negligible effects (|effect| < 0.2): {negligible_count}")
         
         # Show top improvements
         improvements = []
         for precision_level, metrics in self.effect_size_results.items():
             for metric, stats in metrics.items():
-                if not np.isnan(stats['cohens_d']) and stats['cohens_d'] > 0:
-                    improvements.append((precision_level, metric, stats['cohens_d'], stats['mean_difference']))
+                if not np.isnan(stats['primary_effect_size']) and stats['primary_effect_size'] > 0:
+                    improvements.append((precision_level, metric, stats['primary_effect_size'], stats['effect_size_name'], stats['mean_difference']))
         
         if improvements:
             improvements.sort(key=lambda x: x[2], reverse=True)
             print(f"\n🚀 TOP ITERATIVE IMPROVEMENTS:")
-            for i, (precision, metric, d, diff) in enumerate(improvements[:3], 1):
-                print(f"   {i}. {precision.capitalize()}/{metric}: +{diff:.3f} (Cohen's d = {d:.3f})")
+            for i, (precision, metric, effect_size, effect_type, diff) in enumerate(improvements[:3], 1):
+                print(f"   {i}. {precision.capitalize()}/{metric}: +{diff:.3f} ({effect_type} = {effect_size:.3f})")
         
         print(f"\n📁 Results saved in: {self.output_path}")
+        print(f"{'='*70}\n")
+        print(f"Statistical Tests Used:")
+        print(f"  • Paired t-test: Parametric test for mean differences (assumes normality)")
+        print(f"  • Wilcoxon signed-rank test: Non-parametric alternative (robust to outliers)")
+        print(f"  • Effect Sizes: Cohen's h for success rates, Cohen's d for efficiency metrics")
         print(f"{'='*70}")
 
 
@@ -1141,7 +993,6 @@ Output files:
   - eval_results/stats/effect_size_analysis/{dataset}/effect_size_summary.csv
   - eval_results/stats/effect_size_analysis/{dataset}/effect_size_summary.xlsx
   - eval_results/stats/effect_size_analysis/{dataset}/effect_size_heatmap.png
-  - eval_results/stats/effect_size_analysis/{dataset}/effect_size_bar_chart.png
   - eval_results/stats/effect_size_analysis/{dataset}/effect_size_report.txt
         """
     )
@@ -1171,7 +1022,6 @@ Output files:
         # Save results
         analyzer.save_effect_size_summary()
         analyzer.create_effect_size_heatmap()
-        analyzer.create_effect_size_bar_chart()
         analyzer.generate_interpretation_report()
         
         # Print summary

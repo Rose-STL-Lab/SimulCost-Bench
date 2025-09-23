@@ -91,8 +91,10 @@ class BayesianOptimizationAnalyzer:
             for bo_file in bo_dir.glob(f"{dataset_name}_*_iterative.csv"):
                 # Extract task name from filename: {dataset}_{task}_iterative.csv
                 filename_parts = bo_file.stem.split('_')
-                if len(filename_parts) >= 3:
-                    task_name = '_'.join(filename_parts[2:-1])  # Remove dataset prefix and mode suffix
+                dataset_parts = dataset_name.split('_')
+                if len(filename_parts) >= len(dataset_parts) + 2:
+                    # Remove dataset parts and mode suffix to get task name
+                    task_name = '_'.join(filename_parts[len(dataset_parts):-1])
                     break
 
         if task_name is None:
@@ -710,11 +712,20 @@ def discover_datasets(base_dir: str = "eval_results") -> List[str]:
         # Look for all BO files and extract dataset names
         for bo_file in bo_dir.glob("*.csv"):
             # Files are named like: {dataset}_{task}_{mode}.csv
-            # Need to extract the dataset part correctly (e.g., "heat_1d" from "heat_1d_n_space_iterative.csv")
+            # Need to extract the dataset part correctly
             filename_parts = bo_file.stem.split('_')
-            if len(filename_parts) >= 4:  # {dataset}_{dimension}_{task}_{mode}
-                # Dataset name is the first two parts: e.g., "heat_1d"
-                dataset_name = f"{filename_parts[0]}_{filename_parts[1]}"
+            if len(filename_parts) >= 3:
+                # Try to determine dataset name by checking common patterns
+                # Most datasets end with dimension info like "_1d", "_2d"
+                if len(filename_parts) >= 4 and filename_parts[2] in ['1d', '2d', '3d']:
+                    # Three-part dataset name: e.g., "ns_transient_2d"
+                    dataset_name = f"{filename_parts[0]}_{filename_parts[1]}_{filename_parts[2]}"
+                elif len(filename_parts) >= 3 and filename_parts[1] in ['1d', '2d', '3d']:
+                    # Two-part dataset name: e.g., "heat_1d"
+                    dataset_name = f"{filename_parts[0]}_{filename_parts[1]}"
+                else:
+                    # Fallback: use first two parts
+                    dataset_name = f"{filename_parts[0]}_{filename_parts[1]}"
                 datasets.add(dataset_name)
 
     return sorted(list(datasets))

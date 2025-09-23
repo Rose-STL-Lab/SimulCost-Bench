@@ -58,17 +58,17 @@ def evaluate(
     zero_shot: bool = False,
 ) -> Dict:
     """Evaluate model performance against reference solutions.
-    
+
     Args:
-        dataset: Dataset name (should be 'heat_1d')
+        dataset: Dataset name ('heat_1d', 'heat_1d_icl', 'heat_1d_icl_no_cost', or 'heat_1d_icl_uniform')
         task: Task type (e.g., 'cfl', 'n_space')
         model_name: Name of the model being evaluated
         precision_level: Precision level ('low', 'medium', 'high')
         zero_shot: Whether to use zero-shot evaluation
-        
+
     Returns:
         Dictionary containing evaluation metrics
-        
+
     Raises:
         RuntimeError: If required files are not found or data loading fails
     """
@@ -82,7 +82,12 @@ def evaluate(
     
     # Build paths for heat_1d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
-    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+
+    # For ICL datasets, use the original heat_1d reference files
+    if dataset.startswith("heat_1d_icl"):
+        dummy_path = f"data/heat_1d/{task}/{precision_level}/{flag}_questions.json"
+    else:
+        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
@@ -272,7 +277,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="heat_1d",
-                        help="Dataset name (should be 'heat_1d')")
+                        choices=["heat_1d", "heat_1d_icl", "heat_1d_icl_no_cost", "heat_1d_icl_uniform"],
+                        help="Dataset name: heat_1d, heat_1d_icl, heat_1d_icl_no_cost, or heat_1d_icl_uniform")
     parser.add_argument("-t", "--task", default="cfl",
                         choices=list(VALID_TASKS),
                         help="Task: cfl / n_space")
