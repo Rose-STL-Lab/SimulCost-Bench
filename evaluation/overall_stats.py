@@ -1035,7 +1035,7 @@ class OverallStatsGenerator:
         fig = plt.figure(figsize=(16, 5))
 
         # Create custom layout: legend at top, plots in middle, labels at bottom
-        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.18)
+        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.35)
 
         # Create legend axis (spans full width at top)
         legend_ax = fig.add_subplot(gs[0, :])

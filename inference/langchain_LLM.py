@@ -377,52 +377,6 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
     # Process remaining samples
     for i, data in enumerate(tqdm(dataset[start_idx:], desc="Running inference", initial=start_idx, total=len(dataset))):
         try:
-            # Special handling for NS Transient 2D ICL datasets: read norm_rmse_tolerance from original dataset
-            if ('target_parameter' in data and
-                'precision_level' in data and
-                'norm_rmse_tolerance' not in data and
-                any(task in data.get('target_parameter', '') for task in ['resolution', 'cfl', 'relaxation_factor', 'residual_threshold'])):
-
-                # Read tolerance from corresponding original ns_transient_2d dataset
-                target_parameter = data.get('target_parameter')
-                precision_level = data.get('precision_level', 'medium')
-                zero_shot = data.get('zero_shot', False)
-                flag = "zero_shot" if zero_shot else "iterative"
-
-                original_dataset_path = f"data/ns_transient_2d/human_write/{precision_level}/{target_parameter}_{flag}_dataset.json"
-
-                try:
-                    with open(original_dataset_path, 'r', encoding='utf-8') as f:
-                        original_dataset = json.load(f)
-
-                    # Find matching QID or use first entry if QID doesn't match
-                    current_qid = data.get('QID')
-                    tolerance_value = None
-
-                    for orig_data in original_dataset:
-                        if orig_data.get('QID') == current_qid:
-                            tolerance_value = orig_data.get('norm_rmse_tolerance')
-                            break
-
-                    # If no matching QID found, use the first entry's tolerance
-                    if tolerance_value is None and original_dataset:
-                        tolerance_value = original_dataset[0].get('norm_rmse_tolerance')
-
-                    if tolerance_value is not None:
-                        data['norm_rmse_tolerance'] = tolerance_value
-                        logger.info(f"Loaded norm_rmse_tolerance={tolerance_value} from original dataset {original_dataset_path}")
-                    else:
-                        logger.warning(f"Could not find norm_rmse_tolerance in {original_dataset_path}, using fallback")
-                        # Fallback to hardcoded values if reading fails
-                        fallback_tolerances = {"low": 0.6, "medium": 0.3, "high": 0.15}
-                        data['norm_rmse_tolerance'] = fallback_tolerances.get(precision_level, 0.3)
-
-                except Exception as e:
-                    logger.warning(f"Error reading tolerance from {original_dataset_path}: {e}, using fallback")
-                    # Fallback to hardcoded values if reading fails
-                    fallback_tolerances = {"low": 0.6, "medium": 0.3, "high": 0.15}
-                    data['norm_rmse_tolerance'] = fallback_tolerances.get(precision_level, 0.3)
-
             result, tool_df = agent.forward(data)
             
             # Preserve additional fields from dataset

@@ -444,7 +444,7 @@ class BayesianOptimizationAnalyzer:
         fig = plt.figure(figsize=(16, 5))
 
         # Create custom layout: legend at top, plots in middle, labels at bottom
-        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.18)
+        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.35)
 
         # Create legend axis (spans full width at top)
         legend_ax = fig.add_subplot(gs[0, :])
@@ -694,6 +694,426 @@ class BayesianOptimizationAnalyzer:
             print(f"❌ Error performing Bayesian optimization analysis: {e}")
             raise
 
+    def create_comprehensive_average_plot(self, datasets_to_analyze: List[str]) -> None:
+        """Create comprehensive line plots with simple averages across all datasets."""
+        print(f"🚀 Creating comprehensive average plot across {len(datasets_to_analyze)} datasets...")
+
+        all_model_data = []
+        all_bo_data = []
+
+        # Collect data from all datasets
+        for dataset in datasets_to_analyze:
+            try:
+                analyzer = BayesianOptimizationAnalyzer(dataset_name=dataset)
+                bo_df, task_name = analyzer.load_bayesian_optimization_data(dataset)
+                model_df = analyzer.load_model_data(dataset, task_name)
+
+                # Add dataset identifier
+                model_df['Dataset'] = dataset
+                bo_df['Dataset'] = dataset
+
+                all_model_data.append(model_df)
+                all_bo_data.append(bo_df)
+
+            except Exception as e:
+                print(f"Warning: Could not load data for {dataset}: {e}")
+                continue
+
+        if not all_model_data or not all_bo_data:
+            print("❌ No data available for comprehensive plot")
+            return
+
+        # Combine all data
+        combined_model_df = pd.concat(all_model_data, ignore_index=True)
+        combined_bo_df = pd.concat(all_bo_data, ignore_index=True)
+
+        # Calculate simple averages across datasets for each model-precision-mode combination
+        model_averages = combined_model_df.groupby(['Model', 'Precision Level', 'Inference Mode'])[['success_rate', 'mean_efficiency']].mean().reset_index()
+        bo_averages = combined_bo_df.groupby(['Precision Level', 'Inference Mode'])[['success_rate', 'mean_efficiency']].mean().reset_index()
+        bo_averages['Model'] = 'Bayesian Optimization'
+
+        # Get available data structure
+        precision_levels = ['low', 'medium', 'high']
+        inference_modes = ['Zero-shot', 'Iterative']
+        metrics = ['Success Rate', 'Efficiency']
+        models = sorted([m for m in model_averages['Model'].unique() if m != 'Bayesian Optimization'])
+
+        # Define styling (same as individual plots)
+        base_colors = ['#1f77b4', '#2ca02c', '#ff69b4']
+        base_markers = ['o', 's']
+        line_styles = ['-', (0, (3, 2))]
+
+        model_styles = {}
+        for i, model in enumerate(models):
+            color_idx = i % len(base_colors)
+            marker_idx = i % len(base_markers)
+            line_idx = (i // len(base_colors)) % len(line_styles)
+
+            model_styles[model] = {
+                'color': base_colors[color_idx],
+                'marker': base_markers[marker_idx],
+                'linestyle': line_styles[line_idx]
+            }
+
+        bo_style = {
+            'color': '#FF6B35',
+            'marker': 'D',
+            'linestyle': '-'
+        }
+
+        # Create figure with improved spacing
+        fig = plt.figure(figsize=(18, 6))
+
+        # Create custom layout with more spacing between subplots
+        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.3, wspace=0.35)
+
+        # Create legend axis (spans full width at top)
+        legend_ax = fig.add_subplot(gs[0, :])
+
+        # Create 4 subplot axes with increased spacing
+        axes = {
+            ('Zero-shot', 'Success Rate'): fig.add_subplot(gs[1, 0]),
+            ('Zero-shot', 'Efficiency'): fig.add_subplot(gs[1, 1]),
+            ('Iterative', 'Success Rate'): fig.add_subplot(gs[1, 2]),
+            ('Iterative', 'Efficiency'): fig.add_subplot(gs[1, 3])
+        }
+
+        # Create bottom label axes
+        label_axes = [
+            fig.add_subplot(gs[2, 0]),
+            fig.add_subplot(gs[2, 1]),
+            fig.add_subplot(gs[2, 2]),
+            fig.add_subplot(gs[2, 3])
+        ]
+
+        # Plot data for all mode-metric combinations
+        for mode in inference_modes:
+            for metric in metrics:
+                ax = axes[(mode, metric)]
+
+                # Plot model lines
+                for model in models:
+                    x_values = []
+                    y_values = []
+
+                    for precision_idx, precision in enumerate(precision_levels):
+                        model_data = model_averages[
+                            (model_averages['Model'] == model) &
+                            (model_averages['Precision Level'] == precision) &
+                            (model_averages['Inference Mode'] == mode)
+                        ]
+
+                        if len(model_data) > 0:
+                            if metric == 'Success Rate':
+                                value = model_data['success_rate'].iloc[0]
+                            else:
+                                value = model_data['mean_efficiency'].iloc[0]
+
+                            x_values.append(precision_idx)
+                            y_values.append(value)
+
+                    if len(x_values) > 0:
+                        style = model_styles[model]
+                        ax.plot(x_values, y_values,
+                               marker=style['marker'],
+                               color=style['color'],
+                               linestyle=style['linestyle'],
+                               linewidth=1.0,
+                               markersize=3,
+                               markerfacecolor='white',
+                               markeredgecolor=style['color'],
+                               markeredgewidth=1.0,
+                               alpha=1.0,
+                               clip_on=False)
+
+                # Plot Bayesian Optimization line
+                bo_x_values = []
+                bo_y_values = []
+
+                for precision_idx, precision in enumerate(precision_levels):
+                    bo_data = bo_averages[
+                        (bo_averages['Precision Level'] == precision) &
+                        (bo_averages['Inference Mode'] == mode)
+                    ]
+
+                    if len(bo_data) > 0:
+                        if metric == 'Success Rate':
+                            bo_value = bo_data['success_rate'].iloc[0]
+                        else:
+                            bo_value = bo_data['mean_efficiency'].iloc[0]
+
+                        bo_x_values.append(precision_idx)
+                        bo_y_values.append(bo_value)
+
+                if len(bo_x_values) > 0:
+                    ax.plot(bo_x_values, bo_y_values,
+                           marker=bo_style['marker'],
+                           color=bo_style['color'],
+                           linestyle=bo_style['linestyle'],
+                           linewidth=2.0,
+                           markersize=4,
+                           markerfacecolor=bo_style['color'],
+                           markeredgecolor=bo_style['color'],
+                           markeredgewidth=1.0,
+                           alpha=1.0,
+                           clip_on=False)
+
+                # Customize subplot
+                ax.set_xlabel('Accuracy Level', fontsize=12)
+                ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+                ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='gray')
+
+                # Set x-axis
+                ax.set_xticks(range(len(precision_levels)))
+                ax.set_xticklabels([p.capitalize() for p in precision_levels], fontsize=10)
+                ax.set_xlim(-0.1, len(precision_levels) - 0.9)
+
+                # Set y-axis limits
+                all_y_values = []
+
+                for model in models:
+                    for precision in precision_levels:
+                        model_data = model_averages[
+                            (model_averages['Model'] == model) &
+                            (model_averages['Precision Level'] == precision) &
+                            (model_averages['Inference Mode'] == mode)
+                        ]
+                        if len(model_data) > 0:
+                            if metric == 'Success Rate':
+                                all_y_values.append(model_data['success_rate'].iloc[0])
+                            else:
+                                all_y_values.append(model_data['mean_efficiency'].iloc[0])
+
+                for precision in precision_levels:
+                    bo_data = bo_averages[
+                        (bo_averages['Precision Level'] == precision) &
+                        (bo_averages['Inference Mode'] == mode)
+                    ]
+                    if len(bo_data) > 0:
+                        if metric == 'Success Rate':
+                            all_y_values.append(bo_data['success_rate'].iloc[0])
+                        else:
+                            all_y_values.append(bo_data['mean_efficiency'].iloc[0])
+
+                if all_y_values:
+                    y_min = min(all_y_values)
+                    y_max = max(all_y_values)
+
+                    if metric == 'Success Rate':
+                        lower_bound = y_min - 0.08
+                        if y_min <= 0.05:
+                            lower_bound = -0.05
+                        ax.set_ylim(lower_bound, min(1, y_max + 0.08))
+                    else:
+                        lower_bound = y_min - 0.5
+                        if y_min <= 1.0:
+                            lower_bound = -1.0
+                        ax.set_ylim(lower_bound, y_max + max(0.5, (y_max - y_min) * 0.1))
+
+        # Create legend
+        legend_ax.axis('off')
+        legend_elements = []
+
+        from matplotlib.lines import Line2D
+
+        for model in models:
+            style = model_styles[model]
+            legend_elements.append(Line2D([0], [0],
+                                         marker=style['marker'],
+                                         color=style['color'],
+                                         linestyle=style['linestyle'],
+                                         linewidth=1.0,
+                                         markersize=3,
+                                         markerfacecolor='white',
+                                         markeredgecolor=style['color'],
+                                         markeredgewidth=1.0,
+                                         label=model))
+
+        legend_elements.append(Line2D([0], [0],
+                                     marker=bo_style['marker'],
+                                     color=bo_style['color'],
+                                     linestyle=bo_style['linestyle'],
+                                     linewidth=2.0,
+                                     markersize=4,
+                                     markerfacecolor=bo_style['color'],
+                                     markeredgecolor=bo_style['color'],
+                                     markeredgewidth=1.0,
+                                     label='Bayesian Optimization'))
+
+        ncols = len(legend_elements)
+        if len(legend_elements) > 6:
+            ncols = 4
+
+        legend_ax.legend(handles=legend_elements,
+                       loc='center',
+                       ncol=ncols,
+                       frameon=False,
+                       fontsize=11,
+                       columnspacing=2.0,
+                       handlelength=2.5)
+
+        # Add bottom labels
+        subplot_labels = [
+            ('a', 'Zero-shot'),
+            ('b', 'Zero-shot'),
+            ('c', 'Iterative'),
+            ('d', 'Iterative')
+        ]
+
+        for i, (letter, description) in enumerate(subplot_labels):
+            label_ax = label_axes[i]
+            label_ax.axis('off')
+            label_ax.text(0.5, 0.5, f'({letter}) {description}',
+                         ha='center', va='center',
+                         fontsize=13, fontweight='bold',
+                         transform=label_ax.transAxes)
+
+        # Save comprehensive plot
+        plot_path = self.output_dir / "comprehensive_bo_comparison_average_plot.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight', pad_inches=0.3)
+        plt.close()
+
+        print(f"📊 Comprehensive average plot saved to: {plot_path}")
+
+    def create_comprehensive_average_table(self, datasets_to_analyze: List[str]) -> None:
+        """Create comprehensive comparison table with simple averages across all datasets."""
+        print(f"🚀 Creating comprehensive average table across {len(datasets_to_analyze)} datasets...")
+
+        all_model_data = []
+        all_bo_data = []
+
+        # Collect data from all datasets
+        for dataset in datasets_to_analyze:
+            try:
+                analyzer = BayesianOptimizationAnalyzer(dataset_name=dataset)
+                bo_df, task_name = analyzer.load_bayesian_optimization_data(dataset)
+                model_df = analyzer.load_model_data(dataset, task_name)
+
+                # Add dataset identifier
+                model_df['Dataset'] = dataset
+                bo_df['Dataset'] = dataset
+
+                all_model_data.append(model_df)
+                all_bo_data.append(bo_df)
+
+            except Exception as e:
+                print(f"Warning: Could not load data for {dataset}: {e}")
+                continue
+
+        if not all_model_data or not all_bo_data:
+            print("❌ No data available for comprehensive table")
+            return
+
+        # Combine all data
+        combined_model_df = pd.concat(all_model_data, ignore_index=True)
+        combined_bo_df = pd.concat(all_bo_data, ignore_index=True)
+
+        # Create comprehensive comparison table using existing method but with averaged data
+        comprehensive_comparison_df = self.create_bo_comparison_table(combined_model_df, combined_bo_df, "comprehensive_average")
+
+        # Modify the table to show it's averaged across datasets
+        comprehensive_comparison_df.insert(0, 'Analysis Type', 'Average across datasets')
+
+        # Save comprehensive table
+        self.save_comprehensive_table_results(comprehensive_comparison_df, datasets_to_analyze)
+
+    def save_comprehensive_table_results(self, df: pd.DataFrame, datasets: List[str]) -> None:
+        """Save comprehensive comparison results to CSV and Excel."""
+        # Save CSV
+        csv_path = self.output_dir / "comprehensive_bo_comparison_average.csv"
+        df.to_csv(csv_path, index=False)
+        print(f"Comprehensive comparison CSV saved to: {csv_path}")
+
+        # Save Excel with formatting
+        excel_path = self.output_dir / "comprehensive_bo_comparison_average.xlsx"
+
+        with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
+            wb = writer.book
+            ws = wb.add_worksheet('Comprehensive BO Comparison')
+            writer.sheets['Comprehensive BO Comparison'] = ws
+
+            # Formatting styles
+            header_fmt = wb.add_format({
+                'bold': True,
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': '#F0F0F0'
+            })
+
+            # Model better formatting
+            model_better_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#E8F5E8'  # Light green
+            })
+
+            # BO better formatting
+            bo_better_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#FFE8E8'  # Light red
+            })
+
+            # Neutral formatting
+            neutral_fmt = wb.add_format({
+                'border': 1,
+                'bg_color': '#F8F8F8'
+            })
+
+            # Write title
+            title_fmt = wb.add_format({
+                'bold': True,
+                'font_size': 14,
+                'align': 'center'
+            })
+            ws.merge_range(0, 0, 0, len(df.columns) - 1, f'Comprehensive Bayesian Optimization Comparison (Average across {len(datasets)} datasets)', title_fmt)
+
+            # Write dataset list
+            datasets_fmt = wb.add_format({'italic': True, 'font_size': 10})
+            datasets_text = f"Datasets: {', '.join(datasets)}"
+            ws.merge_range(1, 0, 1, len(df.columns) - 1, datasets_text, datasets_fmt)
+
+            # Write headers (starting from row 3)
+            for i, col in enumerate(df.columns):
+                ws.write(3, i, col, header_fmt)
+
+            # Write data with conditional formatting (starting from row 4)
+            for row_idx, (_, row) in enumerate(df.iterrows(), 4):
+                for col_idx, col in enumerate(df.columns):
+                    value = row[col]
+
+                    # Choose formatting based on performance
+                    if col in ['Model Better (Success)', 'Model Better (Efficiency)']:
+                        if value == 'Yes':
+                            cell_fmt = model_better_fmt
+                        else:
+                            cell_fmt = bo_better_fmt
+                    elif col in ['Success Rate Diff', 'Efficiency Diff']:
+                        if value > 0:
+                            cell_fmt = model_better_fmt
+                        elif value < 0:
+                            cell_fmt = bo_better_fmt
+                        else:
+                            cell_fmt = neutral_fmt
+                    else:
+                        cell_fmt = neutral_fmt
+
+                    ws.write(row_idx, col_idx, value, cell_fmt)
+
+            # Auto-adjust column widths
+            for idx, col in enumerate(df.columns):
+                max_len = max(len(str(df[col].max())), len(col)) + 2
+                ws.set_column(idx, idx, min(max_len, 20))
+
+            # Add legend
+            legend_row = len(df) + 6
+            legend_fmt = wb.add_format({'italic': True, 'font_size': 9})
+
+            ws.write(legend_row, 0, "Legend:", legend_fmt)
+            ws.write(legend_row + 1, 0, "Green: Model performs better", model_better_fmt)
+            ws.write(legend_row + 2, 0, "Red: Bayesian Optimization performs better", bo_better_fmt)
+
+        print(f"Comprehensive comparison Excel saved to: {excel_path}")
+
 
 def discover_datasets(base_dir: str = "eval_results") -> List[str]:
     """
@@ -769,6 +1189,19 @@ def main():
         except Exception as e:
             print(f"❌ Failed to analyze {dataset}: {e}")
             continue
+
+    # Generate comprehensive average results if analyzing multiple datasets
+    if len(datasets_to_analyze) > 1:
+        print(f"\n{'='*60}")
+        print(f"🔍 Generating comprehensive average results")
+        print(f"{'='*60}")
+
+        try:
+            analyzer = BayesianOptimizationAnalyzer()
+            analyzer.create_comprehensive_average_table(datasets_to_analyze)
+            analyzer.create_comprehensive_average_plot(datasets_to_analyze)
+        except Exception as e:
+            print(f"❌ Failed to create comprehensive average results: {e}")
 
     print(f"\n🎉 Bayesian optimization analysis completed for {len(datasets_to_analyze)} dataset(s)!")
     print(f"📁 Results saved to: eval_results/stats/bayesian_optimization/")
