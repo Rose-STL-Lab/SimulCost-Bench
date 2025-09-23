@@ -54,8 +54,24 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 import csv
 
-# Dataset configuration
-DATASETS = ['euler_1d', 'heat_1d', 'ns_2d']
+# Fixed dataset directories
+FIXED_DIRECTORIES = [
+    'eval_results/euler_1d_icl',
+    'eval_results/euler_1d_icl_no_cost',
+    'eval_results/euler_1d_icl_uniform',
+    'eval_results/heat_1d',
+    'eval_results/heat_1d_icl',
+    'eval_results/heat_1d_icl_no_cost',
+    'eval_results/heat_1d_icl_uniform',
+    'eval_results/euler_1d',
+    'eval_results/ns_transient_2d',
+    'eval_results/ns_transient_2d_icl',
+    'eval_results/ns_transient_2d_icl_no_cost',
+    'eval_results/ns_transient_2d_icl_uniform'
+]
+
+# Extract base dataset names from directories (combining all data)
+DATASETS = ['euler_1d', 'heat_1d', 'ns_transient_2d']
 
 # Task categorization
 COMMON_TASKS = ['cfl', 'n_space', 'resolution']
@@ -87,14 +103,12 @@ def map_model_name(model_name: str) -> str:
 def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load task-specific summary data for all precision levels for baseline and all ICL variants
-    across all datasets.
+    from fixed directories.
 
     Returns:
         Tuple of (baseline_task_data, icl_task_data, icl_no_cost_task_data, icl_uniform_task_data)
         Each DataFrame contains data from all precision levels (low, medium, high) and all datasets
     """
-    base_path = Path("eval_results")
-
     # Load and combine all precision levels for each dataset
     precision_levels = ['low', 'medium', 'high']
 
@@ -106,7 +120,7 @@ def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
     for dataset in DATASETS:
         for precision in precision_levels:
             # Load baseline data
-            baseline_file = base_path / dataset / f"{dataset}_{precision}_summary.csv"
+            baseline_file = Path(f"eval_results/{dataset}/{dataset}_{precision}_summary.csv")
             if baseline_file.exists():
                 df = pd.read_csv(baseline_file)
                 df['Precision Level'] = precision
@@ -114,7 +128,7 @@ def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
                 baseline_dfs.append(df)
 
             # Load ICL data
-            icl_file = base_path / f"{dataset}_icl" / f"{dataset}_icl_{precision}_summary.csv"
+            icl_file = Path(f"eval_results/{dataset}_icl/{dataset}_icl_{precision}_summary.csv")
             if icl_file.exists():
                 df = pd.read_csv(icl_file)
                 df['Precision Level'] = precision
@@ -122,7 +136,7 @@ def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
                 icl_dfs.append(df)
 
             # Load ICL no cost data
-            icl_no_cost_file = base_path / f"{dataset}_icl_no_cost" / f"{dataset}_icl_no_cost_{precision}_summary.csv"
+            icl_no_cost_file = Path(f"eval_results/{dataset}_icl_no_cost/{dataset}_icl_no_cost_{precision}_summary.csv")
             if icl_no_cost_file.exists():
                 df = pd.read_csv(icl_no_cost_file)
                 df['Precision Level'] = precision
@@ -130,7 +144,7 @@ def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
                 icl_no_cost_dfs.append(df)
 
             # Load ICL uniform data
-            icl_uniform_file = base_path / f"{dataset}_icl_uniform" / f"{dataset}_icl_uniform_{precision}_summary.csv"
+            icl_uniform_file = Path(f"eval_results/{dataset}_icl_uniform/{dataset}_icl_uniform_{precision}_summary.csv")
             if icl_uniform_file.exists():
                 df = pd.read_csv(icl_uniform_file)
                 df['Precision Level'] = precision
@@ -148,30 +162,93 @@ def load_task_specific_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
 
 def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Load the required CSV files for comparison.
+    Load the required CSV files for comparison from fixed directories.
 
     Returns:
-        Tuple of (euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed,
-                 euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed,
-                 euler_1d_icl_uniform_agg, euler_1d_icl_uniform_detailed)
+        Tuple of (all_agg, all_detailed, all_icl_agg, all_icl_detailed,
+                 all_icl_no_cost_agg, all_icl_no_cost_detailed,
+                 all_icl_uniform_agg, all_icl_uniform_detailed)
     """
-    base_path = Path("eval_results")
+    # Load and combine data from multiple datasets
+    all_agg_dfs = []
+    all_detailed_dfs = []
+    all_icl_agg_dfs = []
+    all_icl_detailed_dfs = []
+    all_icl_no_cost_agg_dfs = []
+    all_icl_no_cost_detailed_dfs = []
+    all_icl_uniform_agg_dfs = []
+    all_icl_uniform_detailed_dfs = []
 
-    # Load aggregated data
-    euler_1d_agg = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum_aggregated.csv")
-    euler_1d_icl_agg = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum_aggregated.csv")
-    euler_1d_icl_no_cost_agg = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_no_cost_sum_aggregated.csv")
-    euler_1d_icl_uniform_agg = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_uniform_sum_aggregated.csv")
+    for dataset in DATASETS:
+        # Load baseline aggregated data
+        agg_file = Path(f"eval_results/{dataset}/{dataset}_sum_aggregated.csv")
+        if agg_file.exists():
+            df = pd.read_csv(agg_file)
+            df['Dataset'] = dataset
+            all_agg_dfs.append(df)
 
-    # Load detailed data
-    euler_1d_detailed = pd.read_csv(base_path / "euler_1d" / "euler_1d_sum.csv")
-    euler_1d_icl_detailed = pd.read_csv(base_path / "euler_1d_icl" / "euler_1d_icl_sum.csv")
-    euler_1d_icl_no_cost_detailed = pd.read_csv(base_path / "euler_1d_icl_no_cost" / "euler_1d_icl_no_cost_sum.csv")
-    euler_1d_icl_uniform_detailed = pd.read_csv(base_path / "euler_1d_icl_uniform" / "euler_1d_icl_uniform_sum.csv")
+        # Load baseline detailed data
+        detailed_file = Path(f"eval_results/{dataset}/{dataset}_sum.csv")
+        if detailed_file.exists():
+            df = pd.read_csv(detailed_file)
+            df['Dataset'] = dataset
+            all_detailed_dfs.append(df)
 
-    return (euler_1d_agg, euler_1d_detailed, euler_1d_icl_agg, euler_1d_icl_detailed,
-            euler_1d_icl_no_cost_agg, euler_1d_icl_no_cost_detailed,
-            euler_1d_icl_uniform_agg, euler_1d_icl_uniform_detailed)
+        # Load ICL aggregated data
+        icl_agg_file = Path(f"eval_results/{dataset}_icl/{dataset}_icl_sum_aggregated.csv")
+        if icl_agg_file.exists():
+            df = pd.read_csv(icl_agg_file)
+            df['Dataset'] = dataset
+            all_icl_agg_dfs.append(df)
+
+        # Load ICL detailed data
+        icl_detailed_file = Path(f"eval_results/{dataset}_icl/{dataset}_icl_sum.csv")
+        if icl_detailed_file.exists():
+            df = pd.read_csv(icl_detailed_file)
+            df['Dataset'] = dataset
+            all_icl_detailed_dfs.append(df)
+
+        # Load ICL no cost aggregated data
+        icl_no_cost_agg_file = Path(f"eval_results/{dataset}_icl_no_cost/{dataset}_icl_no_cost_sum_aggregated.csv")
+        if icl_no_cost_agg_file.exists():
+            df = pd.read_csv(icl_no_cost_agg_file)
+            df['Dataset'] = dataset
+            all_icl_no_cost_agg_dfs.append(df)
+
+        # Load ICL no cost detailed data
+        icl_no_cost_detailed_file = Path(f"eval_results/{dataset}_icl_no_cost/{dataset}_icl_no_cost_sum.csv")
+        if icl_no_cost_detailed_file.exists():
+            df = pd.read_csv(icl_no_cost_detailed_file)
+            df['Dataset'] = dataset
+            all_icl_no_cost_detailed_dfs.append(df)
+
+        # Load ICL uniform aggregated data
+        icl_uniform_agg_file = Path(f"eval_results/{dataset}_icl_uniform/{dataset}_icl_uniform_sum_aggregated.csv")
+        if icl_uniform_agg_file.exists():
+            df = pd.read_csv(icl_uniform_agg_file)
+            df['Dataset'] = dataset
+            all_icl_uniform_agg_dfs.append(df)
+
+        # Load ICL uniform detailed data
+        icl_uniform_detailed_file = Path(f"eval_results/{dataset}_icl_uniform/{dataset}_icl_uniform_sum.csv")
+        if icl_uniform_detailed_file.exists():
+            df = pd.read_csv(icl_uniform_detailed_file)
+            df['Dataset'] = dataset
+            all_icl_uniform_detailed_dfs.append(df)
+
+    # Combine all datasets
+    all_agg = pd.concat(all_agg_dfs, ignore_index=True) if all_agg_dfs else pd.DataFrame()
+    all_detailed = pd.concat(all_detailed_dfs, ignore_index=True) if all_detailed_dfs else pd.DataFrame()
+    all_icl_agg = pd.concat(all_icl_agg_dfs, ignore_index=True) if all_icl_agg_dfs else pd.DataFrame()
+    all_icl_detailed = pd.concat(all_icl_detailed_dfs, ignore_index=True) if all_icl_detailed_dfs else pd.DataFrame()
+    all_icl_no_cost_agg = pd.concat(all_icl_no_cost_agg_dfs, ignore_index=True) if all_icl_no_cost_agg_dfs else pd.DataFrame()
+    all_icl_no_cost_detailed = pd.concat(all_icl_no_cost_detailed_dfs, ignore_index=True) if all_icl_no_cost_detailed_dfs else pd.DataFrame()
+    all_icl_uniform_agg = pd.concat(all_icl_uniform_agg_dfs, ignore_index=True) if all_icl_uniform_agg_dfs else pd.DataFrame()
+    all_icl_uniform_detailed = pd.concat(all_icl_uniform_detailed_dfs, ignore_index=True) if all_icl_uniform_detailed_dfs else pd.DataFrame()
+
+    return (all_agg, all_detailed, all_icl_agg, all_icl_detailed,
+            all_icl_no_cost_agg, all_icl_no_cost_detailed,
+            all_icl_uniform_agg, all_icl_uniform_detailed)
 
 
 def is_number(v) -> bool:
@@ -670,12 +747,12 @@ def create_aggregated_visualization(euler_1d_agg: pd.DataFrame, euler_1d_icl_agg
     # Create bars for four datasets with gaps
     bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width, label='Baseline',
                    color='gray', alpha=0.8, edgecolor='black', linewidth=1)
-    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='ICL',
-                   color='#FF7F32', alpha=0.8, edgecolor='black', linewidth=1)
-    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='ICL (no cost)',
-                   color='white', alpha=1.0, edgecolor='#FF7F32', linewidth=2)
-    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='ICL (uniform)',
-                   color='#FF7F32', alpha=0.8, edgecolor='black', linewidth=1,
+    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='Accuracy-focused',
+                   color='#4682B4', alpha=0.8, edgecolor='black', linewidth=1)
+    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='Cost-Excluded',
+                   color='white', alpha=1.0, edgecolor='#4682B4', linewidth=1)
+    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='Full',
+                   color='#4682B4', alpha=0.8, edgecolor='black', linewidth=1,
                    hatch='///')
 
     # Customize plot
@@ -780,19 +857,19 @@ def create_task_category_visualization(category_data: pd.DataFrame, category_nam
 
     # Use category-specific colors for ICL bars while keeping the exact same style
     if category_name.lower() == 'common':
-        icl_color = '#2E8B57'
+        icl_color = '#E8F0FF'
     else:  # uncommon
         icl_color = '#B22222'
 
     # Create bars for four datasets with gaps and improved spacing
     bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width, label='Baseline',
                    color='gray', alpha=0.8, edgecolor='black', linewidth=1)
-    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='ICL',
-                   color=icl_color, alpha=0.8, edgecolor='black', linewidth=1)
-    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='ICL (no cost)',
-                   color='white', alpha=1.0, edgecolor=icl_color, linewidth=2)
-    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='ICL (uniform)',
-                   color=icl_color, alpha=0.8, edgecolor='black', linewidth=1,
+    bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width, label='Accuracy-focused',
+                   color='#4682B4', alpha=0.8, edgecolor='black', linewidth=1)
+    bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width, label='Cost-Excluded',
+                   color='white', alpha=1.0, edgecolor='#4682B4', linewidth=1)
+    bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width, label='Full',
+                   color='#4682B4', alpha=0.8, edgecolor='black', linewidth=1,
                    hatch='///')
 
     # Customize plot - match exact style from original
@@ -985,10 +1062,13 @@ def create_category_comparison_chart(agg_comparison: pd.DataFrame, common_compar
     output_dir = Path("eval_results/stats/icl_effect")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Filter data by mode
-    overall_data = agg_comparison[agg_comparison['Inference Mode'] == mode].copy()
-    common_data = common_comparison[common_comparison['Inference Mode'] == mode].copy()
-    uncommon_data = uncommon_comparison[uncommon_comparison['Inference Mode'] == mode].copy()
+    # Filter data by mode and model (only Claude-3.7-Sonnet)
+    overall_data = agg_comparison[(agg_comparison['Inference Mode'] == mode) &
+                                 (agg_comparison['Model'] == 'Claude-3.7-Sonnet')].copy()
+    common_data = common_comparison[(common_comparison['Inference Mode'] == mode) &
+                                   (common_comparison['Model'] == 'Claude-3.7-Sonnet')].copy()
+    uncommon_data = uncommon_comparison[(uncommon_comparison['Inference Mode'] == mode) &
+                                       (uncommon_comparison['Model'] == 'Claude-3.7-Sonnet')].copy()
 
     if len(overall_data) == 0:
         print(f"⚠️  No data available for {mode} mode {metric} category comparison")
@@ -1015,7 +1095,7 @@ def create_category_comparison_chart(agg_comparison: pd.DataFrame, common_compar
         uniform_col = 'Efficiency (ICL uniform)'
         ylabel = 'Efficiency'
 
-    # Calculate averages for each category
+    # Get values for Claude-3.7-Sonnet for each category (no longer averaging across models)
     for data_source in [overall_data, common_data, uncommon_data]:
         baseline_vals = []
         icl_vals = []
@@ -1037,7 +1117,7 @@ def create_category_comparison_chart(agg_comparison: pd.DataFrame, common_compar
             if icl_uniform != 'N/A' and is_number(icl_uniform):
                 icl_uniform_vals.append(float(icl_uniform))
 
-        # Calculate means
+        # Take the single value for Claude-3.7-Sonnet (or mean if multiple entries for same model)
         baseline_values.append(np.mean(baseline_vals) if baseline_vals else 0)
         icl_values.append(np.mean(icl_vals) if icl_vals else 0)
         icl_no_cost_values.append(np.mean(icl_no_cost_vals) if icl_no_cost_vals else 0)
@@ -1059,11 +1139,11 @@ def create_category_comparison_chart(agg_comparison: pd.DataFrame, common_compar
     bars1 = ax.bar(x_pos - 1.5*bar_width - 1.5*bar_gap, baseline_values, bar_width,
                    label='Baseline', color='gray', alpha=0.8, edgecolor='black', linewidth=1)
     bars2 = ax.bar(x_pos - 0.5*bar_width - 0.5*bar_gap, icl_values, bar_width,
-                   label='ICL', color='#FF7F32', alpha=0.8, edgecolor='black', linewidth=1)
+                   label='Accuracy-focused', color='#4682B4', alpha=0.8, edgecolor='black', linewidth=1)
     bars3 = ax.bar(x_pos + 0.5*bar_width + 0.5*bar_gap, icl_no_cost_values, bar_width,
-                   label='ICL (no cost)', color='white', alpha=1.0, edgecolor='#FF7F32', linewidth=2)
+                   label='Cost-Excluded', color='white', alpha=1.0, edgecolor='#4682B4', linewidth=1)
     bars4 = ax.bar(x_pos + 1.5*bar_width + 1.5*bar_gap, icl_uniform_values, bar_width,
-                   label='ICL (uniform)', color='#FF7F32', alpha=0.8, edgecolor='black',
+                   label='Full', color='#4682B4', alpha=0.8, edgecolor='black',
                    linewidth=1, hatch='///')
 
     # Customize plot
@@ -1244,28 +1324,12 @@ def main():
         print("💾 Saving improvement summary...")
         save_improvement_summary(agg_comparison)
 
-        # Create visualizations
-        print("\n📈 Creating aggregated visualizations...")
-        for mode in ['Zero-shot', 'Iterative']:
-            for metric in ['success_rate', 'efficiency']:
-                create_aggregated_visualization(euler_1d_agg, euler_1d_icl_agg,
-                                              euler_1d_icl_no_cost_agg, euler_1d_icl_uniform_agg,
-                                              metric, mode)
-
-
-        # Create task category visualizations
-        print("\n📈 Creating task category visualizations...")
-        for mode in ['Zero-shot', 'Iterative']:
-            for metric in ['success_rate', 'efficiency']:
-                create_task_category_visualization(common_comparison, 'Common', metric, mode)
-                create_task_category_visualization(uncommon_comparison, 'Uncommon', metric, mode)
-
-        # Create category comparison charts (overall vs common vs uncommon)
-        print("\n📈 Creating category comparison charts...")
-        for mode in ['Zero-shot', 'Iterative']:
-            for metric in ['success_rate', 'efficiency']:
-                create_category_comparison_chart(agg_comparison, common_comparison,
-                                               uncommon_comparison, metric, mode)
+        # Create only the two required visualizations
+        print("\n📈 Creating required visualizations...")
+        # Only create category comparison charts for zero-shot mode
+        for metric in ['success_rate', 'efficiency']:
+            create_category_comparison_chart(agg_comparison, common_comparison,
+                                           uncommon_comparison, metric, 'Zero-shot')
 
         # Print summary statistics
         print_summary_statistics(agg_comparison)

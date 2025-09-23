@@ -12,7 +12,7 @@ import seaborn as sns
 def load_zero_shot_data():
     """Load all zero-shot CSV summary files and filter for zero-shot inference mode only"""
 
-    datasets = ['heat_1d', 'heat_2d', 'euler_1d', 'burgers_1d', 'epoch_1d', 'ns_transient_2d']
+    datasets = ['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d']
     accuracy_levels = ['low', 'medium', 'high']
 
     all_data = []
@@ -64,19 +64,9 @@ def standardize_model_names(df):
         'Llama-3-70B-Instruct': 'Llama-3-70B-Instruct',
         'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
 
-        # Mistral variants
-        'Mistral-Large': 'Mistral-Large',
-        'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
-
-        # Nova variants
-        'Nova-Premier': 'Nova-Premier',
-        'amazon.nova-premier-v1:0': 'Nova-Premier',
-
         # Qwen variants
         'Qwen3-32B': 'Qwen3-32B',
         'qwen3_32b': 'Qwen3-32B',
-
-        # Add more mappings as needed
     }
 
     df['Model_Standardized'] = df['Model'].map(model_mapping).fillna(df['Model'])
@@ -86,8 +76,8 @@ def standardize_model_names(df):
         if original in df['Model'].values:
             print(f"  {original} -> {standardized}")
 
-    # Check if we have any unmapped models
-    unmapped = df[df['Model_Standardized'] == df['Model']]['Model'].unique()
+    # Check if we have any truly unmapped models (not in the mapping dictionary)
+    unmapped = df[~df['Model'].isin(model_mapping.keys())]['Model'].unique()
     if len(unmapped) > 0:
         print(f"Warning: Unmapped models found: {list(unmapped)}")
 
@@ -98,6 +88,13 @@ def prepare_task_performance_matrix(df, metric='mean_efficiency'):
 
     # Use standardized model names
     df = standardize_model_names(df)
+
+    # Filter to only include the specified models
+    target_models = ['Claude-3.7-Sonnet', 'GPT-5', 'Llama-3-70B-Instruct', 'Qwen3-32B']
+    df = df[df['Model_Standardized'].isin(target_models)].copy()
+
+    print(f"After filtering for target models: {len(df)} entries")
+    print(f"Models included: {sorted(df['Model_Standardized'].unique())}")
 
     # Create a combined identifier for model-accuracy level using standardized names
     df['Model_Accuracy'] = df['Model_Standardized'] + '_' + df['accuracy_level']

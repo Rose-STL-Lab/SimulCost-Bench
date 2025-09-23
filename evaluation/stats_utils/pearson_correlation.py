@@ -84,29 +84,30 @@ class PearsonCorrelationAnalyzer:
         
     def _discover_available_datasets(self) -> List[str]:
         """
-        Discover all datasets with complete zero-shot and iterative data.
-        
+        Return only the specific datasets to analyze (consistent with task_correlation_analysis.py).
+
         Returns
         -------
         List[str]
-            List of available dataset names
+            List of target dataset names
         """
-        eval_results_path = Path("eval_results")
+        target_datasets = ['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d']
         available_datasets = []
-        
-        for dataset_path in eval_results_path.iterdir():
-            if dataset_path.is_dir() and dataset_path.name != "stats":
-                dataset_name = dataset_path.name
-                zero_shot_path = dataset_path / "zero_shot" / f"{dataset_name}_sum.csv"
-                iterative_path = dataset_path / "iterative" / f"{dataset_name}_sum.csv"
-                
-                if zero_shot_path.exists() and iterative_path.exists():
-                    available_datasets.append(dataset_name)
-        
+
+        for dataset_name in target_datasets:
+            dataset_path = Path(f"eval_results/{dataset_name}")
+            zero_shot_path = dataset_path / "zero_shot" / f"{dataset_name}_sum.csv"
+            iterative_path = dataset_path / "iterative" / f"{dataset_name}_sum.csv"
+
+            if zero_shot_path.exists() and iterative_path.exists():
+                available_datasets.append(dataset_name)
+            else:
+                print(f"⚠ Skipping {dataset_name}: Required files not found")
+
         if not available_datasets:
-            raise FileNotFoundError("No datasets with complete zero-shot and iterative data found")
-        
-        return sorted(available_datasets)
+            raise FileNotFoundError("No target datasets with complete zero-shot and iterative data found")
+
+        return available_datasets
         
     def load_evaluation_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -157,9 +158,17 @@ class PearsonCorrelationAnalyzer:
         # Combine all datasets
         combined_zero_shot = pd.concat(all_zero_shot, ignore_index=True)
         combined_iterative = pd.concat(all_iterative, ignore_index=True)
-        
+
+        # Filter for target models (consistent with task_correlation_analysis.py)
+        target_models = ['Claude-3.7-Sonnet', 'GPT-5', 'Llama-3-70B-Instruct', 'Qwen3-32B']
+
+        # Apply model name standardization and filtering
+        combined_zero_shot = self._standardize_and_filter_models(combined_zero_shot, target_models)
+        combined_iterative = self._standardize_and_filter_models(combined_iterative, target_models)
+
         print(f"✓ Total combined data: {len(combined_zero_shot)} zero-shot, {len(combined_iterative)} iterative records")
-        
+        print(f"✓ Filtered for target models: {target_models}")
+
         return combined_zero_shot, combined_iterative
     
     def prepare_paired_data(self, zero_shot_df: pd.DataFrame, 
@@ -208,6 +217,55 @@ class PearsonCorrelationAnalyzer:
             raise ValueError(f"No matching models found for precision level: {precision_level}")
             
         return merged
+
+    def _standardize_and_filter_models(self, df: pd.DataFrame, target_models: List[str]) -> pd.DataFrame:
+        """
+        Standardize model names and filter for target models (consistent with task_correlation_analysis.py).
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame with model data
+        target_models : List[str]
+            List of target model names to keep
+
+        Returns
+        -------
+        pd.DataFrame
+            Filtered DataFrame with standardized model names
+        """
+        model_mapping = {
+            # Claude variants
+            'Claude-3.7-Sonnet': 'Claude-3.7-Sonnet',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+
+            # GPT variants
+            'GPT-5': 'GPT-5',
+            'gpt-5-2025-08-07': 'GPT-5',
+
+            # Llama variants
+            'Llama-3-70B-Instruct': 'Llama-3-70B-Instruct',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+
+            # Qwen variants
+            'Qwen3-32B': 'Qwen3-32B',
+            'qwen3_32b': 'Qwen3-32B',
+        }
+
+        # Standardize model names
+        df['Model_Standardized'] = df['Model'].map(model_mapping).fillna(df['Model'])
+
+        # Filter for target models only
+        df_filtered = df[df['Model_Standardized'].isin(target_models)].copy()
+
+        # Update the Model column with standardized names
+        df_filtered['Model'] = df_filtered['Model_Standardized']
+        df_filtered = df_filtered.drop('Model_Standardized', axis=1)
+
+        print(f"   - Before filtering: {len(df)} entries")
+        print(f"   - After filtering: {len(df_filtered)} entries for models: {sorted(df_filtered['Model'].unique())}")
+
+        return df_filtered
     
     def compute_pearson_correlation(self, paired_data: pd.DataFrame, 
                                    metric: str) -> Tuple[float, float, int]:
@@ -601,7 +659,7 @@ class PearsonCorrelationAnalyzer:
         # Prepare correlation matrix
         correlation_matrix = []
         precision_labels = []
-        
+
         for precision_level in PRECISION_LEVELS:
             if precision_level in self.correlation_results:
                 correlations = [
@@ -610,18 +668,30 @@ class PearsonCorrelationAnalyzer:
                 ]
                 correlation_matrix.append(correlations)
                 precision_labels.append(precision_level.capitalize())
-        
+
         correlation_matrix = np.array(correlation_matrix)
-        
+
         # Create heatmap
         plt.figure(figsize=(12, 8))
-        
+
         # Create subplot with space for colorbar
         ax = plt.subplot(111)
-        
+
+        # Create custom colormap: red for positive correlation, green for negative correlation
+        from matplotlib.colors import LinearSegmentedColormap, Normalize
+
+        # Define custom colors
+        green_color = '#2E8B57'  # SeaGreen (for negative correlation)
+        red_color = '#B22222'    # FireBrick (for positive correlation)
+
+        # Create a diverging colormap with specified colors
+        colors = [green_color, 'white', red_color]
+        n_bins = 256
+        cmap = LinearSegmentedColormap.from_list('custom_diverging', colors, N=n_bins)
+
         # Plot heatmap
-        im = ax.imshow(correlation_matrix, cmap='RdYlBu_r', aspect='auto', 
-                      vmin=-1, vmax=1)
+        norm = Normalize(vmin=-1, vmax=1)
+        im = ax.imshow(correlation_matrix, cmap=cmap, aspect='auto', norm=norm)
         
         # Set ticks and labels
         ax.set_xticks(range(len(METRICS_TO_ANALYZE)))
@@ -706,10 +776,22 @@ class PearsonCorrelationAnalyzer:
             # Create heatmap for this specific model
             plt.figure(figsize=(12, 8))
             ax = plt.subplot(111)
-            
+
+            # Create custom colormap: red for positive correlation, green for negative correlation
+            from matplotlib.colors import LinearSegmentedColormap, Normalize
+
+            # Define custom colors
+            green_color = '#2E8B57'  # SeaGreen (for negative correlation)
+            red_color = '#B22222'    # FireBrick (for positive correlation)
+
+            # Create a diverging colormap with specified colors
+            colors = [green_color, 'white', red_color]
+            n_bins = 256
+            cmap = LinearSegmentedColormap.from_list('custom_diverging', colors, N=n_bins)
+
             # Plot heatmap
-            im = ax.imshow(correlation_matrix, cmap='RdYlBu_r', aspect='auto', 
-                          vmin=-1, vmax=1)
+            norm = Normalize(vmin=-1, vmax=1)
+            im = ax.imshow(correlation_matrix, cmap=cmap, aspect='auto', norm=norm)
             
             # Set ticks and labels
             ax.set_xticks(range(len(METRICS_TO_ANALYZE)))

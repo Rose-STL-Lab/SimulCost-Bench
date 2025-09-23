@@ -86,6 +86,9 @@ class EfficiencyVarianceAnalyzer:
         data = defaultdict(lambda: defaultdict(list))
         precision_levels = ['low', 'medium', 'high']
 
+        # Only consider these specific models
+        allowed_models = {'claude-3.7-sonnet', 'gpt-5', 'llama-3-70b-instruct', 'qwen3-32b'}
+
         dataset_dir = self.base_dir / dataset / task_type
 
         if not dataset_dir.exists():
@@ -104,6 +107,11 @@ class EfficiencyVarianceAnalyzer:
             # Process iterative logs
             for log_file in iterative_logs:
                 model_name = log_file.name.replace("iterative_", "").replace(".log", "")
+
+                # Check if this model is in our allowed list
+                if not any(allowed_model in model_name.lower() for allowed_model in allowed_models):
+                    continue
+
                 if models and not any(model in model_name for model in models):
                     continue
 
@@ -116,6 +124,11 @@ class EfficiencyVarianceAnalyzer:
             # Process zero-shot logs
             for log_file in zero_shot_logs:
                 model_name = log_file.name.replace("zero_shot_", "").replace(".log", "")
+
+                # Check if this model is in our allowed list
+                if not any(allowed_model in model_name.lower() for allowed_model in allowed_models):
+                    continue
+
                 if models and not any(model in model_name for model in models):
                     continue
 
@@ -454,12 +467,19 @@ class EfficiencyVarianceAnalyzer:
         """
         combinations = []
 
+        # Only consider these specific datasets
+        allowed_datasets = {'burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d'}
+
         if not self.base_dir.exists():
             return combinations
 
         for dataset_dir in self.base_dir.iterdir():
             if dataset_dir.is_dir():
                 dataset_name = dataset_dir.name
+
+                # Filter to only allowed datasets
+                if dataset_name not in allowed_datasets:
+                    continue
 
                 for task_dir in dataset_dir.iterdir():
                     if task_dir.is_dir():

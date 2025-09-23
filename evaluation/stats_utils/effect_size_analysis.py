@@ -87,29 +87,30 @@ class EffectSizeAnalyzer:
         
     def _discover_available_datasets(self) -> List[str]:
         """
-        Discover all datasets with complete zero-shot and iterative data.
-        
+        Return only the specific datasets to analyze (consistent with task_correlation_analysis.py).
+
         Returns
         -------
         List[str]
-            List of available dataset names
+            List of target dataset names
         """
-        eval_results_path = Path("eval_results")
+        target_datasets = ['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d']
         available_datasets = []
-        
-        for dataset_path in eval_results_path.iterdir():
-            if dataset_path.is_dir() and dataset_path.name not in ["spearman_correlation", "effect_size_analysis"]:
-                dataset_name = dataset_path.name
-                zero_shot_path = dataset_path / "zero_shot" / f"{dataset_name}_sum.csv"
-                iterative_path = dataset_path / "iterative" / f"{dataset_name}_sum.csv"
-                
-                if zero_shot_path.exists() and iterative_path.exists():
-                    available_datasets.append(dataset_name)
-        
+
+        for dataset_name in target_datasets:
+            dataset_path = Path(f"eval_results/{dataset_name}")
+            zero_shot_path = dataset_path / "zero_shot" / f"{dataset_name}_sum.csv"
+            iterative_path = dataset_path / "iterative" / f"{dataset_name}_sum.csv"
+
+            if zero_shot_path.exists() and iterative_path.exists():
+                available_datasets.append(dataset_name)
+            else:
+                print(f"⚠ Skipping {dataset_name}: Required files not found")
+
         if not available_datasets:
-            raise FileNotFoundError("No datasets with complete zero-shot and iterative data found")
-        
-        return sorted(available_datasets)
+            raise FileNotFoundError("No target datasets with complete zero-shot and iterative data found")
+
+        return available_datasets
         
     def load_evaluation_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -160,9 +161,17 @@ class EffectSizeAnalyzer:
         # Combine all datasets
         combined_zero_shot = pd.concat(all_zero_shot, ignore_index=True)
         combined_iterative = pd.concat(all_iterative, ignore_index=True)
-        
+
+        # Filter for target models (consistent with task_correlation_analysis.py)
+        target_models = ['Claude-3.7-Sonnet', 'GPT-5', 'Llama-3-70B-Instruct', 'Qwen3-32B']
+
+        # Apply model name standardization and filtering
+        combined_zero_shot = self._standardize_and_filter_models(combined_zero_shot, target_models)
+        combined_iterative = self._standardize_and_filter_models(combined_iterative, target_models)
+
         print(f"✓ Total combined data: {len(combined_zero_shot)} zero-shot, {len(combined_iterative)} iterative records")
-        
+        print(f"✓ Filtered for target models: {target_models}")
+
         return combined_zero_shot, combined_iterative
     
     def prepare_paired_data(self, zero_shot_df: pd.DataFrame, 
@@ -213,6 +222,55 @@ class EffectSizeAnalyzer:
             raise ValueError(f"No matching models found for precision level: {precision_level}")
             
         return merged
+
+    def _standardize_and_filter_models(self, df: pd.DataFrame, target_models: List[str]) -> pd.DataFrame:
+        """
+        Standardize model names and filter for target models (consistent with task_correlation_analysis.py).
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame with model data
+        target_models : List[str]
+            List of target model names to keep
+
+        Returns
+        -------
+        pd.DataFrame
+            Filtered DataFrame with standardized model names
+        """
+        model_mapping = {
+            # Claude variants
+            'Claude-3.7-Sonnet': 'Claude-3.7-Sonnet',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+
+            # GPT variants
+            'GPT-5': 'GPT-5',
+            'gpt-5-2025-08-07': 'GPT-5',
+
+            # Llama variants
+            'Llama-3-70B-Instruct': 'Llama-3-70B-Instruct',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+
+            # Qwen variants
+            'Qwen3-32B': 'Qwen3-32B',
+            'qwen3_32b': 'Qwen3-32B',
+        }
+
+        # Standardize model names
+        df['Model_Standardized'] = df['Model'].map(model_mapping).fillna(df['Model'])
+
+        # Filter for target models only
+        df_filtered = df[df['Model_Standardized'].isin(target_models)].copy()
+
+        # Update the Model column with standardized names
+        df_filtered['Model'] = df_filtered['Model_Standardized']
+        df_filtered = df_filtered.drop('Model_Standardized', axis=1)
+
+        print(f"   - Before filtering: {len(df)} entries")
+        print(f"   - After filtering: {len(df_filtered)} entries for models: {sorted(df_filtered['Model'].unique())}")
+
+        return df_filtered
     
     def compute_cohens_d(self, group1: np.ndarray, group2: np.ndarray) -> float:
         """
@@ -546,65 +604,66 @@ class EffectSizeAnalyzer:
 
         effect_size_matrix = np.array(effect_size_matrix)
 
-        # Create figure with subplots for different metrics
-        fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+        # Create a single figure for combined heatmap
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
 
-        # Split data by metric type
-        success_rate_data = effect_size_matrix[:, 0:1]  # First column (success_rate)
-        efficiency_data = effect_size_matrix[:, 1:2]    # Second column (efficiency)
+        # Create custom colormap: red for positive values (iterative better), green for negative values (zero-shot better)
+        from matplotlib.colors import LinearSegmentedColormap, Normalize
 
-        # Plot success rate heatmap with viridis colormap
-        im1 = axes[0].imshow(success_rate_data, cmap='viridis', aspect='auto',
-                            vmin=-2, vmax=2)
-        axes[0].set_title(r'$\mathbf{Success\ Rate\ (Cohen\'s\ h)}$', fontsize=14, fontweight='bold')
-        axes[0].set_xticks([0])
-        axes[0].set_yticks(range(len(precision_labels)))
-        axes[0].set_xticklabels(['Success Rate'])
-        axes[0].set_yticklabels(precision_labels)
-        axes[0].set_ylabel('Precision Levels', fontsize=12, fontweight='bold')
+        # Define custom colors
+        green_color = '#2E8B57'  # SeaGreen (for negative values - zero-shot better)
+        red_color = '#B22222'    # FireBrick (for positive values - iterative better)
 
-        # Add text annotations for success rate
+        # Create a diverging colormap with specified colors
+        colors = [green_color, 'white', red_color]
+        n_bins = 256
+        cmap = LinearSegmentedColormap.from_list('custom_diverging', colors, N=n_bins)
+
+        # Plot the combined heatmap
+        norm = Normalize(vmin=-2, vmax=2)
+        im = ax.imshow(effect_size_matrix, cmap=cmap, aspect='auto', norm=norm)
+
+        # Set title
+        ax.set_title(r'$\mathbf{Effect\ Size\ Analysis:\ Zero\text{-}shot\ vs\ Iterative}$',
+                    fontsize=16, fontweight='bold', pad=20)
+
+        # Set ticks and labels
+        ax.set_xticks(range(len(metric_labels)))
+        ax.set_yticks(range(len(precision_labels)))
+        ax.set_xticklabels([f"{label}\n(Cohen's {effect_size_types[i]})" for i, label in enumerate(metric_labels)],
+                          fontsize=12, fontweight='bold')
+        ax.set_yticklabels(precision_labels, fontsize=12, fontweight='bold')
+        ax.set_xlabel('Metrics', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Precision Levels', fontsize=14, fontweight='bold')
+
+        # Add text annotations
         for i in range(len(precision_labels)):
-            if not np.isnan(success_rate_data[i, 0]):
-                effect_size = success_rate_data[i, 0]
-                text = f"{effect_size:.3f}"
-                axes[0].text(0, i, text, ha="center", va="center",
-                           color="white" if abs(effect_size) > 1.0 else "black",
-                           fontsize=12, fontweight='bold')
+            for j in range(len(metric_labels)):
+                if not np.isnan(effect_size_matrix[i, j]):
+                    effect_size = effect_size_matrix[i, j]
+                    text = f"{effect_size:.3f}"
+                    # Use white text for dark colors, black for light colors
+                    text_color = "white" if abs(effect_size) > 1.0 else "black"
+                    ax.text(j, i, text, ha="center", va="center",
+                           color=text_color, fontsize=12, fontweight='bold')
 
-        # Plot efficiency heatmap with RdBu_r colormap
-        im2 = axes[1].imshow(efficiency_data, cmap='RdBu_r', aspect='auto',
-                            vmin=-2, vmax=2)
-        axes[1].set_title(r'$\mathbf{Efficiency\ (Cohen\'s\ d)}$', fontsize=14, fontweight='bold')
-        axes[1].set_xticks([0])
-        axes[1].set_yticks(range(len(precision_labels)))
-        axes[1].set_xticklabels(['Efficiency'])
-        axes[1].set_yticklabels(precision_labels)
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+        cbar.set_label("Effect Size", rotation=270, labelpad=20, fontsize=14, fontweight='bold')
 
-        # Add text annotations for efficiency
-        for i in range(len(precision_labels)):
-            if not np.isnan(efficiency_data[i, 0]):
-                effect_size = efficiency_data[i, 0]
-                text = f"{effect_size:.3f}"
-                axes[1].text(0, i, text, ha="center", va="center",
-                           color="white" if abs(effect_size) > 1.0 else "black",
-                           fontsize=12, fontweight='bold')
+        # Add reference lines for effect size thresholds on colorbar
+        cbar.ax.axhline(y=0.2, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+        cbar.ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+        cbar.ax.axhline(y=0.8, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+        cbar.ax.axhline(y=-0.2, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+        cbar.ax.axhline(y=-0.5, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+        cbar.ax.axhline(y=-0.8, color='gray', linestyle='--', alpha=0.7, linewidth=1)
 
-        # Add colorbars for both subplots
-        cbar1 = plt.colorbar(im1, ax=axes[0], shrink=0.8)
-        cbar1.set_label("Effect Size (Cohen's h)", rotation=270, labelpad=20)
-
-        cbar2 = plt.colorbar(im2, ax=axes[1], shrink=0.8)
-        cbar2.set_label("Effect Size (Cohen's d)", rotation=270, labelpad=20)
-
-        # Add reference lines for effect size thresholds on both colorbars
-        for cbar in [cbar1, cbar2]:
-            cbar.ax.axhline(y=0.2, color='gray', linestyle='--', alpha=0.7)
-            cbar.ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.7)
-            cbar.ax.axhline(y=0.8, color='gray', linestyle='--', alpha=0.7)
-            cbar.ax.axhline(y=-0.2, color='gray', linestyle='--', alpha=0.7)
-            cbar.ax.axhline(y=-0.5, color='gray', linestyle='--', alpha=0.7)
-            cbar.ax.axhline(y=-0.8, color='gray', linestyle='--', alpha=0.7)
+        # Add grid for better readability
+        ax.set_xticks(np.arange(len(metric_labels)+1)-.5, minor=True)
+        ax.set_yticks(np.arange(len(precision_labels)+1)-.5, minor=True)
+        ax.grid(which="minor", color="gray", linestyle='-', linewidth=0.5, alpha=0.3)
+        ax.tick_params(which="minor", size=0)
 
         # Adjust layout
         plt.tight_layout()

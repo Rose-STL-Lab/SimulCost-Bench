@@ -39,11 +39,19 @@ class TaskDifficultyAnalyzer:
 
         Args:
             eval_results_dir: Path to evaluation results directory
-            datasets: List of dataset names to analyze. If None, analyze all datasets.
+            datasets: List of dataset names to analyze. If None, analyze specified target datasets.
         """
         self.eval_results_dir = Path(eval_results_dir)
         self.output_dir = Path("eval_results/stats/task_difficulty")
-        self.target_datasets = datasets
+
+        # Default to specified target datasets if none provided
+        if datasets is None:
+            self.target_datasets = ['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d']
+        else:
+            self.target_datasets = datasets
+
+        # Target models to include in analysis
+        self.target_models = ['Claude-3.7-Sonnet', 'GPT-5', 'Llama-3-70B-Instruct', 'Qwen3-32B']
 
         # Task difficulty categories
         self.task_categories = {
@@ -70,15 +78,13 @@ class TaskDifficultyAnalyzer:
             if dataset_dir.is_dir() and dataset_dir.name not in ['overall', 'stats']:
                 all_available_datasets.append(dataset_dir.name)
 
-        # Filter datasets based on target_datasets if specified
-        if self.target_datasets:
-            self.datasets = [d for d in all_available_datasets if d in self.target_datasets]
-            print(f"Using specified datasets: {self.datasets}")
-            if not self.datasets:
-                raise ValueError(f"None of the specified datasets {self.target_datasets} were found!")
-        else:
-            self.datasets = all_available_datasets
-            print(f"Found {len(self.datasets)} datasets: {self.datasets}")
+        # Filter datasets based on target_datasets
+        self.datasets = [d for d in all_available_datasets if d in self.target_datasets]
+        print(f"Using target datasets: {self.datasets}")
+        if not self.datasets:
+            raise ValueError(f"None of the specified datasets {self.target_datasets} were found!")
+
+        print(f"Target models: {self.target_models}")
 
         # Collect all unique tasks from subdirectories only
         all_tasks = set()
@@ -89,7 +95,10 @@ class TaskDifficultyAnalyzer:
                     summary_file = self.eval_results_dir / dataset / method_type / f"{dataset}_{precision}_summary.csv"
                     if summary_file.exists():
                         df = pd.read_csv(summary_file)
-                        if 'Task' in df.columns:
+                        # Standardize model names and filter for target models only in task discovery
+                        if 'Model' in df.columns:
+                            df = self.standardize_model_names(df)
+                        if 'Task' in df.columns and len(df) > 0:
                             all_tasks.update(df['Task'].unique())
 
         # Categorize tasks: Common tasks stay Common, all others become Uncommon
@@ -124,6 +133,11 @@ class TaskDifficultyAnalyzer:
                     try:
                         df = pd.read_csv(summary_file)
 
+                        # Skip if no data
+                        if len(df) == 0:
+                            print(f"  No data found in {dataset}_{precision}_{method_type}")
+                            continue
+
                         df['Dataset'] = dataset
                         df['Precision'] = precision
                         df['MethodType'] = method_type
@@ -139,7 +153,43 @@ class TaskDifficultyAnalyzer:
         combined_df = pd.concat(all_data, ignore_index=True)
         print(f"Total records loaded: {len(combined_df)}")
 
+        combined_df = self.standardize_model_names(combined_df)
         return combined_df
+
+    def standardize_model_names(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize model names to be consistent across datasets"""
+
+        model_mapping = {
+            # Claude variants
+            'Claude-3.7-Sonnet': 'Claude-3.7-Sonnet',
+            'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+
+            # GPT variants
+            'GPT-5': 'GPT-5',
+            'gpt-5-2025-08-07': 'GPT-5',
+
+            # Llama variants
+            'Llama-3-70B-Instruct': 'Llama-3-70B-Instruct',
+            'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+
+            # Qwen variants
+            'Qwen3-32B': 'Qwen3-32B',
+            'qwen3_32b': 'Qwen3-32B',
+        }
+
+        df['Model_Standardized'] = df['Model'].map(model_mapping).fillna(df['Model'])
+
+        # Update the Model column with standardized names
+        df['Model'] = df['Model_Standardized']
+        df.drop('Model_Standardized', axis=1, inplace=True)
+
+        # Filter again for target models after standardization
+        df = df[df['Model'].isin(self.target_models)].copy()
+
+        print(f"After model standardization and filtering: {len(df)} records")
+        print(f"Models included: {sorted(df['Model'].unique())}")
+
+        return df
 
     def categorize_tasks_in_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -655,7 +705,8 @@ class TaskDifficultyAnalyzer:
         print("TASK DIFFICULTY ANALYSIS SUMMARY")
         print("="*60)
 
-        print(f"\nDatasets analyzed: {len(self.datasets)}")
+        print(f"\nDatasets analyzed: {len(self.datasets)} (filtered from targets: {self.target_datasets})")
+        print(f"Models analyzed: {len(self.target_models)} (targets: {', '.join(self.target_models)})")
         print(f"Total tasks found: {len(detailed_df)}")
 
         print("\nTask distribution by category:")

@@ -15,8 +15,8 @@ Output: Creates comprehensive statistics and visualizations in eval_results/over
 - overall_summary.xlsx (beautifully formatted Excel file)
 - success_rate_overall.png (success rate bar chart)
 - efficiency_overall.png (efficiency bar chart)
-- line_plot_zero_shot.png (success rate & efficiency line plots for zero-shot mode)
-- line_plot_iterative.png (success rate & efficiency line plots for iterative mode)
+- line_plot_success_rate.png (combined zero-shot & iterative success rate line plots)
+- line_plot_efficiency.png (combined zero-shot & iterative efficiency line plots)
 
 """
 
@@ -62,16 +62,17 @@ class OverallStatsGenerator:
 
         # Model name mapping for clean display names
         self.name_mapping = {
-            'amazon.nova-premier-v1:0': 'Nova-Premier',
             'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
-            'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
             'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
             'gpt-5-2025-08-07': 'GPT-5',
             'qwen3_32b': 'Qwen3-32B',
-            'qwen3_0_6b': 'Qwen3-0.6B',
-            'qwen3_8b': 'Qwen3-8B',
-            'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
-            'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+
+            # 'amazon.nova-premier-v1:0': 'Nova-Premier',
+            # 'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+            # 'qwen3_0_6b': 'Qwen3-0.6B',
+            # 'qwen3_8b': 'Qwen3-8B',
+            # 'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+            # 'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
         }
 
 
@@ -89,38 +90,43 @@ class OverallStatsGenerator:
 
     def find_available_datasets(self) -> List[str]:
         """
-        Find all available datasets with summary CSV files.
+        Find available datasets from fixed paths.
         If target_dataset is specified, only include that dataset.
 
         Returns:
             List of dataset names that have summary files
         """
+        # Fixed dataset paths to read from
+        fixed_datasets = ['burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d']
+
         datasets = []
         if not self.base_dir.exists():
             return datasets
 
         # If target dataset is specified, only look for that one
         if self.target_dataset:
-            # Standard single dataset processing
-            target_dir = self.base_dir / self.target_dataset
-            if target_dir.exists() and target_dir.is_dir():
-                summary_file = target_dir / f"{self.target_dataset}_sum.csv"
-                if summary_file.exists():
-                    return [self.target_dataset]
+            if self.target_dataset in fixed_datasets:
+                target_dir = self.base_dir / self.target_dataset
+                if target_dir.exists() and target_dir.is_dir():
+                    summary_file = target_dir / f"{self.target_dataset}_sum.csv"
+                    if summary_file.exists():
+                        return [self.target_dataset]
             return []
 
-        # Default behavior: find all available datasets
-        for item in self.base_dir.iterdir():
-            if item.is_dir() and item.name not in ['overall', 'stats', 'bayesian_optimization']:
-                summary_file = item / f"{item.name}_sum.csv"
+        # Check only fixed datasets
+        for dataset in fixed_datasets:
+            dataset_dir = self.base_dir / dataset
+            if dataset_dir.exists() and dataset_dir.is_dir():
+                summary_file = dataset_dir / f"{dataset}_sum.csv"
                 if summary_file.exists():
-                    datasets.append(item.name)
+                    datasets.append(dataset)
 
         return sorted(datasets)
 
     def load_all_datasets(self) -> pd.DataFrame:
         """
         Load and combine evaluation results from all available datasets.
+        Only includes data from specific target models.
 
         Returns:
             Combined DataFrame containing results from all datasets
@@ -131,6 +137,14 @@ class OverallStatsGenerator:
 
         print(f"Found {len(datasets)} datasets: {', '.join(datasets)}")
 
+        # Define target models to include (using cleaned names as they appear in CSV)
+        target_models = [
+            'Claude-3.7-Sonnet',
+            'Llama-3-70B-Instruct',
+            'GPT-5',
+            'Qwen3-32B'
+        ]
+
         all_data = []
         total_records = 0
 
@@ -140,9 +154,12 @@ class OverallStatsGenerator:
             try:
                 df = pd.read_csv(csv_path)
 
-                # Apply model name mapping
+                # Filter to only include target models (after reading, since CSV already has cleaned names)
                 if 'Model' in df.columns:
-                    df['Model'] = df['Model'].apply(self.clean_model_name)
+                    df = df[df['Model'].isin(target_models)]
+                    if len(df) == 0:
+                        print(f"  - No target models found in {dataset}")
+                        continue
 
                 records_count = len(df)
                 total_records += records_count
@@ -739,15 +756,15 @@ class OverallStatsGenerator:
             df: DataFrame containing aggregated statistics (from calculate_aggregated_statistics)
             filename: Output filename for the chart
         """
-        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+        fig, ax = plt.subplots(1, 1, figsize=(7, 5))
 
         # Get unique models and inference modes
         models = sorted(df['Model'].unique())
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.35 * 0.85
-        model_spacing = 0.8
+        bar_width = 0.25
+        model_spacing = 0.6
 
         # Colors
         zero_shot_color = '#4682B4'
@@ -919,15 +936,15 @@ class OverallStatsGenerator:
             df: DataFrame containing aggregated statistics (from calculate_aggregated_statistics)
             filename: Output filename for the chart
         """
-        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+        fig, ax = plt.subplots(1, 1, figsize=(7, 5))
 
         # Get unique models and inference modes
         models = sorted(df['Model'].unique())
         inference_modes = ['Zero-shot', 'Iterative']
 
         # Chart parameters
-        bar_width = 0.35 * 0.85
-        model_spacing = 0.8
+        bar_width = 0.25
+        model_spacing = 0.6
 
         # Colors
         zero_shot_color = '#4682B4'
@@ -994,12 +1011,12 @@ class OverallStatsGenerator:
 
         print(f"Aggregated efficiency chart saved to: {output_path}")
 
-    def create_combined_line_plots(self, df: pd.DataFrame) -> None:
+    def create_combined_metric_plots(self, df: pd.DataFrame) -> None:
         """
-        Create a single combined line plot with 4 subplots:
-        Top row: Zero-shot (Success Rate, Efficiency)
-        Bottom row: Iterative (Success Rate, Efficiency)
-        Uses clean styling with custom legend layout.
+        Create two combined line plots:
+        - Success Rate: Zero-shot and Iterative side by side
+        - Efficiency: Zero-shot and Iterative side by side
+        Uses clean styling with two colors only.
 
         Args:
             df: DataFrame containing overall statistics
@@ -1009,8 +1026,8 @@ class OverallStatsGenerator:
         precision_levels = ['low', 'medium', 'high']
         inference_modes = ['Zero-shot', 'Iterative']
 
-        # Define three colors: blue, green, pink
-        base_colors = ['#1f77b4', '#2ca02c', '#ff69b4']  # Blue, Green, Pink
+        # Define two colors: green and red
+        base_colors = ['#2E8B57', '#B22222']  # SeaGreen, FireBrick
 
         # Define markers: hollow circle and hollow square only
         base_markers = ['o', 's']
@@ -1018,7 +1035,7 @@ class OverallStatsGenerator:
         # Define line styles: solid, dashed with shorter segments
         line_styles = ['-', (0, (3, 2))]  # solid, short dashed (3pt dash, 2pt gap)
 
-        # Create style mapping for models (similar to the example image)
+        # Create style mapping for models
         model_styles = {}
         for i, model in enumerate(models):
             color_idx = i % len(base_colors)
@@ -1031,39 +1048,19 @@ class OverallStatsGenerator:
                 'linestyle': line_styles[line_idx]
             }
 
-        # Create single figure with 4 subplots (1x4 horizontal layout)
-        fig = plt.figure(figsize=(16, 5))
-
-        # Create custom layout: legend at top, plots in middle, labels at bottom
-        gs = fig.add_gridspec(3, 4, height_ratios=[0.1, 1, 0.25], hspace=0.2, wspace=0.35)
-
-        # Create legend axis (spans full width at top)
-        legend_ax = fig.add_subplot(gs[0, :])
-
-        # Create 4 subplot axes (1x4 horizontal grid)
-        axes = {
-            ('Zero-shot', 'Success Rate'): fig.add_subplot(gs[1, 0]),
-            ('Zero-shot', 'Efficiency'): fig.add_subplot(gs[1, 1]),
-            ('Iterative', 'Success Rate'): fig.add_subplot(gs[1, 2]),
-            ('Iterative', 'Efficiency'): fig.add_subplot(gs[1, 3])
-        }
-
-        # Create bottom label axes
-        label_axes = [
-            fig.add_subplot(gs[2, 0]),
-            fig.add_subplot(gs[2, 1]),
-            fig.add_subplot(gs[2, 2]),
-            fig.add_subplot(gs[2, 3])
-        ]
-
         metrics = ['Success Rate', 'Efficiency']
 
-        # Plot data for all mode-metric combinations
-        for mode in inference_modes:
-            mode_data = df[df['Inference Mode'] == mode]
+        # Create two combined plots (one for each metric)
+        for metric in metrics:
+            # Create figure with two subplots side by side
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 3))
+            axes = [ax1, ax2]
 
-            for metric in metrics:
-                ax = axes[(mode, metric)]
+            for mode_idx, mode in enumerate(inference_modes):
+                ax = axes[mode_idx]
+                ax.set_title(mode, fontsize=12, fontweight='bold')
+
+                mode_data = df[df['Inference Mode'] == mode]
 
                 for model in models:
                     model_data = mode_data[mode_data['Model'] == model]
@@ -1095,7 +1092,8 @@ class OverallStatsGenerator:
                                markeredgecolor=style['color'],
                                markeredgewidth=1.0,
                                alpha=1.0,
-                               clip_on=False)  # Prevent markers from being clipped at plot boundaries
+                               clip_on=False,
+                               label=model)
 
                 # Customize subplot
                 ax.set_xlabel('Accuracy Level', fontsize=12)
@@ -1108,80 +1106,38 @@ class OverallStatsGenerator:
                 ax.set_xlim(-0.1, len(precision_levels) - 0.9)
 
                 # Set y-axis limits with more padding to prevent marker cropping
-                if len(mode_data) > 0:
-                    y_min = mode_data[metric].min()
-                    y_max = mode_data[metric].max()
-                    y_range = y_max - y_min
+                metric_data = df[metric]
+                y_min = metric_data.min()
+                y_max = metric_data.max()
+                y_range = y_max - y_min
 
-                    if metric == 'Success Rate':
-                        # Allow negative lower bound to show markers at 0 values properly
-                        lower_bound = y_min - 0.08
-                        if y_min <= 0.05:  # If minimum value is close to 0
-                            lower_bound = -0.05
-                        ax.set_ylim(lower_bound, min(1, y_max + 0.08))
-                    else:  # Efficiency
-                        # Allow negative lower bound to show markers at 0 values properly
-                        lower_bound = y_min - 0.5
-                        if y_min <= 1.0:  # If minimum value is close to 0
-                            lower_bound = -1.0
-                        ax.set_ylim(lower_bound, y_max + max(0.5, y_range * 0.1))
+                if metric == 'Success Rate':
+                    # Allow negative lower bound to show markers at 0 values properly
+                    lower_bound = y_min - 0.08
+                    if y_min <= 0.05:  # If minimum value is close to 0
+                        lower_bound = -0.05
+                    ax.set_ylim(lower_bound, min(1, y_max + 0.08))
+                else:  # Efficiency
+                    # Allow negative lower bound to show markers at 0 values properly
+                    lower_bound = y_min - 0.5
+                    if y_min <= 1.0:  # If minimum value is close to 0
+                        lower_bound = -1.0
+                    ax.set_ylim(lower_bound, y_max + max(0.5, y_range * 0.1))
 
-        # Create custom legend in top area
-        legend_ax.axis('off')
+            # Add shared legend at the top of the figure
+            handles, labels = ax1.get_legend_handles_labels()
+            fig.legend(handles, labels, frameon=False, fontsize=10,
+                      bbox_to_anchor=(0.5, 0.96), loc='lower center', ncol=len(models))
 
-        # Create legend elements for all models
-        legend_elements = []
-        for model in models:
-            style = model_styles[model]
-            from matplotlib.lines import Line2D
+            plt.tight_layout()
 
-            legend_elements.append(Line2D([0], [0],
-                                         marker=style['marker'],
-                                         color=style['color'],
-                                         linestyle=style['linestyle'],
-                                         linewidth=1.0,
-                                         markersize=3,
-                                         markerfacecolor='white',
-                                         markeredgecolor=style['color'],
-                                         markeredgewidth=1.0,
-                                         label=model))
+            # Save combined plot for this metric
+            filename = f"line_plot_{metric.lower().replace(' ', '_')}.png"
+            output_path = self.output_dir / filename
+            plt.savefig(output_path, dpi=300, bbox_inches='tight', pad_inches=0.1)
+            plt.close()
 
-        # Display legend horizontally
-        ncols = len(models)
-        if len(models) > 6:  # If too many models, split into 2 rows
-            ncols = 3
-
-        legend_ax.legend(handles=legend_elements,
-                       loc='center',
-                       ncol=ncols,
-                       frameon=False,
-                       fontsize=11,
-                       columnspacing=2.0,
-                       handlelength=2.5)
-
-        # Add bottom labels for each subplot
-        subplot_labels = [
-            ('a', 'Zero-shot - Success Rate'),
-            ('b', 'Zero-shot - Efficiency'),
-            ('c', 'Iterative - Success Rate'),
-            ('d', 'Iterative - Efficiency')
-        ]
-
-        for i, (letter, description) in enumerate(subplot_labels):
-            label_ax = label_axes[i]
-            label_ax.axis('off')
-            label_ax.text(0.5, 0.5, f'({letter}) {description}',
-                         ha='center', va='center',
-                         fontsize=13, fontweight='bold',
-                         transform=label_ax.transAxes)
-
-        # Save single combined chart with extra padding
-        filename = "line_plot_combined.png"
-        output_path = self.output_dir / filename
-        plt.savefig(output_path, dpi=300, bbox_inches='tight', pad_inches=0.2)
-        plt.close()
-
-        print(f"Combined line plot saved to: {output_path}")
+            print(f"{metric} combined plot saved to: {output_path}")
 
 
     def generate_overall_statistics(self) -> None:
@@ -1220,9 +1176,9 @@ class OverallStatsGenerator:
             self.create_aggregated_success_rate_chart(aggregated_stats)
             self.create_aggregated_efficiency_chart(aggregated_stats)
 
-            # Generate combined line plots
-            print("📈 Generating combined line plots...")
-            self.create_combined_line_plots(overall_stats)
+            # Generate combined metric line plots
+            print("📈 Generating combined metric line plots...")
+            self.create_combined_metric_plots(overall_stats)
 
             # Print summary
             print(f"\n🎉 Overall statistics generation completed!")
