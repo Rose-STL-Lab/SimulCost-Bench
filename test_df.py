@@ -1,8 +1,8 @@
 import pandas as pd
-df = pd.read_parquet('/home/leo/workspace/SimulCost-Bench/eval_results/euler_1d/dataframes/zero_shot_qwen3_32b.parquet')
+df = pd.read_parquet('/home/leo/workspace/SimulCost-Bench/eval_results/euler_1d_icl_accuracy_focused/dataframes/zero_shot_anthropic.claude-3-7-sonnet-20250219-v1:0.parquet')
 
 # 1. 按索引打印
-print(df.iloc[6])  # 打印第一行
+print(df.iloc[0])  # 打印第一行
 # print(df.iloc[5])
 
 # 2. 按条件筛选后打印

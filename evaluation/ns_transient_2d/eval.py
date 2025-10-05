@@ -118,13 +118,9 @@ def evaluate(
     # Build paths for ns_transient_2d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # For ICL variants, use new data/icl structure
-    if dataset.startswith("ns_transient_2d_icl"):
-        # Extract variant: ns_transient_2d_icl_accuracy_focused -> accuracy_focused
-        variant = dataset.replace("ns_transient_2d_icl_", "")
-        dummy_path = f"data/icl/ns_transient_2d/{variant}/{precision_level}/{task}/{flag}_questions.json"
-    else:
-        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    # For ICL variants, dummy solutions are still from the base ns_transient_2d dataset
+    # Only ICL examples differ between variants
+    dummy_path = f"data/ns_transient_2d/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):

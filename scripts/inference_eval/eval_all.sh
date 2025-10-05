@@ -32,7 +32,10 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, euler_1d_icl, euler_1d_icl_no_cost, euler_1d_icl_uniform, epoch_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
+    echo "                   Available: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
+    echo "                              epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
+    echo "                              heat_2d, ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
+    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -128,49 +131,49 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
         
-        "euler_1d_icl")
-            echo "📋 Running Euler 1D ICL evaluation..."
+        "euler_1d_icl_accuracy_focused")
+            echo "📋 Running Euler 1D ICL Accuracy Focused evaluation..."
             tasks=("cfl" "beta" "k" "n_space")
             precision_levels=("low" "medium" "high")
             modes=("-z")   # "-z" for zero-shot
-            
+
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
                     for precision in "${precision_levels[@]}"; do
-                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl -t $task -l $precision $mode"
-                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl -t $task -l $precision $mode
-                    done
-                done
-            done
-            ;;
-        
-        "euler_1d_icl_no_cost")
-            echo "📋 Running Euler 1D ICL No Cost evaluation..."
-            tasks=("cfl" "beta" "k" "n_space")
-            precision_levels=("low" "medium" "high")
-            modes=("-z")   # "-z" for zero-shot
-            
-            for mode in "${modes[@]}"; do
-                for task in "${tasks[@]}"; do
-                    for precision in "${precision_levels[@]}"; do
-                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_no_cost -t $task -l $precision $mode"
-                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_no_cost -t $task -l $precision $mode
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_accuracy_focused -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_accuracy_focused -t $task -l $precision $mode
                     done
                 done
             done
             ;;
 
-        "euler_1d_icl_uniform")
-            echo "📋 Running Euler 1D ICL Uniform evaluation..."
+        "euler_1d_icl_cost_excluded")
+            echo "📋 Running Euler 1D ICL Cost Excluded evaluation..."
             tasks=("cfl" "beta" "k" "n_space")
             precision_levels=("low" "medium" "high")
             modes=("-z")   # "-z" for zero-shot
-            
+
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
                     for precision in "${precision_levels[@]}"; do
-                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_uniform -t $task -l $precision $mode"
-                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_uniform -t $task -l $precision $mode
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_cost_excluded -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_cost_excluded -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "euler_1d_icl_full")
+            echo "📋 Running Euler 1D ICL Full evaluation..."
+            tasks=("cfl" "beta" "k" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_full -t $task -l $precision $mode"
+                        python evaluation/euler_1d/eval.py -m $MODEL -d euler_1d_icl_full -t $task -l $precision $mode
                     done
                 done
             done
@@ -197,12 +200,60 @@ for DATASET in "${DATASETS[@]}"; do
             tasks=("cfl" "n_space")
             precision_levels=("low" "medium" "high")
             modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
-            
+
             for mode in "${modes[@]}"; do
                 for task in "${tasks[@]}"; do
                     for precision in "${precision_levels[@]}"; do
                         echo "▶ Executing: python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d -t $task -l $precision $mode"
                         python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "heat_1d_icl_accuracy_focused")
+            echo "📋 Running Heat 1D ICL Accuracy Focused evaluation..."
+            tasks=("cfl" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_accuracy_focused -t $task -l $precision $mode"
+                        python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_accuracy_focused -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "heat_1d_icl_cost_excluded")
+            echo "📋 Running Heat 1D ICL Cost Excluded evaluation..."
+            tasks=("cfl" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_cost_excluded -t $task -l $precision $mode"
+                        python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_cost_excluded -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "heat_1d_icl_full")
+            echo "📋 Running Heat 1D ICL Full evaluation..."
+            tasks=("cfl" "n_space")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_full -t $task -l $precision $mode"
+                        python evaluation/heat_1d/eval.py -m $MODEL -d heat_1d_icl_full -t $task -l $precision $mode
                     done
                 done
             done
@@ -267,7 +318,7 @@ for DATASET in "${DATASETS[@]}"; do
             echo "📋 Running NS Transient 2D evaluation..."
             tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
             precision_levels=("low" "medium" "high")
-            
+
             for task in "${tasks[@]}"; do
                 # Determine which modes to use for each task
                 if [[ "$task" == "relaxation_factor" || "$task" == "residual_threshold" ]]; then
@@ -277,7 +328,7 @@ for DATASET in "${DATASETS[@]}"; do
                     # Other tasks support both modes
                     task_modes=("-z" "")
                 fi
-                
+
                 for mode in "${task_modes[@]}"; do
                     for precision in "${precision_levels[@]}"; do
                         echo "▶ Executing: python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d -t $task -l $precision $mode"
@@ -286,10 +337,61 @@ for DATASET in "${DATASETS[@]}"; do
                 done
             done
             ;;
+
+        "ns_transient_2d_icl_accuracy_focused")
+            echo "📋 Running NS Transient 2D ICL Accuracy Focused evaluation..."
+            tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_accuracy_focused -t $task -l $precision $mode"
+                        python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_accuracy_focused -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "ns_transient_2d_icl_cost_excluded")
+            echo "📋 Running NS Transient 2D ICL Cost Excluded evaluation..."
+            tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_cost_excluded -t $task -l $precision $mode"
+                        python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_cost_excluded -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "ns_transient_2d_icl_full")
+            echo "📋 Running NS Transient 2D ICL Full evaluation..."
+            tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_full -t $task -l $precision $mode"
+                        python evaluation/ns_transient_2d/eval.py -m $MODEL -d ns_transient_2d_icl_full -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
             
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, ns_2d, ns_transient_2d"
+            echo "Supported datasets: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
+            echo "                    epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
+            echo "                    heat_2d, ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
+            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
             exit 1
             ;;
     esac

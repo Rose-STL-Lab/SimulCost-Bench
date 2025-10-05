@@ -83,13 +83,9 @@ def evaluate(
     # Build paths for heat_1d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # For ICL variants, use new data/icl structure
-    if dataset.startswith("heat_1d_icl"):
-        # Extract variant: heat_1d_icl_accuracy_focused -> accuracy_focused
-        variant = dataset.replace("heat_1d_icl_", "")
-        dummy_path = f"data/icl/heat_1d/{variant}/{precision_level}/{task}/{flag}_questions.json"
-    else:
-        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    # For ICL variants, dummy solutions are still from the base heat_1d dataset
+    # Only ICL examples differ between variants
+    dummy_path = f"data/heat_1d/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
