@@ -50,14 +50,14 @@ from .ns_2d.run_twoD_ns_exp import (
     ns_2d_check_converge_parameter
 )
 
-# NS Transient 2D functions
-from .ns_transient_2d.run_twoD_ns_transient import (
-    ns_transient_2d_check_converge_resolution,
-    ns_transient_2d_check_converge_cfl,
-    ns_transient_2d_check_converge_relaxation_factor,
-    ns_transient_2d_check_converge_residual_threshold,
-    ns_transient_2d_check_converge_parameter
-)
+# NS Transient 2D functions - lazy import to avoid loading taichi
+# from .ns_transient_2d.run_twoD_ns_transient import (
+#     ns_transient_2d_check_converge_resolution,
+#     ns_transient_2d_check_converge_cfl,
+#     ns_transient_2d_check_converge_relaxation_factor,
+#     ns_transient_2d_check_converge_residual_threshold,
+#     ns_transient_2d_check_converge_parameter
+# )
 
 __all__ = [
     # Heat transfer 1D
@@ -92,13 +92,13 @@ __all__ = [
     "ns_2d_check_converge_diff_v_threshold",
     "ns_2d_check_converge_res_iter_v_threshold",
     "ns_2d_check_converge_parameter",
-    
-    # NS transient 2D
-    "ns_transient_2d_check_converge_resolution",
-    "ns_transient_2d_check_converge_cfl",
-    "ns_transient_2d_check_converge_relaxation_factor",
-    "ns_transient_2d_check_converge_residual_threshold",
-    "ns_transient_2d_check_converge_parameter",
+
+    # NS transient 2D - removed from __all__ to enable lazy loading
+    # "ns_transient_2d_check_converge_resolution",
+    # "ns_transient_2d_check_converge_cfl",
+    # "ns_transient_2d_check_converge_relaxation_factor",
+    # "ns_transient_2d_check_converge_residual_threshold",
+    # "ns_transient_2d_check_converge_parameter",
 
     # EPOCH 1D
     "epoch_1d_check_converge_nx",
@@ -107,3 +107,33 @@ __all__ = [
     "epoch_1d_check_converge_field_order",
     "epoch_1d_check_converge_particle_order",
 ]
+
+# Lazy import mapping for ns_transient_2d to avoid loading taichi unless needed
+_NS_TRANSIENT_2D_LAZY_IMPORTS = {
+    "ns_transient_2d_check_converge_resolution",
+    "ns_transient_2d_check_converge_cfl",
+    "ns_transient_2d_check_converge_relaxation_factor",
+    "ns_transient_2d_check_converge_residual_threshold",
+    "ns_transient_2d_check_converge_parameter",
+}
+
+def __getattr__(name):
+    """Lazy import for ns_transient_2d functions to avoid loading taichi on startup."""
+    if name in _NS_TRANSIENT_2D_LAZY_IMPORTS:
+        from .ns_transient_2d.run_twoD_ns_transient import (
+            ns_transient_2d_check_converge_resolution,
+            ns_transient_2d_check_converge_cfl,
+            ns_transient_2d_check_converge_relaxation_factor,
+            ns_transient_2d_check_converge_residual_threshold,
+            ns_transient_2d_check_converge_parameter,
+        )
+        # Cache the imported functions in module globals
+        globals().update({
+            "ns_transient_2d_check_converge_resolution": ns_transient_2d_check_converge_resolution,
+            "ns_transient_2d_check_converge_cfl": ns_transient_2d_check_converge_cfl,
+            "ns_transient_2d_check_converge_relaxation_factor": ns_transient_2d_check_converge_relaxation_factor,
+            "ns_transient_2d_check_converge_residual_threshold": ns_transient_2d_check_converge_residual_threshold,
+            "ns_transient_2d_check_converge_parameter": ns_transient_2d_check_converge_parameter,
+        })
+        return globals()[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
