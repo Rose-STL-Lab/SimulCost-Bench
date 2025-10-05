@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path (go up 3 levels: oneD_heat_transfer_icl.py -> additional_exp -> dataset_gen -> SimulCost-Bench)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dataset_gen.base import DatasetGenerator
 import json
 from inference import save_result
@@ -378,13 +379,6 @@ def main():
                         help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                         help="Enable zero-shot mode (if not specified, generates both modes)")
-    icl_group = parser.add_mutually_exclusive_group()
-    icl_group.add_argument("--specific", action="store_true",
-                          help="Use precision-specific ICL examples (current behavior)")
-    icl_group.add_argument("--uniform", action="store_true",
-                          help="Use uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each)")
-    parser.add_argument("--no_cost", action="store_true",
-                        help="Remove cost information from ICL examples, only show convergence status")
     args = parser.parse_args()
 
     # If no specific task is provided, generate all tasks
@@ -399,93 +393,104 @@ def main():
     else:
         modes = [False, True]  # Both iterative and zero-shot
 
-    # Determine ICL mode - default to specific if neither is specified
-    use_uniform_icl = args.uniform
-    if not args.specific and not args.uniform:
-        use_uniform_icl = False  # Default to specific mode
+    # Define three ICL dataset types
+    icl_types = [
+        {"name": "accuracy_focused", "use_uniform": False, "no_cost": False},
+        {"name": "cost_excluded", "use_uniform": False, "no_cost": True},
+        {"name": "full", "use_uniform": True, "no_cost": False}
+    ]
 
     print("🚀 HEAT TRANSFER 1D ICL DATASET GENERATOR")
     print("=" * 80)
     print(f"📋 Tasks: {tasks}")
     print(f"🎯 Modes: {'zero-shot only' if len(modes) == 1 else 'iterative + zero-shot'}")
-    print(f"🧠 ICL Mode: {'uniform (6 examples)' if use_uniform_icl else 'specific (2 examples per precision)'}")
-    print(f"📂 Output directory: data/heat_1d_icl/human_write/{{precision_level}}/")
+    print(f"🧠 ICL Types: accuracy_focused, cost_excluded, full")
+    print(f"📂 Output base directory: data/icl/heat_1d/")
     print(f"📂 Source directory: data/heat_1d/{{task}}/{{precision_level}}/")
 
     total_files = 0
 
-    for task in tasks:
-        print(f"\n📋 TASK: {task.upper()}")
-        print("-" * 50)
+    for icl_type in icl_types:
+        icl_name = icl_type["name"]
+        use_uniform_icl = icl_type["use_uniform"]
+        no_cost = icl_type["no_cost"]
 
-        task_dir = f"data/heat_1d/{task}"
+        print(f"\n{'='*80}")
+        print(f"🔄 Generating ICL Type: {icl_name.upper()}")
+        print(f"{'='*80}")
 
-        # Get precision levels from the new structure
-        precision_levels = []
-        if os.path.exists(task_dir):
-            precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
-        if not precision_levels:
-            precision_levels = ["low", "medium", "high"]  # fallback
+        for task in tasks:
+            print(f"\n📋 TASK: {task.upper()}")
+            print("-" * 50)
 
-        generator = oneD_Heat_Transfer_DatasetGenerator(
-            f"tool_documentation/oneD_heat_transfer/{task}.json"
-        )
-    
-        for precision_level in precision_levels:
-            print(f"  🎯 {precision_level.upper()} precision:")
+            task_dir = f"data/heat_1d/{task}"
 
-            # Create output directory for this precision level
-            out_dir = f"data/heat_1d_icl/human_write/{precision_level}"
-            os.makedirs(out_dir, exist_ok=True)
+            # Get precision levels from the new structure
+            precision_levels = []
+            if os.path.exists(task_dir):
+                precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
+            if not precision_levels:
+                precision_levels = ["low", "medium", "high"]  # fallback
 
-            for zflag in modes:
-                flag = "zero_shot" if zflag else "iterative"
-                question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
+            generator = oneD_Heat_Transfer_DatasetGenerator(
+                f"tool_documentation/oneD_heat_transfer/{task}.json"
+            )
 
-                if not os.path.exists(question_file):
-                    print(f"     [!] Question file not found: {question_file}")
-                    continue
+            for precision_level in precision_levels:
+                print(f"  🎯 {precision_level.upper()} precision:")
 
-                with open(question_file, "r") as f:
-                    questions = json.load(f)
+                # Create output directory for this ICL type and precision level
+                out_dir = f"data/icl/heat_1d/{icl_name}/{precision_level}"
+                os.makedirs(out_dir, exist_ok=True)
 
-                dataset_entries = []
+                for zflag in modes:
+                    flag = "zero_shot" if zflag else "iterative"
+                    question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
 
-                for idx, q in enumerate(questions):
-                    if task == "cfl":
-                        n_space0 = fetch_param(q["param_history"][0], "n_space")
-                        wf = build_cfl_workflow(zflag, n_space0, precision_level, use_uniform_icl, args.no_cost)
-                    elif task == "n_space":
-                        cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        wf = build_n_space_workflow(zflag, cfl0, precision_level, use_uniform_icl, args.no_cost)
+                    if not os.path.exists(question_file):
+                        print(f"     [!] Question file not found: {question_file}")
+                        continue
 
-                    single_ds = generator.generate_dataset(wf, [q], zflag)[0]
+                    with open(question_file, "r") as f:
+                        questions = json.load(f)
 
-                    # Update dataset entry to only include required fields
-                    filtered_ds = {
-                        "QID": single_ds.get("QID", q.get("QID")),
-                        "profile": q.get("profile"),
-                        "case": q.get("case"),
-                        "zero_shot": q.get("zero_shot"),
-                        "target_parameter": q.get("target_parameter"),
-                        "precision_level": q.get("precision_level"),
-                        "tolerance_rmse": q.get("tolerance_rmse"),
-                        "messages": single_ds.get("messages")
-                    }
+                    dataset_entries = []
 
-                    dataset_entries.append(filtered_ds)
+                    for idx, q in enumerate(questions):
+                        if task == "cfl":
+                            n_space0 = fetch_param(q["param_history"][0], "n_space")
+                            wf = build_cfl_workflow(zflag, n_space0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "n_space":
+                            cfl0 = fetch_param(q["param_history"][0], "cfl")
+                            wf = build_n_space_workflow(zflag, cfl0, precision_level, use_uniform_icl, no_cost)
 
-                    if idx == 0:
-                        human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
-                        agent = {"workflow": wf, "code": human_code}
-                        archive_file = f"{out_dir}/{task}_{flag}_agent.json"
-                        with open(archive_file, "w") as f:
-                            json.dump([agent], f, indent=4)
+                        single_ds = generator.generate_dataset(wf, [q], zflag)[0]
 
-                dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
-                save_result(dataset_entries, dataset_file)
-                print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
-                total_files += 1
+                        # Update dataset entry to only include required fields
+                        filtered_ds = {
+                            "QID": single_ds.get("QID", q.get("QID")),
+                            "profile": q.get("profile"),
+                            "case": q.get("case"),
+                            "zero_shot": q.get("zero_shot"),
+                            "target_parameter": q.get("target_parameter"),
+                            "precision_level": q.get("precision_level"),
+                            "tolerance_rmse": q.get("tolerance_rmse"),
+                            "messages": single_ds.get("messages")
+                        }
+
+                        dataset_entries.append(filtered_ds)
+
+                        if idx == 0:
+                            human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
+                            agent = {"workflow": wf, "code": human_code}
+                            archive_file = f"{out_dir}/{task}_{flag}_agent.json"
+                            with open(archive_file, "w") as f:
+                                json.dump([agent], f, indent=4)
+
+                    dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
+                    save_result(dataset_entries, dataset_file)
+                    print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
+                    total_files += 1
 
     print("\n" + "=" * 80)
     print(f"🎉 SUMMARY: Generated {total_files} dataset files")

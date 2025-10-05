@@ -118,9 +118,11 @@ def evaluate(
     # Build paths for ns_transient_2d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # For ICL datasets, use the original ns_transient_2d reference files
+    # For ICL variants, use new data/icl structure
     if dataset.startswith("ns_transient_2d_icl"):
-        dummy_path = f"data/ns_transient_2d/{task}/{precision_level}/{flag}_questions.json"
+        # Extract variant: ns_transient_2d_icl_accuracy_focused -> accuracy_focused
+        variant = dataset.replace("ns_transient_2d_icl_", "")
+        dummy_path = f"data/icl/ns_transient_2d/{variant}/{precision_level}/{task}/{flag}_questions.json"
     else:
         dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
@@ -327,8 +329,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="ns_transient_2d",
-                        choices=["ns_transient_2d", "ns_transient_2d_icl", "ns_transient_2d_icl_no_cost", "ns_transient_2d_icl_uniform"],
-                        help="Dataset name: ns_transient_2d, ns_transient_2d_icl, ns_transient_2d_icl_no_cost, or ns_transient_2d_icl_uniform")
+                        choices=["ns_transient_2d", "ns_transient_2d_icl_accuracy_focused", "ns_transient_2d_icl_cost_excluded", "ns_transient_2d_icl_full"],
+                        help="Dataset name: ns_transient_2d, ns_transient_2d_icl_accuracy_focused, ns_transient_2d_icl_cost_excluded, or ns_transient_2d_icl_full")
     parser.add_argument("-t", "--task", default="resolution",
                         choices=list(VALID_TASKS),
                         help="Task: one of the 4 NS Transient 2D tasks")

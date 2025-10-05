@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path (go up 3 levels: oneD_euler_icl.py -> additional_exp -> dataset_gen -> SimulCost-Bench)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dataset_gen.base import DatasetGenerator
 import json
 from inference import save_result
@@ -89,7 +90,7 @@ BEST_PARAMS_DATA = {
     }
 }
 
-def generate_icl_examples_for_precision(task: str, precision_level: str) -> list:
+def generate_icl_examples_for_precision(task: str, precision_level: str, no_cost: bool = False) -> list:
     """Generate ICL examples for a specific task and precision level (one converged, one non-converged)"""
     examples = []
 
@@ -100,10 +101,16 @@ def generate_icl_examples_for_precision(task: str, precision_level: str) -> list
             raise ValueError(f"Missing simulation_cost in BEST_PARAMS_DATA[{task}][{precision_level}]")
         simulation_cost = params.pop("simulation_cost")
         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
-        example = (
-            f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
-            f"the result was is_converged=true, simulation_cost={simulation_cost}."
-        )
+        if no_cost:
+            example = (
+                f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
+                f"the result was is_converged=true."
+            )
+        else:
+            example = (
+                f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
+                f"the result was is_converged=true, simulation_cost={simulation_cost}."
+            )
         examples.append(example)
 
     # Add one non-converged example for the specific precision level
@@ -136,10 +143,16 @@ def generate_icl_examples_for_precision(task: str, precision_level: str) -> list
             raise ValueError(f"Missing simulation_cost in non_converged_examples[{task}][{precision_level}]")
         simulation_cost = params.pop("simulation_cost")
         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
-        example = (
-            f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
-            f"the result was is_converged=false, simulation_cost={simulation_cost}."
-        )
+        if no_cost:
+            example = (
+                f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
+                f"the result was is_converged=false."
+            )
+        else:
+            example = (
+                f"In a previous simulation ({precision_level} precision level) with parameters {param_str}, "
+                f"the result was is_converged=false, simulation_cost={simulation_cost}."
+            )
         examples.append(example)
 
     return examples
@@ -151,9 +164,9 @@ def generate_icl_examples(task: str, precision_levels: list) -> list:
         examples.extend(generate_icl_examples_for_precision(task, precision))
     return examples
 
-def generate_specific_icl_examples_with_header(task: str, precision_level: str) -> list:
+def generate_specific_icl_examples_with_header(task: str, precision_level: str, no_cost: bool = False) -> list:
     """Generate specific ICL examples with proper numbering and single disclaimer"""
-    raw_examples = generate_icl_examples_for_precision(task, precision_level)
+    raw_examples = generate_icl_examples_for_precision(task, precision_level, no_cost)
     formatted_examples = []
 
     for i, example in enumerate(raw_examples, 1):
@@ -169,13 +182,13 @@ def generate_specific_icl_examples_with_header(task: str, precision_level: str) 
 
     return formatted_examples
 
-def generate_uniform_icl_examples(task: str) -> list:
+def generate_uniform_icl_examples(task: str, no_cost: bool = False) -> list:
     """Generate uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each) with proper numbering"""
     all_examples = []
     example_counter = 1
 
     for precision in ["low", "medium", "high"]:
-        raw_examples = generate_icl_examples_for_precision(task, precision)
+        raw_examples = generate_icl_examples_for_precision(task, precision, no_cost)
         for example in raw_examples:
             all_examples.append(f"**Reference Example {example_counter}:**\n{example}")
             example_counter += 1
@@ -300,12 +313,12 @@ def list_cases(task_dir: str):
     """Return all cases in the task directory"""
     return [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
 
-def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
+def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, precision_level: str = "low", use_uniform_icl: bool = False, no_cost: bool = False) -> str:
     """Build the workflow for the first question based on the k0 and beta0"""
     if use_uniform_icl:
-        icl_examples = generate_uniform_icl_examples("cfl")
+        icl_examples = generate_uniform_icl_examples("cfl", no_cost)
     else:
-        icl_examples = generate_specific_icl_examples_with_header("cfl", precision_level)
+        icl_examples = generate_specific_icl_examples_with_header("cfl", precision_level, no_cost)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -334,12 +347,12 @@ def build_cfl_workflow(zero_shot: bool, k0: float, beta0: float, n_space0: int, 
         )
     return header + body
 
-def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
+def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False, no_cost: bool = False) -> str:
     """Build the workflow for n_space parameter optimization"""
     if use_uniform_icl:
-        icl_examples = generate_uniform_icl_examples("n_space")
+        icl_examples = generate_uniform_icl_examples("n_space", no_cost)
     else:
-        icl_examples = generate_specific_icl_examples_with_header("n_space", precision_level)
+        icl_examples = generate_specific_icl_examples_with_header("n_space", precision_level, no_cost)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -368,12 +381,12 @@ def build_n_space_workflow(zero_shot: bool, k0: float, beta0: float, cfl0: float
         )
     return header + body
 
-def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
+def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False, no_cost: bool = False) -> str:
     """k-task: 0-shot select k, then only adjust n_space; beta is fixed."""
     if use_uniform_icl:
-        icl_examples = generate_uniform_icl_examples("k")
+        icl_examples = generate_uniform_icl_examples("k", no_cost)
     else:
-        icl_examples = generate_specific_icl_examples_with_header("k", precision_level)
+        icl_examples = generate_specific_icl_examples_with_header("k", precision_level, no_cost)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -401,12 +414,12 @@ def build_k_workflow(zero_shot: bool, beta0: float, cfl0: float, precision_level
     return header + body
 
 
-def build_beta_workflow(zero_shot: bool, k0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False) -> str:
+def build_beta_workflow(zero_shot: bool, k0: float, cfl0: float, precision_level: str = "low", use_uniform_icl: bool = False, no_cost: bool = False) -> str:
     """beta-task: 0-shot select beta, then only adjust n_space; k is fixed."""
     if use_uniform_icl:
-        icl_examples = generate_uniform_icl_examples("beta")
+        icl_examples = generate_uniform_icl_examples("beta", no_cost)
     else:
-        icl_examples = generate_specific_icl_examples_with_header("beta", precision_level)
+        icl_examples = generate_specific_icl_examples_with_header("beta", precision_level, no_cost)
     icl_text = "\n".join(icl_examples)
 
     header = (
@@ -458,125 +471,131 @@ def main():
                         help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                         help="Enable zero-shot mode (if not specified, generates both modes)")
-    icl_group = parser.add_mutually_exclusive_group()
-    icl_group.add_argument("--specific", action="store_true",
-                          help="Use precision-specific ICL examples (current behavior)")
-    icl_group.add_argument("--uniform", action="store_true",
-                          help="Use uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each)")
     args = parser.parse_args()
-    
+
     # If no specific task is provided, generate all tasks
     if args.task:
         tasks = [args.task]
     else:
         tasks = ["cfl", "n_space", "k", "beta"]
-    
+
     # If no specific mode is provided, generate both modes
     if args.zero_shot:
         modes = [True]  # Only zero-shot
     else:
         modes = [False, True]  # Both iterative and zero-shot
 
-    # Determine ICL mode - default to specific if neither is specified
-    use_uniform_icl = args.uniform
-    if not args.specific and not args.uniform:
-        use_uniform_icl = False  # Default to specific mode
+    # Define three ICL dataset types
+    icl_types = [
+        {"name": "accuracy_focused", "use_uniform": False, "no_cost": False},
+        {"name": "cost_excluded", "use_uniform": False, "no_cost": True},
+        {"name": "full", "use_uniform": True, "no_cost": False}
+    ]
 
     print("🚀 EULER 1D ICL DATASET GENERATOR")
     print("=" * 80)
     print(f"📋 Tasks: {tasks}")
     print(f"🎯 Modes: {'zero-shot only' if len(modes) == 1 else 'iterative + zero-shot'}")
-    print(f"🧠 ICL Mode: {'uniform (6 examples)' if use_uniform_icl else 'specific (2 examples per precision)'}")
-    print(f"📂 Output directory: data/euler_1d_icl/human_write/{{precision_level}}/")
-    print(f"📂 Source directory: data/euler_1d_icl/{{task}}/{{precision_level}}/")
-    
+    print(f"🧠 ICL Types: accuracy_focused, cost_excluded, full")
+    print(f"📂 Output base directory: data/icl/euler_1d/")
+    print(f"📂 Source directory: data/euler_1d/{{task}}/{{precision_level}}/")
+
     total_files = 0
-    
-    for task in tasks:
-        print(f"\n📋 TASK: {task.upper()}")
-        print("-" * 50)
-        
-        task_dir = f"data/euler_1d_icl/{task}"
-        
-        # Get precision levels from the new structure
-        precision_levels = []
-        if os.path.exists(task_dir):
-            precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
-        if not precision_levels:
-            precision_levels = ["low", "medium", "high"]  # fallback
 
-        generator = oneD_Euler_DatasetGenerator(
-            f"tool_documentation/euler_1d/{task}.json"
-        )
+    for icl_type in icl_types:
+        icl_name = icl_type["name"]
+        use_uniform_icl = icl_type["use_uniform"]
+        no_cost = icl_type["no_cost"]
 
-        for precision_level in precision_levels:
-            print(f"  🎯 {precision_level.upper()} precision:")
-            
-            # Create output directory for this precision level
-            out_dir = f"data/euler_1d_icl/human_write/{precision_level}"
-            os.makedirs(out_dir, exist_ok=True)
-            
-            for zflag in modes:
-                flag = "zero_shot" if zflag else "iterative"
-                question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
-                
-                if not os.path.exists(question_file):
-                    print(f"     [!] Question file not found: {question_file}")
-                    continue
+        print(f"\n{'='*80}")
+        print(f"🔄 Generating ICL Type: {icl_name.upper()}")
+        print(f"{'='*80}")
 
-                with open(question_file, "r") as f:
-                    questions = json.load(f)
+        for task in tasks:
+            print(f"\n📋 TASK: {task.upper()}")
+            print("-" * 50)
 
-                dataset_entries = []
+            task_dir = f"data/euler_1d/{task}"
 
-                for idx, q in enumerate(questions):
-                    if task == "cfl":
-                        k0 = fetch_param(q["param_history"][0], "k")
-                        beta0 = fetch_param(q["param_history"][0], "beta")
-                        n_space0 = fetch_param(q["param_history"][0], "n_space")
-                        wf = build_cfl_workflow(zflag, k0, beta0, n_space0, precision_level, use_uniform_icl)
-                    elif task == "n_space":
-                        k0 = fetch_param(q["param_history"][0], "k")
-                        beta0 = fetch_param(q["param_history"][0], "beta")
-                        cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        wf = build_n_space_workflow(zflag, k0, beta0, cfl0, precision_level, use_uniform_icl)
-                    elif task == "k":
-                        beta0 = fetch_param(q["param_history"][0][0], "beta")
-                        cfl0 = fetch_param(q["param_history"][0][0], "cfl")
-                        wf = build_k_workflow(zflag, beta0, cfl0, precision_level, use_uniform_icl)
-                    elif task == "beta":
-                        k0 = fetch_param(q["param_history"][0][0], "k")
-                        cfl0 = fetch_param(q["param_history"][0][0], "cfl")
-                        wf = build_beta_workflow(zflag, k0, cfl0, precision_level, use_uniform_icl)
+            # Get precision levels from the new structure
+            precision_levels = []
+            if os.path.exists(task_dir):
+                precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
+            if not precision_levels:
+                precision_levels = ["low", "medium", "high"]  # fallback
 
-                    single_ds = generator.generate_dataset(wf, [q], zflag)[0]
-                    
-                    # Update dataset entry to only include required fields
-                    filtered_ds = {
-                        "QID": single_ds.get("QID", q.get("QID")),
-                        "profile": q.get("profile"),
-                        "case": q.get("case"),
-                        "zero_shot": q.get("zero_shot"),
-                        "target_parameter": q.get("target_parameter"),
-                        "precision_level": q.get("precision_level"),
-                        "tolerance_rmse": q.get("tolerance_rmse"),
-                        "messages": single_ds.get("messages")
-                    }
+            generator = oneD_Euler_DatasetGenerator(
+                f"tool_documentation/euler_1d/{task}.json"
+            )
 
-                    dataset_entries.append(filtered_ds)
+            for precision_level in precision_levels:
+                print(f"  🎯 {precision_level.upper()} precision:")
 
-                    if idx == 0:
-                        human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
-                        agent = {"workflow": wf, "code": human_code}
-                        archive_file = f"{out_dir}/{task}_{flag}_agent.json"
-                        with open(archive_file, "w") as f:
-                            json.dump([agent], f, indent=4)
+                # Create output directory for this ICL type and precision level
+                out_dir = f"data/icl/euler_1d/{icl_name}/{precision_level}"
+                os.makedirs(out_dir, exist_ok=True)
 
-                dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
-                save_result(dataset_entries, dataset_file)
-                print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
-                total_files += 1
-    
+                for zflag in modes:
+                    flag = "zero_shot" if zflag else "iterative"
+                    question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
+
+                    if not os.path.exists(question_file):
+                        print(f"     [!] Question file not found: {question_file}")
+                        continue
+
+                    with open(question_file, "r") as f:
+                        questions = json.load(f)
+
+                    dataset_entries = []
+
+                    for idx, q in enumerate(questions):
+                        if task == "cfl":
+                            k0 = fetch_param(q["param_history"][0], "k")
+                            beta0 = fetch_param(q["param_history"][0], "beta")
+                            n_space0 = fetch_param(q["param_history"][0], "n_space")
+                            wf = build_cfl_workflow(zflag, k0, beta0, n_space0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "n_space":
+                            k0 = fetch_param(q["param_history"][0], "k")
+                            beta0 = fetch_param(q["param_history"][0], "beta")
+                            cfl0 = fetch_param(q["param_history"][0], "cfl")
+                            wf = build_n_space_workflow(zflag, k0, beta0, cfl0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "k":
+                            beta0 = fetch_param(q["param_history"][0][0], "beta")
+                            cfl0 = fetch_param(q["param_history"][0][0], "cfl")
+                            wf = build_k_workflow(zflag, beta0, cfl0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "beta":
+                            k0 = fetch_param(q["param_history"][0][0], "k")
+                            cfl0 = fetch_param(q["param_history"][0][0], "cfl")
+                            wf = build_beta_workflow(zflag, k0, cfl0, precision_level, use_uniform_icl, no_cost)
+
+                        single_ds = generator.generate_dataset(wf, [q], zflag)[0]
+
+                        # Update dataset entry to only include required fields
+                        filtered_ds = {
+                            "QID": single_ds.get("QID", q.get("QID")),
+                            "profile": q.get("profile"),
+                            "case": q.get("case"),
+                            "zero_shot": q.get("zero_shot"),
+                            "target_parameter": q.get("target_parameter"),
+                            "precision_level": q.get("precision_level"),
+                            "tolerance_rmse": q.get("tolerance_rmse"),
+                            "messages": single_ds.get("messages")
+                        }
+
+                        dataset_entries.append(filtered_ds)
+
+                        if idx == 0:
+                            human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
+                            agent = {"workflow": wf, "code": human_code}
+                            archive_file = f"{out_dir}/{task}_{flag}_agent.json"
+                            with open(archive_file, "w") as f:
+                                json.dump([agent], f, indent=4)
+
+                    dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
+                    save_result(dataset_entries, dataset_file)
+                    print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
+                    total_files += 1
+
     print("\n" + "=" * 80)
     print(f"🎉 SUMMARY: Generated {total_files} dataset files")
     print("=" * 80)

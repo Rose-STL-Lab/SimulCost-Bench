@@ -21,8 +21,4 @@ outputs
 claude.md
 extracted_prompts
 temp
-scripts/inference_eval/temp.sh
-
 fort.20
-qs_gen/1D_euler icl.py
-ablation

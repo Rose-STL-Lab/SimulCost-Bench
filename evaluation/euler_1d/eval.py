@@ -83,9 +83,13 @@ def evaluate(
     # Build paths for the specified dataset with precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # For ICL variants, all use the same base euler_1d_icl data
-    data_dir = "euler_1d_icl" if dataset.startswith("euler_1d_icl") else dataset
-    dummy_path = f"data/{data_dir}/{task}/{precision_level}/{flag}_questions.json"
+    # For ICL variants, use new data/icl structure
+    if dataset.startswith("euler_1d_icl"):
+        # Extract variant: euler_1d_icl_accuracy_focused -> accuracy_focused
+        variant = dataset.replace("euler_1d_icl_", "")
+        dummy_path = f"data/icl/euler_1d/{variant}/{precision_level}/{task}/{flag}_questions.json"
+    else:
+        dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
     # Validate paths exist
     if not os.path.exists(result_path):
@@ -283,8 +287,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="euler_1d",
-                        choices=["euler_1d", "euler_1d_icl", "euler_1d_icl_no_cost", "euler_1d_icl_uniform"],
-                        help="Dataset name: euler_1d (standard) or euler_1d_icl (with ICL examples)")
+                        choices=["euler_1d", "euler_1d_icl_accuracy_focused", "euler_1d_icl_cost_excluded", "euler_1d_icl_full"],
+                        help="Dataset name: euler_1d (standard) or euler_1d_icl_* (with ICL examples)")
     parser.add_argument("-t", "--task",    default="cfl",
                         help="Task: cfl / k / beta / n_space")
     parser.add_argument("-l", "--precision_level", default="medium",

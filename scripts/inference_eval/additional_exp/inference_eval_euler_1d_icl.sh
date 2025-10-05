@@ -3,7 +3,7 @@
 # Function: Execute 1D Euler ICL dataset model inference and evaluation in sequential order, stop on error; resume from failed command on next run
 set -eE -o pipefail          # Exit immediately on any command or pipeline error, preserve ERR information
 
-RESUME_LOG="scripts/inference_eval/euler_1d_icl_resume_progress.log"   # Log file for successful commands
+RESUME_LOG="scripts/inference_eval/additional_exp/euler_1d_icl_resume_progress.log"   # Log file for successful commands
 touch "$RESUME_LOG"
 
 # ========= Generic execution function =========
@@ -23,6 +23,7 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
+icl_datasets=("euler_1d_icl_accuracy_focused" "euler_1d_icl_cost_excluded" "euler_1d_icl_full")
 tasks=("cfl" "beta" "k" "n_space")
 precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
@@ -70,15 +71,21 @@ for config_name in "${config_names[@]}"; do
 
   echo "🔄 Starting evaluation for provider: $model_provider"
 
-  for mode in "${modes[@]}"; do
-    for task in "${tasks[@]}"; do
-      for model in "${models[@]}"; do
-        for precision_level in "${precision_levels[@]}"; do
-          run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d euler_1d_icl -t $task -l $precision_level $mode --resume"
-          run_cmd "python evaluation/euler_1d/eval.py -m $model -d euler_1d_icl -t $task -l $precision_level $mode"
+  for dataset in "${icl_datasets[@]}"; do
+    echo "  📊 Processing dataset: $dataset"
+
+    for mode in "${modes[@]}"; do
+      for task in "${tasks[@]}"; do
+        for model in "${models[@]}"; do
+          for precision_level in "${precision_levels[@]}"; do
+            run_cmd "python inference/langchain_LLM.py -p $model_provider -m $model -d $dataset -t $task -l $precision_level $mode --resume"
+            run_cmd "python evaluation/euler_1d/eval.py -m $model -d $dataset -t $task -l $precision_level $mode"
+          done
         done
       done
     done
+
+    echo "  ✅ Completed dataset: $dataset"
   done
 
   echo "✅ Completed evaluation for provider: $model_provider"

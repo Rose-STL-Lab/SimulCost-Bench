@@ -1,11 +1,11 @@
 #!/bin/bash
 # inference_eval_ns_transient_2d_icl.sh
 # Function: Execute NS Transient 2D ICL variants model inference and evaluation in sequential order
-# Runs ns_transient_2d_icl, ns_transient_2d_icl_no_cost, ns_transient_2d_icl_uniform datasets
+# Runs ns_transient_2d_icl_accuracy_focused, ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full datasets
 # Stops on error; resumes from failed command on next run
 set -eE -o pipefail          # Exit immediately on any command or pipeline error, preserve ERR information
 
-RESUME_LOG="scripts/inference_eval/ns_transient_2d_icl_resume_progress.log"   # Log file for successful commands
+RESUME_LOG="scripts/inference_eval/additional_exp/ns_transient_2d_icl_resume_progress.log"   # Log file for successful commands
 touch "$RESUME_LOG"
 
 # ========= Generic execution function =========
@@ -25,7 +25,7 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
-icl_datasets=("ns_transient_2d_icl" "ns_transient_2d_icl_no_cost" "ns_transient_2d_icl_uniform")
+icl_datasets=("ns_transient_2d_icl_accuracy_focused" "ns_transient_2d_icl_cost_excluded" "ns_transient_2d_icl_full")
 tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
 precision_levels=("low" "medium" "high")
 modes=("-z")   # "-z" for zero-shot, empty string for iterative

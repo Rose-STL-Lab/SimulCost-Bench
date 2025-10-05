@@ -583,19 +583,21 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 DATASET_TASK_MAP = {
     "heat_1d": ["cfl", "n_space"],
     "heat_1d_bo": ["cfl", "n_space"],  # Bayesian Optimization version for heat_1d
-    "heat_1d_icl": ["cfl", "n_space"],  # ICL version for heat_1d
-    "heat_1d_icl_no_cost": ["cfl", "n_space"],  # ICL no cost version for heat_1d
-    "heat_1d_icl_uniform": ["cfl", "n_space"],  # ICL uniform version for heat_1d
+    "heat_1d_icl_accuracy_focused": ["cfl", "n_space"],  # ICL accuracy_focused version for heat_1d
+    "heat_1d_icl_cost_excluded": ["cfl", "n_space"],  # ICL cost_excluded version for heat_1d
+    "heat_1d_icl_full": ["cfl", "n_space"],  # ICL full version for heat_1d
     "heat_2d": ["dx", "error_threshold", "relax", "t_init"],
     "burgers_1d": ["cfl", "beta", "k", "n_space"],
     "euler_1d": ["cfl", "beta", "k", "n_space"],
-    "euler_1d_icl": ["cfl", "beta", "k", "n_space"],
+    "euler_1d_icl_accuracy_focused": ["cfl", "beta", "k", "n_space"],  # ICL accuracy_focused version
+    "euler_1d_icl_cost_excluded": ["cfl", "beta", "k", "n_space"],  # ICL cost_excluded version
+    "euler_1d_icl_full": ["cfl", "beta", "k", "n_space"],  # ICL full version
     "ns_2d": ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p",
               "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"],
     "ns_transient_2d": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],
-    "ns_transient_2d_icl": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL version
-    "ns_transient_2d_icl_no_cost": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL no cost version
-    "ns_transient_2d_icl_uniform": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL uniform version
+    "ns_transient_2d_icl_accuracy_focused": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL accuracy_focused version
+    "ns_transient_2d_icl_cost_excluded": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL cost_excluded version
+    "ns_transient_2d_icl_full": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL full version
     "epoch_1d": ["dt_multiplier", "nx", "npart", "field_order", "particle_order"]
 }
 
@@ -658,14 +660,29 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
         data_dir_name = "heat_1d"  # Use heat_1d data directory for heat_1d_bo
     else:
         data_dir_name = dataset
-    
+
     result_dir = f"results_model_attempt/{dataset}/{precision_level}/{task}"
     log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{task}"
-    if dataset == "heat_1d_bo":
+
+    # Check if this is an ICL dataset with new structure
+    icl_variants = ["accuracy_focused", "cost_excluded", "full"]
+    is_icl_dataset = any(f"_icl_{variant}" in dataset for variant in icl_variants)
+
+    if is_icl_dataset:
+        # New ICL dataset structure: data/icl/{base_dataset}/{variant}/{precision_level}/
+        # Extract base dataset and variant
+        for variant in icl_variants:
+            if f"_icl_{variant}" in dataset:
+                base_dataset = dataset.replace(f"_icl_{variant}", "")
+                dataset_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{task}_{flag}_dataset.json"
+                archive_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{task}_{flag}_agent.json"
+                break
+    elif dataset == "heat_1d_bo":
         # For heat_1d_bo, use the generated BO dataset files
         dataset_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_dataset.json"
         archive_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_agent.json"
     else:
+        # Standard dataset structure
         dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
         archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_agent.json"
     
@@ -697,18 +714,20 @@ Examples:
 Available dataset-task combinations:
   heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
   heat_1d_bo: cfl, n_space (use -l for precision_level: low/medium/high) [Bayesian Optimization with profile passing]
-  heat_1d_icl: cfl, n_space (use -l for precision_level: low/medium/high) [ICL version]
-  heat_1d_icl_no_cost: cfl, n_space (use -l for precision_level: low/medium/high) [ICL no cost version]
-  heat_1d_icl_uniform: cfl, n_space (use -l for precision_level: low/medium/high) [ICL uniform version]
+  heat_1d_icl_accuracy_focused: cfl, n_space (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
+  heat_1d_icl_cost_excluded: cfl, n_space (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
+  heat_1d_icl_full: cfl, n_space (use -l for precision_level: low/medium/high) [ICL full version]
   heat_2d: dx, error_threshold, relax, t_init (use -l for precision_level: low/medium/high)
   burgers_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
   euler_1d: cfl, beta, k, n_space (use -l for precision_level: low/medium/high)
-  euler_1d_icl: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL version]
+  euler_1d_icl_accuracy_focused: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
+  euler_1d_icl_cost_excluded: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
+  euler_1d_icl_full: cfl, beta, k, n_space (use -l for precision_level: low/medium/high) [ICL full version]
   ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (use -l for precision_level: low/medium/high)
   ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high)
-  ns_transient_2d_icl: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL version]
-  ns_transient_2d_icl_no_cost: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL no cost version]
-  ns_transient_2d_icl_uniform: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL uniform version]
+  ns_transient_2d_icl_accuracy_focused: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
+  ns_transient_2d_icl_cost_excluded: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
+  ns_transient_2d_icl_full: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL full version]
   epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (use -l for precision_level: low/medium/high)
 
 Note: All datasets now use precision_level structure for better organization.

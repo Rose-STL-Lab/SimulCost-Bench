@@ -83,9 +83,11 @@ def evaluate(
     # Build paths for heat_1d precision_level structure
     result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
 
-    # For ICL datasets, use the original heat_1d reference files
+    # For ICL variants, use new data/icl structure
     if dataset.startswith("heat_1d_icl"):
-        dummy_path = f"data/heat_1d/{task}/{precision_level}/{flag}_questions.json"
+        # Extract variant: heat_1d_icl_accuracy_focused -> accuracy_focused
+        variant = dataset.replace("heat_1d_icl_", "")
+        dummy_path = f"data/icl/heat_1d/{variant}/{precision_level}/{task}/{flag}_questions.json"
     else:
         dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
     
@@ -277,8 +279,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="heat_1d",
-                        choices=["heat_1d", "heat_1d_icl", "heat_1d_icl_no_cost", "heat_1d_icl_uniform"],
-                        help="Dataset name: heat_1d, heat_1d_icl, heat_1d_icl_no_cost, or heat_1d_icl_uniform")
+                        choices=["heat_1d", "heat_1d_icl_accuracy_focused", "heat_1d_icl_cost_excluded", "heat_1d_icl_full"],
+                        help="Dataset name: heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, or heat_1d_icl_full")
     parser.add_argument("-t", "--task", default="cfl",
                         choices=list(VALID_TASKS),
                         help="Task: cfl / n_space")

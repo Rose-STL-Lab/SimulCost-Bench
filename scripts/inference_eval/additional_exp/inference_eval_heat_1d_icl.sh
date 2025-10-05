@@ -1,11 +1,11 @@
 #!/bin/bash
 # inference_eval_heat_1d_icl.sh
 # Function: Execute Heat 1D ICL variants model inference and evaluation in sequential order
-# Runs heat_1d_icl, heat_1d_icl_no_cost, heat_1d_icl_uniform datasets
+# Runs heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full datasets
 # Stops on error; resumes from failed command on next run
 set -eE -o pipefail          # Exit immediately on any command or pipeline error, preserve ERR information
 
-RESUME_LOG="scripts/inference_eval/heat_1d_icl_resume_progress.log"   # Log file for successful commands
+RESUME_LOG="scripts/inference_eval/additional_exp/heat_1d_icl_resume_progress.log"   # Log file for successful commands
 touch "$RESUME_LOG"
 
 # ========= Generic execution function =========
@@ -25,7 +25,7 @@ run_cmd () {
 }
 
 # ========= Parameter lists =========
-icl_datasets=("heat_1d_icl" "heat_1d_icl_no_cost" "heat_1d_icl_uniform")
+icl_datasets=("heat_1d_icl_accuracy_focused" "heat_1d_icl_cost_excluded" "heat_1d_icl_full")
 tasks=("cfl" "n_space")
 precision_levels=("low" "medium" "high")
 modes=("-z")   # "-z" for zero-shot, empty string for iterative

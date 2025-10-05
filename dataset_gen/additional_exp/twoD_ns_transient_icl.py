@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path (go up 3 levels: twoD_ns_transient_icl.py -> additional_exp -> dataset_gen -> SimulCost-Bench)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dataset_gen.base import DatasetGenerator
 import json
 from inference import save_result
@@ -463,13 +464,6 @@ def main():
                         help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                         help="Enable zero-shot mode (if not specified, generates both modes)")
-    icl_group = parser.add_mutually_exclusive_group()
-    icl_group.add_argument("--specific", action="store_true",
-                          help="Use precision-specific ICL examples (current behavior)")
-    icl_group.add_argument("--uniform", action="store_true",
-                          help="Use uniform ICL examples (all 6 examples: 3 precision levels × 2 examples each)")
-    parser.add_argument("--no_cost", action="store_true",
-                        help="Remove cost information from ICL examples, only show convergence status")
     args = parser.parse_args()
 
     # If no specific task is provided, generate all tasks
@@ -484,127 +478,127 @@ def main():
     else:
         modes = [False, True]  # Both iterative and zero-shot
 
-    # Determine ICL mode - default to specific if neither is specified
-    use_uniform_icl = args.uniform
-    if not args.specific and not args.uniform:
-        use_uniform_icl = False  # Default to specific mode
+    # Define three ICL dataset types
+    icl_types = [
+        {"name": "accuracy_focused", "use_uniform": False, "no_cost": False},
+        {"name": "cost_excluded", "use_uniform": False, "no_cost": True},
+        {"name": "full", "use_uniform": True, "no_cost": False}
+    ]
 
     print("🚀 NAVIER-STOKES TRANSIENT 2D ICL DATASET GENERATOR")
     print("=" * 80)
     print(f"📋 Tasks: {tasks}")
     print(f"🎯 Modes: {'zero-shot only' if len(modes) == 1 else 'iterative + zero-shot'}")
-    print(f"🧠 ICL Mode: {'uniform (6 examples)' if use_uniform_icl else 'specific (2 examples per precision)'}")
-    # Determine output directory based on ICL mode and cost settings
-    if use_uniform_icl and args.no_cost:
-        output_base = "data/ns_transient_2d_icl_uniform_no_cost"
-    elif use_uniform_icl:
-        output_base = "data/ns_transient_2d_icl_uniform"
-    elif args.no_cost:
-        output_base = "data/ns_transient_2d_icl_no_cost"
-    else:
-        output_base = "data/ns_transient_2d_icl"
-
-    print(f"📂 Output directory: {output_base}/human_write/{{precision_level}}/")
+    print(f"🧠 ICL Types: accuracy_focused, cost_excluded, full")
+    print(f"📂 Output base directory: data/icl/ns_transient_2d/")
     print(f"📂 Source directory: data/ns_transient_2d/{{task}}/{{precision_level}}/")
 
     total_files = 0
 
-    for task in tasks:
-        print(f"\n📋 TASK: {task.upper()}")
-        print("-" * 50)
+    for icl_type in icl_types:
+        icl_name = icl_type["name"]
+        use_uniform_icl = icl_type["use_uniform"]
+        no_cost = icl_type["no_cost"]
 
-        task_dir = f"data/ns_transient_2d/{task}"
+        print(f"\n{'='*80}")
+        print(f"🔄 Generating ICL Type: {icl_name.upper()}")
+        print(f"{'='*80}")
 
-        # Get precision levels from the new structure
-        precision_levels = []
-        if os.path.exists(task_dir):
-            precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
-        if not precision_levels:
-            precision_levels = ["low", "medium", "high"]  # fallback
+        for task in tasks:
+            print(f"\n📋 TASK: {task.upper()}")
+            print("-" * 50)
 
-        generator = twoD_NS_Transient_DatasetGenerator(
-            f"tool_documentation/ns_transient_2d/{task}.json"
-        )
+            task_dir = f"data/ns_transient_2d/{task}"
 
-        for precision_level in precision_levels:
-            print(f"  🎯 {precision_level.upper()} precision:")
+            # Get precision levels from the new structure
+            precision_levels = []
+            if os.path.exists(task_dir):
+                precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
+            if not precision_levels:
+                precision_levels = ["low", "medium", "high"]  # fallback
 
-            # Create output directory for this precision level
-            out_dir = f"{output_base}/human_write/{precision_level}"
-            os.makedirs(out_dir, exist_ok=True)
+            generator = twoD_NS_Transient_DatasetGenerator(
+                f"tool_documentation/ns_transient_2d/{task}.json"
+            )
 
-            for zflag in modes:
-                flag = "zero_shot" if zflag else "iterative"
-                question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
+            for precision_level in precision_levels:
+                print(f"  🎯 {precision_level.upper()} precision:")
 
-                if not os.path.exists(question_file):
-                    print(f"     [!] Question file not found: {question_file}")
-                    continue
+                # Create output directory for this ICL type and precision level
+                out_dir = f"data/icl/ns_transient_2d/{icl_name}/{precision_level}"
+                os.makedirs(out_dir, exist_ok=True)
 
-                with open(question_file, "r") as f:
-                    questions = json.load(f)
+                for zflag in modes:
+                    flag = "zero_shot" if zflag else "iterative"
+                    question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
 
-                dataset_entries = []
+                    if not os.path.exists(question_file):
+                        continue
 
-                for idx, q in enumerate(questions):
-                    if task == "cfl":
-                        resolution0 = fetch_param(q["param_history"][0], "resolution")
-                        relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
-                        residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
-                        wf = build_cfl_workflow(zflag, resolution0, relaxation_factor0, residual_threshold0, precision_level, use_uniform_icl, args.no_cost)
-                    elif task == "resolution":
-                        cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
-                        residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
-                        wf = build_resolution_workflow(zflag, cfl0, relaxation_factor0, residual_threshold0, precision_level, use_uniform_icl, args.no_cost)
-                    elif task == "relaxation_factor":
-                        resolution0 = fetch_param(q["param_history"][0], "resolution")
-                        cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
-                        wf = build_relaxation_factor_workflow(zflag, resolution0, cfl0, residual_threshold0, precision_level, use_uniform_icl, args.no_cost)
-                    elif task == "residual_threshold":
-                        resolution0 = fetch_param(q["param_history"][0], "resolution")
-                        cfl0 = fetch_param(q["param_history"][0], "cfl")
-                        relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
-                        wf = build_residual_threshold_workflow(zflag, resolution0, cfl0, relaxation_factor0, precision_level, use_uniform_icl, args.no_cost)
+                    with open(question_file, "r") as f:
+                        questions = json.load(f)
 
-                    # Create a modified question with norm_rmse_tolerance at top level for compatibility
-                    q_modified = q.copy()
-                    if "precision_config" in q and "norm_rmse_tolerance" in q["precision_config"]:
-                        q_modified["norm_rmse_tolerance"] = q["precision_config"]["norm_rmse_tolerance"]
+                    dataset_entries = []
 
-                    single_ds = generator.generate_dataset(wf, [q_modified], zflag)[0]
+                    for idx, q in enumerate(questions):
+                        if task == "cfl":
+                            resolution0 = fetch_param(q["param_history"][0], "resolution")
+                            relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
+                            residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
+                            wf = build_cfl_workflow(zflag, resolution0, relaxation_factor0, residual_threshold0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "resolution":
+                            cfl0 = fetch_param(q["param_history"][0], "cfl")
+                            relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
+                            residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
+                            wf = build_resolution_workflow(zflag, cfl0, relaxation_factor0, residual_threshold0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "relaxation_factor":
+                            resolution0 = fetch_param(q["param_history"][0], "resolution")
+                            cfl0 = fetch_param(q["param_history"][0], "cfl")
+                            residual_threshold0 = fetch_param(q["param_history"][0], "residual_threshold")
+                            wf = build_relaxation_factor_workflow(zflag, resolution0, cfl0, residual_threshold0, precision_level, use_uniform_icl, no_cost)
+                        elif task == "residual_threshold":
+                            resolution0 = fetch_param(q["param_history"][0], "resolution")
+                            cfl0 = fetch_param(q["param_history"][0], "cfl")
+                            relaxation_factor0 = fetch_param(q["param_history"][0], "relaxation_factor")
+                            wf = build_residual_threshold_workflow(zflag, resolution0, cfl0, relaxation_factor0, precision_level, use_uniform_icl, no_cost)
 
-                    # Update dataset entry to only include required fields
-                    # Extract norm_rmse_tolerance from precision_config if it exists
-                    norm_rmse_tolerance = None
-                    if "precision_config" in q and "norm_rmse_tolerance" in q["precision_config"]:
-                        norm_rmse_tolerance = q["precision_config"]["norm_rmse_tolerance"]
+                        # Create a modified question with norm_rmse_tolerance at top level for compatibility
+                        q_modified = q.copy()
+                        if "precision_config" in q and "norm_rmse_tolerance" in q["precision_config"]:
+                            q_modified["norm_rmse_tolerance"] = q["precision_config"]["norm_rmse_tolerance"]
 
-                    filtered_ds = {
-                        "QID": single_ds.get("QID", q.get("QID")),
-                        "profile": q.get("profile"),
-                        "case": q.get("case"),
-                        "zero_shot": q.get("zero_shot"),
-                        "target_parameter": q.get("target_parameter"),
-                        "precision_level": q.get("precision_level"),
-                        "norm_rmse_tolerance": norm_rmse_tolerance,
-                        "messages": single_ds.get("messages")
-                    }
+                        single_ds = generator.generate_dataset(wf, [q_modified], zflag)[0]
 
-                    dataset_entries.append(filtered_ds)
+                        # Update dataset entry to only include required fields
+                        # Extract norm_rmse_tolerance from precision_config if it exists
+                        norm_rmse_tolerance = None
+                        if "precision_config" in q and "norm_rmse_tolerance" in q["precision_config"]:
+                            norm_rmse_tolerance = q["precision_config"]["norm_rmse_tolerance"]
 
-                    if idx == 0:
-                        human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
-                        agent = {"workflow": wf, "code": human_code}
-                        archive_file = f"{out_dir}/{task}_{flag}_agent.json"
-                        with open(archive_file, "w") as f:
-                            json.dump([agent], f, indent=4)
+                        filtered_ds = {
+                            "QID": single_ds.get("QID", q.get("QID")),
+                            "profile": q.get("profile"),
+                            "case": q.get("case"),
+                            "zero_shot": q.get("zero_shot"),
+                            "target_parameter": q.get("target_parameter"),
+                            "precision_level": q.get("precision_level"),
+                            "norm_rmse_tolerance": norm_rmse_tolerance,
+                            "messages": single_ds.get("messages")
+                        }
 
-                dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
-                save_result(dataset_entries, dataset_file)
-                print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
-                total_files += 1
+                        dataset_entries.append(filtered_ds)
+
+                        if idx == 0:
+                            human_code = zero_shot_HUMAN_CODE if zflag else iterative_HUMAN_CODE
+                            agent = {"workflow": wf, "code": human_code}
+                            archive_file = f"{out_dir}/{task}_{flag}_agent.json"
+                            with open(archive_file, "w") as f:
+                                json.dump([agent], f, indent=4)
+
+                    dataset_file = f"{out_dir}/{task}_{flag}_dataset.json"
+                    save_result(dataset_entries, dataset_file)
+                    print(f"     ✓ {flag.capitalize()}: {len(dataset_entries):2d} entries -> {dataset_file}")
+                    total_files += 1
 
     print("\n" + "=" * 80)
     print(f"🎉 SUMMARY: Generated {total_files} dataset files")
