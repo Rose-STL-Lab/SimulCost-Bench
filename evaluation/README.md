@@ -146,11 +146,13 @@ python evaluation/stats_utils/merge_results.py
 **What it does:**
 1. Scans `eval_results/{dataset}/dataframes/` for all parquet files
 2. Combines files from standard and ICL variant datasets:
-   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`
+   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_2d`
    - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`
-3. Handles schema differences (fills missing columns with `NaN`)
-4. Adds/validates `dataset` column for each record
-5. Outputs unified file: `eval_results/merged_results.parquet`
+3. Applies model name mapping to standardize model identifiers (e.g., `qwen3_8b` → `Qwen3-8B`)
+4. Validates that all model names are in the mapping dictionary (raises error if unmapped models found)
+5. Handles schema differences (fills missing columns with `NaN`)
+6. Adds/validates `dataset` column for each record
+7. Outputs unified file: `eval_results/merged_results.parquet`
 
 **Output Summary:**
 ```
@@ -172,17 +174,24 @@ Precision levels: ['low', 'medium', 'high']
 ============================================================
 ```
 
-### Understanding ICL Dataset Variants
+### Model Name Mapping
 
-The ICL (In-Context Learning) datasets test how different prompt configurations affect model performance:
+The merge script automatically standardizes model names for consistency. The following mappings are applied:
 
-| Dataset Variant | Description |
-|----------------|-------------|
-| `{dataset}_icl_accuracy_focused` | Prompts emphasize accuracy metrics only |
-| `{dataset}_icl_cost_excluded` | Prompts exclude computational cost information |
-| `{dataset}_icl_full` | Prompts include both accuracy and cost information |
+| Original Model Name | Standardized Name |
+|---------------------|-------------------|
+| `qwen3_8b` | `Qwen3-8B` |
+| `qwen3_32b` | `Qwen3-32B` |
+| `qwen3_0_6b` | `Qwen3-0.6B` |
+| `anthropic.claude-3-5-sonnet-20240620-v1:0` | `Claude-3.5-Sonnet` |
+| `anthropic.claude-3-5-haiku-20241022-v1:0` | `Claude-3.5-Haiku` |
+| `anthropic.claude-3-7-sonnet-20250219-v1:0` | `Claude-3.7-Sonnet` |
+| `amazon.nova-premier-v1:0` | `Nova-Premier` |
+| `mistral.mistral-large-2402-v1:0` | `Mistral-Large` |
+| `meta.llama3-70b-instruct-v1:0` | `Llama-3-70B-Instruct` |
+| `gpt-5-2025-08-07` | `GPT-5` |
 
-These variants help analyze the impact of prompt engineering on model optimization strategies.
+**Important**: All model names must be in the mapping dictionary. If an unmapped model name is encountered, the script will raise a `ValueError` with the unmapped model names listed. To add new models, edit `MODEL_NAME_MAPPING` in `evaluation/stats_utils/merge_results.py`.
 
 ### Manual Usage
 
@@ -195,22 +204,19 @@ df = pd.read_parquet('eval_results/merged_results.parquet')
 # Filter by standard dataset
 epoch_df = df[df['dataset'] == 'epoch_1d']
 euler_df = df[df['dataset'] == 'euler_1d']
+burgers_df = df[df['dataset'] == 'burgers_1d']
+heat2d_df = df[df['dataset'] == 'heat_2d']
 
 # Filter by ICL variant
 icl_full_df = df[df['dataset'].str.contains('icl_full')]
 icl_accuracy_df = df[df['dataset'].str.contains('icl_accuracy_focused')]
 
-# Filter by model
-gpt4_df = df[df['model_name'] == 'gpt-4o']
+# Filter by model (using standardized names)
+qwen_32b_df = df[df['model_name'] == 'Qwen3-32B']
+claude_df = df[df['model_name'] == 'Claude-3.7-Sonnet']
 
 # Filter by inference mode
 zero_shot_df = df[df['inference_mode'] == 'zero_shot']
 ```
 
 ---
-
-## 📚 Additional Resources
-
-- **Main Documentation**: [../README.md](../README.md)
-- **Custom Model Integration**: [../custom_model/README.md](../custom_model/README.md)
-- **Script Automation**: [../scripts/README.md](../scripts/README.md)

@@ -5,6 +5,8 @@ This script automatically detects and merges parquet files from:
 - eval_results/epoch_1d/dataframes/
 - eval_results/euler_1d/dataframes/
 - eval_results/ns_transient_2d/dataframes/
+- eval_results/burgers_1d/dataframes/
+- eval_results/heat_2d/dataframes/
 - eval_results/euler_1d_icl_accuracy_focused/dataframes/
 - eval_results/euler_1d_icl_cost_excluded/dataframes/
 - eval_results/euler_1d_icl_full/dataframes/
@@ -13,12 +15,81 @@ This script automatically detects and merges parquet files from:
 - eval_results/ns_transient_2d_icl_full/dataframes/
 
 The merged result is saved to: eval_results/merged_results.parquet
+
+Model names are automatically mapped to standardized names for consistency.
 """
 
 import os
 from pathlib import Path
 from typing import List, Dict
 import pandas as pd
+
+
+# Model name mapping dictionary
+MODEL_NAME_MAPPING = {
+    # Support both underscore and colon formats
+    'amazon.nova-premier-v1:0': 'Nova-Premier',
+    'amazon.nova-premier-v1_0': 'Nova-Premier',
+    'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+    'anthropic.claude-3-7-sonnet-20250219-v1_0': 'Claude-3.7-Sonnet',
+    'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
+    'mistral.mistral-large-2402-v1_0': 'Mistral-Large',
+    'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
+    'meta.llama3-70b-instruct-v1_0': 'Llama-3-70B-Instruct',
+    'gpt-5-2025-08-07': 'GPT-5',
+    'qwen3_32b': 'Qwen3-32B',
+    'qwen3_0_6b': 'Qwen3-0.6B',
+    'qwen3_8b': 'Qwen3-8B',
+    'anthropic.claude-3-5-haiku-20241022-v1:0': 'Claude-3.5-Haiku',
+    'anthropic.claude-3-5-haiku-20241022-v1_0': 'Claude-3.5-Haiku',
+    'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
+    'anthropic.claude-3-5-sonnet-20240620-v1_0': 'Claude-3.5-Sonnet',
+}
+
+
+def validate_model_names(df: pd.DataFrame) -> None:
+    """
+    Validate that all model names in the dataframe are in the mapping dictionary.
+
+    Args:
+        df: DataFrame to validate
+
+    Raises:
+        ValueError: If any model name is not in the mapping dictionary
+    """
+    if 'model_name' not in df.columns:
+        return
+
+    unique_models = df['model_name'].unique()
+    unmapped_models = [model for model in unique_models if model not in MODEL_NAME_MAPPING]
+
+    if unmapped_models:
+        raise ValueError(
+            f"Found unmapped model names: {unmapped_models}\n"
+            f"Please add these models to MODEL_NAME_MAPPING in merge_results.py"
+        )
+
+
+def apply_model_name_mapping(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Apply model name mapping to standardize model names.
+
+    Args:
+        df: DataFrame with model_name column
+
+    Returns:
+        DataFrame with mapped model names
+    """
+    if 'model_name' not in df.columns:
+        return df
+
+    # Validate all model names are mapped
+    validate_model_names(df)
+
+    # Apply mapping
+    df['model_name'] = df['model_name'].map(MODEL_NAME_MAPPING)
+
+    return df
 
 
 def find_parquet_files(base_dir: str, datasets: List[str]) -> Dict[str, List[Path]]:
@@ -77,11 +148,15 @@ def merge_parquet_files(files_by_dataset: Dict[str, List[Path]]) -> pd.DataFrame
                         print(f"  Note: Overriding dataset column in {file.name}")
                         df['dataset'] = dataset
 
+                # Apply model name mapping
+                df = apply_model_name_mapping(df)
+
                 all_dataframes.append(df)
                 print(f"  ✓ Loaded {file.name}: {len(df)} rows, {len(df.columns)} columns")
 
             except Exception as e:
                 print(f"  ✗ Error loading {file.name}: {e}")
+                raise  # Re-raise to ensure validation errors are not silently ignored
 
     if not all_dataframes:
         raise ValueError("No dataframes were successfully loaded")
@@ -162,6 +237,8 @@ def main():
         "epoch_1d",
         "euler_1d",
         "ns_transient_2d",
+        "burgers_1d",
+        "heat_2d",
         "euler_1d_icl_accuracy_focused",
         "euler_1d_icl_cost_excluded",
         "euler_1d_icl_full",
