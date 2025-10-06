@@ -269,12 +269,16 @@ python evaluation/heat_1d/eval.py -m anthropic.claude-3-5-haiku-20241022-v1:0 -d
 ```
 **Parameters:**
 - `-m`: Model name/identifier
-- `-d`: Dataset name  
+- `-d`: Dataset name
 - `-t`: Problem task type
 - `-l`: Precision level (for heat_1d, heat_2d, burgers_1d and euler_1d: low, medium, high; default: medium)
 - `-z`: Enable zero-shot mode
 
-**Output:** Evaluation results are saved to `eval_results/{dataset}/{task}/{precision_level}/`
+**Outputs:**
+- JSON results: `eval_results/{dataset}/{task}/{precision_level}/`
+- Parquet dataframes: `eval_results/{dataset}/dataframes/`
+
+📖 **For advanced data analysis workflows and parquet usage**, see [Evaluation Documentation](evaluation/README.md).
 
 ## 🗂️ Tabulate Evaluation Results
 
