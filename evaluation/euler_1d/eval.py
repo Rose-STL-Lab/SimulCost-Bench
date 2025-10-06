@@ -143,7 +143,7 @@ def evaluate(
     # Determine target and non-target parameters based on task
     # For k/beta tasks, target is k/beta + n_space
     if task == "cfl":
-        target_params = ["cfl"]
+        ； = ["cfl"]
         non_target_params = ["beta", "k", "n_space"]
     elif task == "k":
         target_params = ["k", "n_space"]
@@ -295,26 +295,11 @@ def evaluate(
         except (KeyError, ValueError):
             model_n_space = None
 
-        # Extract dummy parameters
-        try:
-            dummy_cfl = get_required_param(ref_iter, "cfl", "current_cfl")
-        except (KeyError, ValueError):
-            dummy_cfl = None
-
-        try:
-            dummy_beta = get_required_param(ref_iter, "beta")
-        except (KeyError, ValueError):
-            dummy_beta = None
-
-        try:
-            dummy_k = get_required_param(ref_iter, "k")
-        except (KeyError, ValueError):
-            dummy_k = None
-
-        try:
-            dummy_n_space = get_required_param(ref_iter, "n_space")
-        except (KeyError, ValueError):
-            dummy_n_space = None
+        # Extract dummy parameters (all required - no try-except)
+        dummy_cfl = get_required_param(ref_iter, "cfl", "current_cfl")
+        dummy_beta = get_required_param(ref_iter, "beta")
+        dummy_k = get_required_param(ref_iter, "k")
+        dummy_n_space = get_required_param(ref_iter, "n_space")
 
         # Build non_target_parameters as key-value pairs from dummy best_params
         non_target_params_dict = {}
@@ -322,12 +307,8 @@ def evaluate(
             # Map parameter names to their alternative names if needed
             param_key = param
             alt_key = "current_cfl" if param == "cfl" else None
-
-            try:
-                value = get_required_param(ref_iter, param_key, alt_key)
-                non_target_params_dict[param] = value
-            except (KeyError, ValueError):
-                non_target_params_dict[param] = None
+            value = get_required_param(ref_iter, param_key, alt_key)
+            non_target_params_dict[param] = value
 
         # Build row data
         row = {

@@ -4,6 +4,7 @@ import sys
 from typing import Dict
 
 import numpy as np
+import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.ns_channel_2d import compare_res_ns_channel_2d
@@ -179,6 +180,37 @@ def evaluate(
     v_rmse_tol = tolerances["v_rmse_tolerance"]
     p_rmse_tol = tolerances["p_rmse_tolerance"]
 
+    # Collect rows for DataFrame
+    rows = []
+
+    # Determine target and non-target parameters based on task
+    if task == "mesh_x":
+        target_params = ["mesh_x"]
+        non_target_params = ["mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "mesh_y":
+        target_params = ["mesh_y"]
+        non_target_params = ["mesh_x", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "omega_u":
+        target_params = ["omega_u"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "omega_v":
+        target_params = ["omega_v"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_u", "omega_p", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "omega_p":
+        target_params = ["omega_p"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_u", "omega_v", "diff_u_threshold", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "diff_u_threshold":
+        target_params = ["diff_u_threshold"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_v_threshold", "res_iter_v_threshold"]
+    elif task == "diff_v_threshold":
+        target_params = ["diff_v_threshold"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "res_iter_v_threshold"]
+    elif task == "res_iter_v_threshold":
+        target_params = ["res_iter_v_threshold"]
+        non_target_params = ["mesh_x", "mesh_y", "omega_u", "omega_v", "omega_p", "diff_u_threshold", "diff_v_threshold"]
+    else:
+        raise ValueError(f"Unknown task: {task}")
+
     for res in result_dataset:
         qid = res.get("QID")
         if qid is None or qid not in dummy_by_qid:
@@ -326,6 +358,115 @@ def evaluate(
             f"------------------------------"
         )
 
+        # Extract model parameters (with None for missing values)
+        try:
+            model_mesh_x = get_required_param(last_iter, "mesh_x", "current_mesh_x") if last_iter else None
+        except (KeyError, ValueError):
+            model_mesh_x = None
+
+        try:
+            model_mesh_y = get_required_param(last_iter, "mesh_y", "current_mesh_y") if last_iter else None
+        except (KeyError, ValueError):
+            model_mesh_y = None
+
+        try:
+            model_omega_u = get_required_param(last_iter, "omega_u", "current_omega_u") if last_iter else None
+        except (KeyError, ValueError):
+            model_omega_u = None
+
+        try:
+            model_omega_v = get_required_param(last_iter, "omega_v", "current_omega_v") if last_iter else None
+        except (KeyError, ValueError):
+            model_omega_v = None
+
+        try:
+            model_omega_p = get_required_param(last_iter, "omega_p", "current_omega_p") if last_iter else None
+        except (KeyError, ValueError):
+            model_omega_p = None
+
+        try:
+            model_diff_u_threshold = get_required_param(last_iter, "diff_u_threshold", "current_diff_u_threshold") if last_iter else None
+        except (KeyError, ValueError):
+            model_diff_u_threshold = None
+
+        try:
+            model_diff_v_threshold = get_required_param(last_iter, "diff_v_threshold", "current_diff_v_threshold") if last_iter else None
+        except (KeyError, ValueError):
+            model_diff_v_threshold = None
+
+        try:
+            model_res_iter_v_threshold = get_required_param(last_iter, "res_iter_v_threshold", "current_res_iter_v_threshold") if last_iter else None
+        except (KeyError, ValueError):
+            model_res_iter_v_threshold = None
+
+        # Extract dummy parameters (all required - no try-except)
+        dummy_mesh_x = get_required_param(ref_iter, "mesh_x", "current_mesh_x")
+        dummy_mesh_y = get_required_param(ref_iter, "mesh_y", "current_mesh_y")
+        dummy_omega_u = get_required_param(ref_iter, "omega_u", "current_omega_u")
+        dummy_omega_v = get_required_param(ref_iter, "omega_v", "current_omega_v")
+        dummy_omega_p = get_required_param(ref_iter, "omega_p", "current_omega_p")
+        dummy_diff_u_threshold = get_required_param(ref_iter, "diff_u_threshold", "current_diff_u_threshold")
+        dummy_diff_v_threshold = get_required_param(ref_iter, "diff_v_threshold", "current_diff_v_threshold")
+        dummy_res_iter_v_threshold = get_required_param(ref_iter, "res_iter_v_threshold", "current_res_iter_v_threshold")
+
+        # Build non_target_parameters as key-value pairs from dummy best_params
+        non_target_params_dict = {}
+        for param in non_target_params:
+            # Map parameter names to their alternative names
+            alt_key = f"current_{param}"
+            value = get_required_param(ref_iter, param, alt_key)
+            non_target_params_dict[param] = value
+
+        # Build row data
+        row = {
+            # Identification dimensions
+            'dataset': dataset,
+            'task': task,
+            'precision_level': precision_level,
+            'inference_mode': flag,
+            'model_name': model_name,
+            'qid': qid,
+            'profile': dummy["profile"],
+
+            # Parameter identification
+            'target_parameters': ','.join(target_params),
+            'non_target_parameters': json.dumps(non_target_params_dict, cls=NumpyEncoder),
+
+            # Evaluation results
+            'is_converged': converged,
+            'is_successful': success,
+            'model_cost': cost,
+            'dummy_cost': dummy_cost,
+            'rmse_u': rmse_u if not (np.isnan(rmse_u) or np.isinf(rmse_u)) else None,
+            'rmse_v': rmse_v if not (np.isnan(rmse_v) or np.isinf(rmse_v)) else None,
+            'rmse_p': rmse_p if not (np.isnan(rmse_p) or np.isinf(rmse_p)) else None,
+            'mass_tolerance': mass_tol,
+            'u_rmse_tolerance': u_rmse_tol,
+            'v_rmse_tolerance': v_rmse_tol,
+            'p_rmse_tolerance': p_rmse_tol,
+            'efficiency': efficiency,
+
+            # All parameter values
+            'model_mesh_x': model_mesh_x,
+            'model_mesh_y': model_mesh_y,
+            'model_omega_u': model_omega_u,
+            'model_omega_v': model_omega_v,
+            'model_omega_p': model_omega_p,
+            'model_diff_u_threshold': model_diff_u_threshold,
+            'model_diff_v_threshold': model_diff_v_threshold,
+            'model_res_iter_v_threshold': model_res_iter_v_threshold,
+            'dummy_mesh_x': dummy_mesh_x,
+            'dummy_mesh_y': dummy_mesh_y,
+            'dummy_omega_u': dummy_omega_u,
+            'dummy_omega_v': dummy_omega_v,
+            'dummy_omega_p': dummy_omega_p,
+            'dummy_diff_u_threshold': dummy_diff_u_threshold,
+            'dummy_diff_v_threshold': dummy_diff_v_threshold,
+            'dummy_res_iter_v_threshold': dummy_res_iter_v_threshold,
+        }
+
+        rows.append(row)
+
     # Calculate final metrics with division by zero protection
     if evaluated == 0:
         logger.warning("⚠️ No valid evaluations performed")
@@ -355,6 +496,37 @@ def evaluate(
     }
 
     logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
+
+    # Create and save DataFrame
+    df_new = pd.DataFrame(rows)
+
+    if len(df_new) > 0:
+        # Save as Parquet with append logic
+        df_dir = f"eval_results/{dataset}/dataframes"
+        os.makedirs(df_dir, exist_ok=True)
+        parquet_path = f"{df_dir}/{flag}_{model_name}.parquet"
+
+        # Check if file exists and append if it does
+        if os.path.exists(parquet_path):
+            df_existing = pd.read_parquet(parquet_path)
+
+            # Remove any existing rows with the same (task, precision_level, qid) to avoid duplicates
+            df_existing = df_existing[
+                ~((df_existing['task'] == task) &
+                  (df_existing['precision_level'] == precision_level))
+            ]
+
+            # Concatenate and save
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Appended DataFrame to: {parquet_path} (new shape: {df_combined.shape}, added {len(df_new)} rows)")
+        else:
+            # Create new file
+            df_new.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Created DataFrame at: {parquet_path} (shape: {df_new.shape})")
+    else:
+        logger.warning("⚠️ No data to save to DataFrame")
+
     return metrics
 
 if __name__ == "__main__":

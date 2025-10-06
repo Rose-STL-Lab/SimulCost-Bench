@@ -4,6 +4,7 @@ import sys
 from typing import Dict
 
 import numpy as np
+import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.burgers_1d import compare_res_burgers_1d
@@ -133,6 +134,26 @@ def evaluate(
     # Get precision-specific tolerance for success checking
     rmse_tol = RMSE_TOLERANCE_BY_PRECISION[precision_level]
 
+    # Collect rows for DataFrame
+    rows = []
+
+    # Determine target and non-target parameters based on task
+    # For k/beta tasks, target is k/beta + n_space
+    if task == "cfl":
+        target_params = ["cfl"]
+        non_target_params = ["beta", "k", "n_space"]
+    elif task == "k":
+        target_params = ["k", "n_space"]
+        non_target_params = ["cfl", "beta"]
+    elif task == "beta":
+        target_params = ["beta", "n_space"]
+        non_target_params = ["cfl", "k"]
+    elif task == "n_space":
+        target_params = ["n_space"]
+        non_target_params = ["cfl", "beta", "k"]
+    else:
+        raise ValueError(f"Unknown task: {task}")
+
     for res in result_dataset:
         qid = res.get("QID")
         if qid is None or qid not in dummy_by_qid:
@@ -250,6 +271,79 @@ def evaluate(
             f"------------------------------"
         )
 
+        # Extract model parameters (with None for missing values)
+        try:
+            model_cfl = get_required_param(last_iter, "cfl", "current_cfl") if last_iter else None
+        except (KeyError, ValueError):
+            model_cfl = None
+
+        try:
+            model_beta = get_required_param(last_iter, "beta") if last_iter else None
+        except (KeyError, ValueError):
+            model_beta = None
+
+        try:
+            model_k = get_required_param(last_iter, "k") if last_iter else None
+        except (KeyError, ValueError):
+            model_k = None
+
+        try:
+            model_n_space = get_required_param(last_iter, "n_space") if last_iter else None
+        except (KeyError, ValueError):
+            model_n_space = None
+
+        # Extract dummy parameters (all required - no try-except)
+        dummy_cfl = get_required_param(ref_iter, "cfl", "current_cfl")
+        dummy_beta = get_required_param(ref_iter, "beta")
+        dummy_k = get_required_param(ref_iter, "k")
+        dummy_n_space = get_required_param(ref_iter, "n_space")
+
+        # Build non_target_parameters as key-value pairs from dummy best_params
+        non_target_params_dict = {}
+        for param in non_target_params:
+            # Map parameter names to their alternative names if needed
+            param_key = param
+            alt_key = "current_cfl" if param == "cfl" else None
+            value = get_required_param(ref_iter, param_key, alt_key)
+            non_target_params_dict[param] = value
+
+        # Build row data
+        row = {
+            # Identification dimensions
+            'dataset': dataset,
+            'task': task,
+            'precision_level': precision_level,
+            'inference_mode': flag,
+            'model_name': model_name,
+            'qid': qid,
+            'profile': json.dumps(dummy["profile"], cls=NumpyEncoder),
+
+            # Parameter identification
+            'target_parameters': ','.join(target_params),
+            'non_target_parameters': json.dumps(non_target_params_dict, cls=NumpyEncoder),
+
+            # Evaluation results
+            'is_converged': converged,
+            'is_successful': success,
+            'model_cost': cost,
+            'dummy_cost': dummy_cost,
+            'rmse': rmse if not (np.isnan(rmse) or np.isinf(rmse)) else None,
+            'tolerance': rmse_tol,
+            'efficiency': efficiency,
+
+            # All parameter values
+            'model_cfl': model_cfl,
+            'model_beta': model_beta,
+            'model_k': model_k,
+            'model_n_space': model_n_space,
+            'dummy_cfl': dummy_cfl,
+            'dummy_beta': dummy_beta,
+            'dummy_k': dummy_k,
+            'dummy_n_space': dummy_n_space,
+        }
+
+        rows.append(row)
+
     # Calculate final metrics with division by zero protection
     if evaluated == 0:
         logger.warning("⚠️ No valid evaluations performed")
@@ -272,6 +366,37 @@ def evaluate(
     }
 
     logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
+
+    # Create and save DataFrame
+    df_new = pd.DataFrame(rows)
+
+    if len(df_new) > 0:
+        # Save as Parquet with append logic
+        df_dir = f"eval_results/{dataset}/dataframes"
+        os.makedirs(df_dir, exist_ok=True)
+        parquet_path = f"{df_dir}/{flag}_{model_name}.parquet"
+
+        # Check if file exists and append if it does
+        if os.path.exists(parquet_path):
+            df_existing = pd.read_parquet(parquet_path)
+
+            # Remove any existing rows with the same (task, precision_level, qid) to avoid duplicates
+            df_existing = df_existing[
+                ~((df_existing['task'] == task) &
+                  (df_existing['precision_level'] == precision_level))
+            ]
+
+            # Concatenate and save
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Appended DataFrame to: {parquet_path} (new shape: {df_combined.shape}, added {len(df_new)} rows)")
+        else:
+            # Create new file
+            df_new.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Created DataFrame at: {parquet_path} (shape: {df_new.shape})")
+    else:
+        logger.warning("⚠️ No data to save to DataFrame")
+
     return metrics
 
 

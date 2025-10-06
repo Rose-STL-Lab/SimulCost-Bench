@@ -4,6 +4,7 @@ import sys
 from typing import Dict
 
 import numpy as np
+import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.epoch import compare_res_epoch
@@ -85,14 +86,17 @@ def evaluate(
     """
     flag = "zero_shot" if zero_shot else "iterative"
 
+    # Sanitize model name for filesystem (replace : with _)
+    model_name_safe = model_name.replace(":", "_")
+
     # Use precision_level-based paths for epoch_1d
     log_dir = f"eval_results/{dataset}/{task}/{precision_level}"
     os.makedirs(log_dir, exist_ok=True)
-    log_file = f"{log_dir}/{flag}_{model_name}.log"
+    log_file = f"{log_dir}/{flag}_{model_name_safe}.log"
     logger = setup_logging(log_file)
 
     # Build paths for epoch_1d precision_level structure
-    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
+    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name_safe}.json"
     dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
 
     # Validate paths exist
@@ -143,6 +147,30 @@ def evaluate(
 
     # Get precision-specific tolerance for success checking
     rmse_tol = RMSE_TOLERANCE_BY_PRECISION[precision_level]
+
+    # Collect rows for DataFrame
+    rows = []
+
+    # Determine target and non-target parameters based on task
+    # For dt_multiplier, field_order, particle_order tasks: target includes the task parameter + nx
+    # For nx and npart tasks: only support zero-shot (as per requirements)
+    if task == "dt_multiplier":
+        target_params = ["dt_multiplier", "nx"]
+        non_target_params = ["npart", "field_order", "particle_order"]
+    elif task == "nx":
+        target_params = ["nx"]
+        non_target_params = ["dt_multiplier", "npart", "field_order", "particle_order"]
+    elif task == "npart":
+        target_params = ["npart"]
+        non_target_params = ["dt_multiplier", "nx", "field_order", "particle_order"]
+    elif task == "field_order":
+        target_params = ["field_order", "nx"]
+        non_target_params = ["dt_multiplier", "npart", "particle_order"]
+    elif task == "particle_order":
+        target_params = ["particle_order", "nx"]
+        non_target_params = ["dt_multiplier", "npart", "field_order"]
+    else:
+        raise ValueError(f"Unknown task: {task}")
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -263,6 +291,84 @@ def evaluate(
             f"------------------------------"
         )
 
+        # Extract model parameters (with None for missing values)
+        try:
+            model_dt_multiplier = get_required_param(last_iter, "dt_multiplier") if last_iter else None
+        except (KeyError, ValueError):
+            model_dt_multiplier = None
+
+        try:
+            model_nx = get_required_param(last_iter, "nx") if last_iter else None
+        except (KeyError, ValueError):
+            model_nx = None
+
+        try:
+            model_npart = get_required_param(last_iter, "npart") if last_iter else None
+        except (KeyError, ValueError):
+            model_npart = None
+
+        try:
+            model_field_order = get_required_param(last_iter, "field_order") if last_iter else None
+        except (KeyError, ValueError):
+            model_field_order = None
+
+        try:
+            model_particle_order = get_required_param(last_iter, "particle_order") if last_iter else None
+        except (KeyError, ValueError):
+            model_particle_order = None
+
+        # Extract dummy parameters (all required - no try-except)
+        dummy_dt_multiplier = get_required_param(ref_iter, "dt_multiplier")
+        dummy_nx = get_required_param(ref_iter, "nx")
+        dummy_npart = get_required_param(ref_iter, "npart")
+        dummy_field_order = get_required_param(ref_iter, "field_order")
+        dummy_particle_order = get_required_param(ref_iter, "particle_order")
+
+        # Build non_target_parameters as key-value pairs from dummy best_params
+        non_target_params_dict = {}
+        for param in non_target_params:
+            value = get_required_param(ref_iter, param)
+            non_target_params_dict[param] = value
+
+        # Build row data
+        row = {
+            # Identification dimensions
+            'dataset': dataset,
+            'task': task,
+            'precision_level': precision_level,
+            'inference_mode': flag,
+            'model_name': model_name,
+            'qid': qid,
+            'profile': json.dumps(dummy["profile"], cls=NumpyEncoder),
+
+            # Parameter identification
+            'target_parameters': ','.join(target_params),
+            'non_target_parameters': json.dumps(non_target_params_dict, cls=NumpyEncoder),
+
+            # Evaluation results
+            'is_converged': converged,
+            'is_successful': success,
+            'model_cost': cost,
+            'dummy_cost': dummy_cost,
+            'rmse': rmse if not (np.isnan(rmse) or np.isinf(rmse)) else None,
+            'tolerance': rmse_tol,
+            'efficiency': efficiency,
+
+            # All parameter values
+            'model_dt_multiplier': model_dt_multiplier,
+            'model_nx': model_nx,
+            'model_npart': model_npart,
+            'model_field_order': model_field_order,
+            'model_particle_order': model_particle_order,
+            'dummy_dt_multiplier': dummy_dt_multiplier,
+            'dummy_nx': dummy_nx,
+            'dummy_npart': dummy_npart,
+            'dummy_field_order': dummy_field_order,
+            'dummy_particle_order': dummy_particle_order,
+        }
+
+        rows.append(row)
+
     # Calculate final metrics with division by zero protection
     if evaluated == 0:
         logger.warning("⚠️ No valid evaluations performed")
@@ -285,6 +391,37 @@ def evaluate(
     }
 
     logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
+
+    # Create and save DataFrame
+    df_new = pd.DataFrame(rows)
+
+    if len(df_new) > 0:
+        # Save as Parquet with append logic
+        df_dir = f"eval_results/{dataset}/dataframes"
+        os.makedirs(df_dir, exist_ok=True)
+        parquet_path = f"{df_dir}/{flag}_{model_name_safe}.parquet"
+
+        # Check if file exists and append if it does
+        if os.path.exists(parquet_path):
+            df_existing = pd.read_parquet(parquet_path)
+
+            # Remove any existing rows with the same (task, precision_level, qid) to avoid duplicates
+            df_existing = df_existing[
+                ~((df_existing['task'] == task) &
+                  (df_existing['precision_level'] == precision_level))
+            ]
+
+            # Concatenate and save
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Appended DataFrame to: {parquet_path} (new shape: {df_combined.shape}, added {len(df_new)} rows)")
+        else:
+            # Create new file
+            df_new.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Created DataFrame at: {parquet_path} (shape: {df_new.shape})")
+    else:
+        logger.warning("⚠️ No data to save to DataFrame")
+
     return metrics
 
 

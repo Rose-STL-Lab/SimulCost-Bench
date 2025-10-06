@@ -4,6 +4,7 @@ import sys
 from typing import Dict
 
 import numpy as np
+import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.ns_transient_2d import compare_res_ns_transient_2d
@@ -95,7 +96,7 @@ def evaluate(
     """Evaluate model performance against reference solutions for ns_transient_2d.
 
     Args:
-        dataset: Dataset name ('ns_transient_2d', 'ns_transient_2d_icl', 'ns_transient_2d_icl_no_cost', or 'ns_transient_2d_icl_uniform')
+        dataset: Dataset name ('ns_transient_2d', 'ns_transient_2d_icl_accuracy_focused', 'ns_transient_2d_icl_cost_excluded', or 'ns_transient_2d_icl_full')
         task: Task type (one of the 4 NS Transient 2D tasks)
         model_name: Name of the model being evaluated
         precision_level: Precision level ('low', 'medium', 'high')
@@ -171,6 +172,25 @@ def evaluate(
     # Get precision-specific tolerances for NS Transient 2D
     tolerances = NS_TRANSIENT_2D_TOLERANCE_BY_PRECISION[precision_level]
     norm_rmse_tol = tolerances["norm_rmse_tolerance"]
+
+    # Collect rows for DataFrame
+    rows = []
+
+    # Determine target and non-target parameters based on task
+    if task == "resolution":
+        target_params = ["resolution"]
+        non_target_params = ["cfl", "relaxation_factor", "residual_threshold"]
+    elif task == "cfl":
+        target_params = ["cfl"]
+        non_target_params = ["resolution", "relaxation_factor", "residual_threshold"]
+    elif task == "relaxation_factor":
+        target_params = ["relaxation_factor"]
+        non_target_params = ["resolution", "cfl", "residual_threshold"]
+    elif task == "residual_threshold":
+        target_params = ["residual_threshold"]
+        non_target_params = ["resolution", "cfl", "relaxation_factor"]
+    else:
+        raise ValueError(f"Unknown task: {task}")
 
     for res in result_dataset:
         qid = res.get("QID")
@@ -296,6 +316,78 @@ def evaluate(
             f"------------------------------"
         )
 
+        # Extract model parameters (with None for missing values)
+        try:
+            model_resolution = get_required_param(last_iter, "resolution", "current_resolution") if last_iter else None
+        except (KeyError, ValueError):
+            model_resolution = None
+
+        try:
+            model_cfl = get_required_param(last_iter, "cfl", "current_cfl") if last_iter else None
+        except (KeyError, ValueError):
+            model_cfl = None
+
+        try:
+            model_relaxation_factor = get_required_param(last_iter, "relaxation_factor", "current_relaxation_factor") if last_iter else None
+        except (KeyError, ValueError):
+            model_relaxation_factor = None
+
+        try:
+            model_residual_threshold = get_required_param(last_iter, "residual_threshold", "current_residual_threshold") if last_iter else None
+        except (KeyError, ValueError):
+            model_residual_threshold = None
+
+        # Extract dummy parameters (all required - no try-except)
+        dummy_resolution = get_required_param(ref_iter, "resolution", "current_resolution")
+        dummy_cfl = get_required_param(ref_iter, "cfl", "current_cfl")
+        dummy_relaxation_factor = get_required_param(ref_iter, "relaxation_factor", "current_relaxation_factor")
+        dummy_residual_threshold = get_required_param(ref_iter, "residual_threshold", "current_residual_threshold")
+
+        # Build non_target_parameters as key-value pairs from dummy best_params
+        non_target_params_dict = {}
+        for param in non_target_params:
+            # Map parameter names to their alternative names
+            alt_key = f"current_{param}"
+            value = get_required_param(ref_iter, param, alt_key)
+            non_target_params_dict[param] = value
+
+        # Build row data
+        row = {
+            # Identification dimensions
+            'dataset': dataset,
+            'task': task,
+            'precision_level': precision_level,
+            'inference_mode': flag,
+            'model_name': model_name,
+            'qid': qid,
+            'profile': dummy["profile"],
+
+            # Parameter identification
+            'target_parameters': ','.join(target_params),
+            'non_target_parameters': json.dumps(non_target_params_dict, cls=NumpyEncoder),
+
+            # Evaluation results
+            'is_converged': converged,
+            'is_successful': success,
+            'model_cost': cost,
+            'dummy_cost': dummy_cost,
+            'norm_rmse': norm_rmse if not (np.isnan(norm_rmse) or np.isinf(norm_rmse)) else None,
+            'tolerance': norm_rmse_tol,
+            'efficiency': efficiency,
+
+            # All parameter values
+            'model_resolution': model_resolution,
+            'model_cfl': model_cfl,
+            'model_relaxation_factor': model_relaxation_factor,
+            'model_residual_threshold': model_residual_threshold,
+            'dummy_resolution': dummy_resolution,
+            'dummy_cfl': dummy_cfl,
+            'dummy_relaxation_factor': dummy_relaxation_factor,
+            'dummy_residual_threshold': dummy_residual_threshold,
+        }
+
+        rows.append(row)
+
     # Calculate final metrics with division by zero protection
     if evaluated == 0:
         logger.warning("⚠️ No valid evaluations performed")
@@ -318,6 +410,37 @@ def evaluate(
     }
 
     logger.info(f"🧾 Evaluation Summary for {model_name}:\n" + json.dumps(metrics, indent=2, ensure_ascii=False))
+
+    # Create and save DataFrame
+    df_new = pd.DataFrame(rows)
+
+    if len(df_new) > 0:
+        # Save as Parquet with append logic
+        df_dir = f"eval_results/{dataset}/dataframes"
+        os.makedirs(df_dir, exist_ok=True)
+        parquet_path = f"{df_dir}/{flag}_{model_name}.parquet"
+
+        # Check if file exists and append if it does
+        if os.path.exists(parquet_path):
+            df_existing = pd.read_parquet(parquet_path)
+
+            # Remove any existing rows with the same (task, precision_level, qid) to avoid duplicates
+            df_existing = df_existing[
+                ~((df_existing['task'] == task) &
+                  (df_existing['precision_level'] == precision_level))
+            ]
+
+            # Concatenate and save
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Appended DataFrame to: {parquet_path} (new shape: {df_combined.shape}, added {len(df_new)} rows)")
+        else:
+            # Create new file
+            df_new.to_parquet(parquet_path, index=False)
+            logger.info(f"✅ Created DataFrame at: {parquet_path} (shape: {df_new.shape})")
+    else:
+        logger.warning("⚠️ No data to save to DataFrame")
+
     return metrics
 
 if __name__ == "__main__":
