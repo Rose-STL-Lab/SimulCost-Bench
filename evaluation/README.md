@@ -129,6 +129,20 @@ The parquet files contain the following columns:
 - `model_residual_threshold`, `dummy_residual_threshold`
 - `norm_rmse`: Normalized root mean square error
 
+**Burgers 1D** (`burgers_1d`):
+- `model_cfl`, `dummy_cfl`
+- `model_beta`, `dummy_beta`
+- `model_k`, `dummy_k`
+- `model_n_space`, `dummy_n_space`
+- `rmse`: Root mean square error
+
+**Heat Transfer 2D** (`heat_2d`):
+- `model_dx`, `dummy_dx`
+- `model_relax`, `dummy_relax`
+- `model_error_threshold`, `dummy_error_threshold`
+- `model_t_init`, `dummy_t_init`
+- `rmse`: Root mean square error
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---
@@ -160,17 +174,37 @@ python evaluation/stats_utils/merge_results.py
 MERGE SUMMARY REPORT
 ============================================================
 
-Total rows: 4,578
-Total columns: 41
+Total rows: X,XXX
+Total columns: XX
 
 Rows per dataset:
-  epoch_1d: 1,638 rows
-  euler_1d: 1,576 rows
-  ns_transient_2d: 1,364 rows
+  burgers_1d: XXX rows
+  epoch_1d: XXX rows
+  euler_1d: XXX rows
+  euler_1d_icl_accuracy_focused: XXX rows
+  euler_1d_icl_cost_excluded: XXX rows
+  euler_1d_icl_full: XXX rows
+  heat_2d: XXX rows
+  ns_transient_2d: XXX rows
+  ns_transient_2d_icl_accuracy_focused: XXX rows
+  ns_transient_2d_icl_cost_excluded: XXX rows
+  ns_transient_2d_icl_full: XXX rows
 
-Unique models: 4
+Unique models: X (after mapping to standardized names)
 Inference modes: ['iterative', 'zero_shot']
-Precision levels: ['low', 'medium', 'high']
+Precision levels: ['low', 'medium', 'high', None]
+
+Model names (standardized):
+  - Claude-3.5-Haiku
+  - Claude-3.5-Sonnet
+  - Claude-3.7-Sonnet
+  - GPT-5
+  - Llama-3-70B-Instruct
+  - Mistral-Large
+  - Nova-Premier
+  - Qwen3-0.6B
+  - Qwen3-8B
+  - Qwen3-32B
 ============================================================
 ```
 
