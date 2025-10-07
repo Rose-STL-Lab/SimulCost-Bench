@@ -136,6 +136,11 @@ The parquet files contain the following columns:
 - `model_n_space`, `dummy_n_space`
 - `rmse`: Root mean square error
 
+**Heat Transfer 1D** (`heat_1d`):
+- `model_cfl`, `dummy_cfl`
+- `model_n_space`, `dummy_n_space`
+- `rmse`: Root mean square error
+
 **Heat Transfer 2D** (`heat_2d`):
 - `model_dx`, `dummy_dx`
 - `model_relax`, `dummy_relax`
@@ -160,53 +165,13 @@ python evaluation/stats_utils/merge_results.py
 **What it does:**
 1. Scans `eval_results/{dataset}/dataframes/` for all parquet files
 2. Combines files from standard and ICL variant datasets:
-   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_2d`
-   - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`
+   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_1d`, `heat_2d`
+   - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `heat_1d_icl_accuracy_focused`, `heat_1d_icl_cost_excluded`, `heat_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`
 3. Applies model name mapping to standardize model identifiers (e.g., `qwen3_8b` → `Qwen3-8B`)
 4. Validates that all model names are in the mapping dictionary (raises error if unmapped models found)
 5. Handles schema differences (fills missing columns with `NaN`)
 6. Adds/validates `dataset` column for each record
 7. Outputs unified file: `eval_results/merged_results.parquet`
-
-**Output Summary:**
-```
-============================================================
-MERGE SUMMARY REPORT
-============================================================
-
-Total rows: X,XXX
-Total columns: XX
-
-Rows per dataset:
-  burgers_1d: XXX rows
-  epoch_1d: XXX rows
-  euler_1d: XXX rows
-  euler_1d_icl_accuracy_focused: XXX rows
-  euler_1d_icl_cost_excluded: XXX rows
-  euler_1d_icl_full: XXX rows
-  heat_2d: XXX rows
-  ns_transient_2d: XXX rows
-  ns_transient_2d_icl_accuracy_focused: XXX rows
-  ns_transient_2d_icl_cost_excluded: XXX rows
-  ns_transient_2d_icl_full: XXX rows
-
-Unique models: X (after mapping to standardized names)
-Inference modes: ['iterative', 'zero_shot']
-Precision levels: ['low', 'medium', 'high', None]
-
-Model names (standardized):
-  - Claude-3.5-Haiku
-  - Claude-3.5-Sonnet
-  - Claude-3.7-Sonnet
-  - GPT-5
-  - Llama-3-70B-Instruct
-  - Mistral-Large
-  - Nova-Premier
-  - Qwen3-0.6B
-  - Qwen3-8B
-  - Qwen3-32B
-============================================================
-```
 
 ### Model Name Mapping
 
@@ -239,11 +204,13 @@ df = pd.read_parquet('eval_results/merged_results.parquet')
 epoch_df = df[df['dataset'] == 'epoch_1d']
 euler_df = df[df['dataset'] == 'euler_1d']
 burgers_df = df[df['dataset'] == 'burgers_1d']
+heat1d_df = df[df['dataset'] == 'heat_1d']
 heat2d_df = df[df['dataset'] == 'heat_2d']
 
 # Filter by ICL variant
-icl_full_df = df[df['dataset'].str.contains('icl_full')]
 icl_accuracy_df = df[df['dataset'].str.contains('icl_accuracy_focused')]
+icl_cost_excluded_df = df[df['dataset'].str.contains('icl_cost_excluded')]
+icl_full_df = df[df['dataset'].str.contains('icl_full')]
 
 # Filter by model (using standardized names)
 qwen_32b_df = df[df['model_name'] == 'Qwen3-32B']

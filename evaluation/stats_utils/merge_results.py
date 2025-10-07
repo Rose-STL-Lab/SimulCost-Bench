@@ -6,10 +6,14 @@ This script automatically detects and merges parquet files from:
 - eval_results/euler_1d/dataframes/
 - eval_results/ns_transient_2d/dataframes/
 - eval_results/burgers_1d/dataframes/
+- eval_results/heat_1d/dataframes/
 - eval_results/heat_2d/dataframes/
 - eval_results/euler_1d_icl_accuracy_focused/dataframes/
 - eval_results/euler_1d_icl_cost_excluded/dataframes/
 - eval_results/euler_1d_icl_full/dataframes/
+- eval_results/heat_1d_icl_accuracy_focused/dataframes/
+- eval_results/heat_1d_icl_cost_excluded/dataframes/
+- eval_results/heat_1d_icl_full/dataframes/
 - eval_results/ns_transient_2d_icl_accuracy_focused/dataframes/
 - eval_results/ns_transient_2d_icl_cost_excluded/dataframes/
 - eval_results/ns_transient_2d_icl_full/dataframes/
@@ -238,10 +242,14 @@ def main():
         "euler_1d",
         "ns_transient_2d",
         "burgers_1d",
+        "heat_1d",
         "heat_2d",
         "euler_1d_icl_accuracy_focused",
         "euler_1d_icl_cost_excluded",
         "euler_1d_icl_full",
+        "heat_1d_icl_accuracy_focused",
+        "heat_1d_icl_cost_excluded",
+        "heat_1d_icl_full",
         "ns_transient_2d_icl_accuracy_focused",
         "ns_transient_2d_icl_cost_excluded",
         "ns_transient_2d_icl_full"
