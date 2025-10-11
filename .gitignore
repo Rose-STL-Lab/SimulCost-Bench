@@ -13,7 +13,8 @@ data
 **/sim_res/*
 sim_res
 
-eval_results
+eval_results/*
+!eval_results/merged_results.parquet
 log_model_tool_call
 results_model_attempt
 *.txt
