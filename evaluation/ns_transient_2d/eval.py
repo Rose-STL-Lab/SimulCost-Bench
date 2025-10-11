@@ -158,6 +158,47 @@ def evaluate(
 
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
 
+    # Load tool call history from Excel file (if exists)
+    table_file = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name}.xlsx"
+    tool_call_df = None
+    attempt_history_by_qid = {}
+    if os.path.exists(table_file):
+        try:
+            tool_call_df = pd.read_excel(table_file)
+            logger.info(f"✅ Loaded tool call history from {table_file} ({len(tool_call_df)} tool calls)")
+
+            # Group by QID and construct attempt_history
+            for qid in tool_call_df['QID'].unique():
+                qid_df = tool_call_df[tool_call_df['QID'] == qid]
+                attempt_list = []
+                for idx, row in qid_df.iterrows():
+                    attempt_dict = {
+                        "attempt_number": len(attempt_list) + 1,
+                        "QID": int(row['QID']),
+                        "tool_name": str(row['tool_name']),
+                        "tool_args": str(row['tool_args']),
+                        "tool_reason": str(row['tool_reason']),
+                        "refined_parameter": str(row['refined_parameter']),
+                        "current_value": str(row['current_value']),
+                        "refined_value": str(row['refined_value']),
+                        "norm_RMSE": str(row['norm_RMSE']),
+                        "is_converged": str(row['is_converged']),
+                        "accumulated_cost": str(row['accumulated_cost']),
+                        "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
+                        "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row['The cost of the solver verifying convergence (This will not be included in your accumulated_cost)']),
+                        "current_num_steps": str(row['current_num_steps']),
+                        "refine_num_steps": str(row['refine_num_steps']),
+                    }
+                    attempt_list.append(attempt_dict)
+                attempt_history_by_qid[int(qid)] = attempt_list
+            logger.info(f"✅ Constructed attempt_history for {len(attempt_history_by_qid)} QIDs")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to load tool call history from {table_file}: {e}")
+            attempt_history_by_qid = {}
+    else:
+        logger.warning(f"⚠️ Tool call history file not found: {table_file}")
+        attempt_history_by_qid = {}
+
     total_model_cost = total_dummy_cost = 0.0
     success_cnt = converged_cnt = evaluated = 0
     total_norm_rmse = 0.0
@@ -351,6 +392,9 @@ def evaluate(
             value = get_required_param(ref_iter, param, alt_key)
             non_target_params_dict[param] = value
 
+        # Get attempt_history for this QID
+        attempt_history = attempt_history_by_qid.get(qid, [])
+
         # Build row data
         row = {
             # Identification dimensions
@@ -384,6 +428,9 @@ def evaluate(
             'dummy_cfl': dummy_cfl,
             'dummy_relaxation_factor': dummy_relaxation_factor,
             'dummy_residual_threshold': dummy_residual_threshold,
+
+            # Attempt history - complete experimental trajectory
+            'attempt_history': json.dumps(attempt_history, cls=NumpyEncoder),
         }
 
         rows.append(row)

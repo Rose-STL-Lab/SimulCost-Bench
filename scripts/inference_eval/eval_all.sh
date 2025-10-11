@@ -22,7 +22,7 @@ models=(
 
 #   "qwen3_0_6b"
 #   "qwen3_8b"
-  "qwen3_32b"
+#   "qwen3_32b"
 #   "qwen3_235b_a22b"
 )
 
