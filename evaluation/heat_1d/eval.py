@@ -143,13 +143,13 @@ def evaluate(
                         "tool_name": str(row['tool_name']),
                         "tool_args": str(row['tool_args']),
                         "tool_reason": str(row['tool_reason']),
-                        "RMSE": str(row['RMSE']),
+                        "RMSE": str(row.get('RMSE', row.get('cfl_l2_error', row.get('n_space_l2_error', 'N/A')))),
                         "is_converged": str(row['is_converged']),
                         "accumulated_cost": str(row['accumulated_cost']),
-                        "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
-                        "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row['The cost of the solver verifying convergence (This will not be included in your accumulated_cost)']),
-                        "metrics1": str(row['metrics1']),
-                        "metrics2": str(row['metrics2'])
+                        "The cost of the solver simulating the environment": str(row.get('The cost of the solver simulating the environment', 'N/A')),
+                        "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row.get('The cost of the solver verifying convergence (This will not be included in your accumulated_cost)', 'N/A')),
+                        "metrics1": str(row.get('metrics1', 'N/A')),
+                        "metrics2": str(row.get('metrics2', 'N/A'))
                     }
                     attempt_list.append(attempt_dict)
                 attempt_history_by_qid[int(qid)] = attempt_list
