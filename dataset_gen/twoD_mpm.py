@@ -45,14 +45,14 @@ def forward(self, data: dict):
             "tool_reason": tool_reason,
             "tool_name": tool_name,
             "tool_args": tool_args
-        })
+        }, cls=NumpyEncoder)
     })
 
     # Execute tool and inject results
     tool_result, acc_cost = experiment_agent.execute_tool(tool_reason=tool_reason, tool_name=tool_name, tool_args=tool_args, tool_manager=experiment_manager, profile=data["profile"])
     messages.append({
         "role": "user",
-        "content": json.dumps(tool_result)
+        "content": json.dumps(tool_result, cls=NumpyEncoder)
     })
 
     # Collect true history from tool manager
@@ -113,7 +113,7 @@ def forward(self, data: dict):
                 'tool_name':  tool_name,
                 'tool_args':  tool_args,
                 'should_stop': should_stop
-            })
+            }, cls=NumpyEncoder)
         })
 
         if attempt == 0:
@@ -139,7 +139,7 @@ def forward(self, data: dict):
         if 'error' not in tool_result:
             last_valid_tool_result = tool_result
 
-        messages.append({'role': 'user', 'content': json.dumps(tool_result)})
+        messages.append({'role': 'user', 'content': json.dumps(tool_result, cls=NumpyEncoder)})
 
     param_seq  = experiment_manager.get_param_sequence()
     cost_seq   = experiment_manager.get_cost_sequence()

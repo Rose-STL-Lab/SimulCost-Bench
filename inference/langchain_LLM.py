@@ -419,7 +419,7 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
                     'total_samples': len(dataset)
                 }
                 with open(progress_file, 'w', encoding='utf-8') as f:
-                    json.dump(progress_data, f, ensure_ascii=False, indent=2)
+                    json.dump(progress_data, f, ensure_ascii=False, indent=2, cls=NumpyEncoder)
                     
         except Exception as e:
             logger.error(f"Error processing sample {start_idx + i}: {e}")
@@ -442,7 +442,7 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
             'completion_time': pd.Timestamp.now().isoformat()
         }
         with open(progress_file, 'w', encoding='utf-8') as f:
-            json.dump(progress_data, f, ensure_ascii=False, indent=2)
+            json.dump(progress_data, f, ensure_ascii=False, indent=2, cls=NumpyEncoder)
         logger.info(f"All {len(dataset)} samples completed successfully. Progress file updated with completion status.")
 
     return all_results, final_tool_df
