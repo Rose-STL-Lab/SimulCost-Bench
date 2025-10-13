@@ -28,7 +28,10 @@ python test_df.py eval_results/heat_1d/dataframes/iterative_gpt-4o.parquet --qid
 # 4. Merge results from multiple datasets
 python evaluation/stats_utils/merge_results.py
 
-# 5. Analyze the merged data
+# 5. Compare inference modes across tasks
+python test_df.py eval_results/merged_results.parquet --mode-comparison
+
+# 6. Analyze the merged data
 python -c "import pandas as pd; df = pd.read_parquet('eval_results/merged_results.parquet'); print(df.head())"
 ```
 
@@ -43,24 +46,6 @@ Each dataset has its own evaluation script in the corresponding directory:
 ```bash
 # Heat Transfer (1D)
 python evaluation/heat_1d/eval.py -m <model> -d heat_1d -t <task> -l <precision> -z
-
-# Heat Transfer (2D)
-python evaluation/heat_2d/eval.py -m <model> -d heat_2d -t <task> -z
-
-# Burgers Equation (1D)
-python evaluation/burgers_1d/eval.py -m <model> -d burgers_1d -t <task> -l <precision> -z
-
-# Euler Equations (1D)
-python evaluation/euler_1d/eval.py -m <model> -d euler_1d -t <task> -l <precision> -z
-
-# Navier-Stokes (2D Channel)
-python evaluation/ns_2d/eval.py -m <model> -d ns_2d -t <task> -z
-
-# Navier-Stokes (2D Transient)
-python evaluation/ns_transient_2d/eval.py -m <model> -d ns_transient_2d -t <task> -z
-
-# EPOCH PIC (1D)
-python evaluation/epoch_1d/eval.py -m <model> -d epoch_1d -t <task> -l <precision> -z
 ```
 
 **Common Parameters:**

@@ -82,6 +82,9 @@ The table below summarizes the available tasks for each simulation type and indi
 | 1D EPOCH PIC             | `dt_multiplier` | ✅ Supported (Compositional) |
 | 1D EPOCH PIC             | `field_order`  | ✅ Supported (Compositional) |
 | 1D EPOCH PIC             | `particle_order` | ✅ Supported (Compositional) |
+| 2D MPM                   | `nx`             | ✅ Supported        |
+| 2D MPM                   | `n_part`         | ✅ Supported        |
+| 2D MPM                   | `cfl`            | ✅ Supported        |
 
 
 <!-- ## 🧐 Human Written Version -->
@@ -109,6 +112,9 @@ python qs_gen/2D_ns_transient.py
 
 # 1D EPOCH Particle-in-Cell Simulation
 python qs_gen/1D_epoch.py
+
+# 2D Material Point Method (MPM) Simulation
+python qs_gen/2D_mpm.py
 ```
 
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
@@ -137,6 +143,9 @@ python dataset_gen/twoD_ns_transient.py
 
 # 1D EPOCH Particle-in-Cell Simulation
 python dataset_gen/oneD_epoch.py
+
+# 2D Material Point Method (MPM) Simulation
+python dataset_gen/twoD_mpm.py
 ```
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 

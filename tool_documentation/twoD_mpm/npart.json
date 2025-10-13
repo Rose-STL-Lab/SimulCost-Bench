@@ -1,0 +1,33 @@
+{
+    "run_twoD_mpm": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "mpm_2d_check_converge_npart",
+                "description": "Conduct a 2D Material Point Method (MPM) simulation and evaluate npart convergence by doubling npart. This experiment will conduct both MPM solving and convergence testing in one function. It will return {\"refined_parameter\": str, \"current_value\": int, \"refined_value\": int, \"avg_energy_diff\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_energy_metrics\": dict, \"refine_energy_metrics\": dict}.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "nx": {
+                            "type": "integer",
+                            "description": "Grid resolution (number of cells in x-direction)"
+                        },
+                        "npart": {
+                            "type": "integer",
+                            "description": "Number of particles per cell"
+                        },
+                        "cfl": {
+                            "type": "number",
+                            "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping"
+                        }
+                    },
+                    "required": [
+                        "nx",
+                        "npart",
+                        "cfl"
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -1451,6 +1451,25 @@ files = [
 ]
 
 [[package]]
+name = "meshio"
+version = "5.3.5"
+description = "I/O for many mesh formats"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "meshio-5.3.5-py3-none-any.whl", hash = "sha256:0736c6e34ecc768f62f2cde5d8233a3529512a9399b25c68ea2ca0d5900cdc10"},
+    {file = "meshio-5.3.5.tar.gz", hash = "sha256:f21f01abd9f29ba06ea119304b3d39e610421cfe93b9dd23362834919f87586d"},
+]
+
+[package.dependencies]
+numpy = ">=1.20.0"
+rich = "*"
+
+[package.extras]
+all = ["h5py", "netCDF4"]
+
+[[package]]
 name = "mypy-extensions"
 version = "1.1.0"
 description = "Type system extensions for programs checked with the mypy type checker."
@@ -3401,4 +3420,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "2d161e2b10ea6ccf4a9429451a7ed22fb2fe94fabab1e4c2b480b316aca2a659"
+content-hash = "1402886653da6ff86db158916b2c61ea1909dcc2900e6bd805cb4ec9c15800d9"

@@ -59,6 +59,14 @@ from .ns_transient_2d.run_twoD_ns_transient import (
     ns_transient_2d_check_converge_parameter
 )
 
+# MPM 2D functions
+from .mpm_2d.run_twoD_mpm import (
+    mpm_2d_check_converge_nx,
+    mpm_2d_check_converge_npart,
+    mpm_2d_check_converge_cfl,
+    mpm_2d_check_converge_parameter
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -106,4 +114,10 @@ __all__ = [
     "epoch_1d_check_converge_dt_multiplier",
     "epoch_1d_check_converge_field_order",
     "epoch_1d_check_converge_particle_order",
+
+    # MPM 2D
+    "mpm_2d_check_converge_nx",
+    "mpm_2d_check_converge_npart",
+    "mpm_2d_check_converge_cfl",
+    "mpm_2d_check_converge_parameter",
 ]

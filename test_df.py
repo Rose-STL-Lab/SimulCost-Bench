@@ -191,6 +191,60 @@ def _display_single_attempt_history(df: pd.DataFrame, row: pd.Series, row_idx: i
         print()
 
 
+def show_mode_comparison(df: pd.DataFrame):
+    """Display tasks that support multiple inference modes."""
+    print_separator()
+    print("🔄 INFERENCE MODE COMPARISON")
+    print_separator()
+
+    # Check if required columns exist
+    if 'inference_mode' not in df.columns:
+        print("❌ 'inference_mode' column not found in this DataFrame")
+        return
+
+    # Show overall statistics
+    print(f"Overall dataset shape: {df.shape[0]} rows × {df.shape[1]} columns")
+    print(f"\nUnique inference modes: {sorted(df['inference_mode'].unique())}")
+    print_separator()
+
+    # Find tasks that support multiple modes
+    groupby_cols = []
+    if 'dataset' in df.columns:
+        groupby_cols.append('dataset')
+    if 'task' in df.columns:
+        groupby_cols.append('task')
+
+    if not groupby_cols:
+        print("❌ Neither 'dataset' nor 'task' columns found - cannot group tasks")
+        return
+
+    combo_df = df.groupby(groupby_cols)['inference_mode'].apply(
+        lambda x: sorted(x.unique())
+    ).reset_index()
+
+    # Filter for tasks with both iterative and zero_shot modes
+    both_modes = combo_df[
+        combo_df['inference_mode'].apply(
+            lambda x: 'iterative' in x and 'zero_shot' in x
+        )
+    ]
+
+    if len(both_modes) > 0:
+        print("\n✅ Tasks that support BOTH iterative and zero_shot modes:")
+        print(both_modes.to_string(index=False))
+        print(f"\nTotal: {len(both_modes)} task combination(s)")
+    else:
+        print("\n⚠️  No tasks found that support both iterative and zero_shot modes")
+
+    # Show tasks with only one mode
+    single_mode = combo_df[
+        combo_df['inference_mode'].apply(lambda x: len(x) == 1)
+    ]
+    if len(single_mode) > 0:
+        print(f"\n📊 Tasks with only one inference mode: {len(single_mode)}")
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Inspect SimulCost-Bench evaluation parquet files",
@@ -214,6 +268,9 @@ Examples:
 
   # Show attempt history for specific task (e.g., 'cfl') with QID 6
   python test_df.py path/to/file.parquet --attempt-history --qid 6 --task cfl
+
+  # Compare inference modes across tasks
+  python test_df.py eval_results/merged_results.parquet --mode-comparison
         """
     )
 
@@ -231,6 +288,7 @@ Examples:
     parser.add_argument('--qid', type=int, help='Show row(s) with specific QID')
     parser.add_argument('--task', type=str, help='Filter by specific task type (use with --qid)')
     parser.add_argument('--attempt-history', action='store_true', help='Show detailed attempt history')
+    parser.add_argument('--mode-comparison', action='store_true', help='Compare inference modes across tasks')
 
     args = parser.parse_args()
 
@@ -250,7 +308,7 @@ Examples:
 
     # If no specific action requested, show basic info
     if not any([args.info, args.columns, args.index is not None,
-                args.qid is not None, args.attempt_history]):
+                args.qid is not None, args.attempt_history, args.mode_comparison]):
         args.info = True
 
     # Execute requested actions
@@ -271,6 +329,9 @@ Examples:
             show_attempt_history(df, qid=args.qid, task=args.task)
         else:
             show_row_by_qid(df, args.qid)
+
+    if args.mode_comparison:
+        show_mode_comparison(df)
 
 
 if __name__ == "__main__":
