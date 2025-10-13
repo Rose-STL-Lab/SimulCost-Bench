@@ -598,7 +598,8 @@ DATASET_TASK_MAP = {
     "ns_transient_2d_icl_accuracy_focused": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL accuracy_focused version
     "ns_transient_2d_icl_cost_excluded": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL cost_excluded version
     "ns_transient_2d_icl_full": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL full version
-    "epoch_1d": ["dt_multiplier", "nx", "npart", "field_order", "particle_order"]
+    "epoch_1d": ["dt_multiplier", "nx", "npart", "field_order", "particle_order"],
+    "mpm_2d": ["nx", "npart", "cfl"]
 }
 
 # Generate all valid tasks for choices

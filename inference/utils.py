@@ -42,7 +42,10 @@ TOOL_NAME_KEYS = {
     "epoch_1d_check_converge_nx": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
     "epoch_1d_check_converge_npart": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
     "epoch_1d_check_converge_field_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
-    "epoch_1d_check_converge_particle_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"]
+    "epoch_1d_check_converge_particle_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
+    "mpm_2d_check_converge_nx": ["nx", "npart", "cfl"],
+    "mpm_2d_check_converge_npart": ["nx", "npart", "cfl"],
+    "mpm_2d_check_converge_cfl": ["nx", "npart", "cfl"]
 }
 
 
@@ -184,16 +187,17 @@ def find_json_robust(response: str):
 class ToolCallManager:
     def __init__(self, base_logger: logging.Logger, qid: int,
                  focused_parameters: List[str] = None, tolerance_rmse: float = None,
-                 mass_tolerance: float = None, u_rmse_tolerance: float = None, 
+                 mass_tolerance: float = None, u_rmse_tolerance: float = None,
                  v_rmse_tolerance: float = None, p_rmse_tolerance: float = None,
-                 norm_rmse_tolerance: float = None):
+                 norm_rmse_tolerance: float = None, energy_tolerance: float = None,
+                 var_threshold: float = None):
         self.logger = LoggerAdapter(base_logger, {'qid': qid})
         self.tool_call_df = pd.DataFrame()
         # Record only the focused parameters, and the other parameters will be ignored
         self.focused_parameters = focused_parameters
         self.qid = qid
         self.param_sequence = []
-        self.cost_sequence  = [] 
+        self.cost_sequence  = []
         self.accumulated_cost = 0
         self.tolerance_rmse = tolerance_rmse
         # NS_2D specific tolerances
@@ -203,6 +207,9 @@ class ToolCallManager:
         self.p_rmse_tolerance = p_rmse_tolerance
         # NS_Transient_2D specific tolerance
         self.norm_rmse_tolerance = norm_rmse_tolerance
+        # MPM_2D specific tolerances
+        self.energy_tolerance = energy_tolerance
+        self.var_threshold = var_threshold
 
     def execute_tool_call(self, tool_reason: str, tool_name: str, tool_args: Dict[str, Any], profile: int) -> Tuple[Dict[str, Any], int]:
         """Execute a tool call from the model's output."""
@@ -359,6 +366,22 @@ class ToolCallManager:
                     field_order=fetch_param(tool_args, "field_order"),
                     particle_order=fetch_param(tool_args, "particle_order"),
                     tolerance=tolerance
+                )
+            elif tool_name in [
+                "mpm_2d_check_converge_nx", "mpm_2d_check_converge_npart", "mpm_2d_check_converge_cfl"
+            ]:
+                # Use energy_tolerance and var_threshold from dataset - required fields
+                if None in [self.energy_tolerance, self.var_threshold]:
+                    raise ValueError(f"Both energy_tolerance and var_threshold are required for mpm_2d tools but some were not provided in dataset (QID={self.qid})")
+
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    nx=fetch_param(tool_args, "nx"),
+                    npart=fetch_param(tool_args, "npart", "n_part"),
+                    cfl=fetch_param(tool_args, "cfl"),
+                    energy_tolerance=self.energy_tolerance,
+                    var_threshold=self.var_threshold,
                 )
             else:
                 # Critical else branch to handle unrecognized tool names
