@@ -137,6 +137,7 @@ def evaluate(
     result_path_original = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
     result_path_safe = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name_safe}.json"
 
+    result_path = None
     if os.path.exists(result_path_original):
         result_path = result_path_original
         logger.info(f"Using original model name in file path (with colon): {result_path}")
@@ -144,15 +145,53 @@ def evaluate(
         result_path = result_path_safe
         logger.info(f"Using sanitized model name in file path (colon replaced): {result_path}")
     else:
-        error_msg = f"Model results file not found. Tried:\n  - {result_path_original}\n  - {result_path_safe}"
+        # Only handle npart ↔ n_part mapping (precise match only)
+        if task == 'npart':
+            alt_task = 'n_part'
+        elif task == 'n_part':
+            alt_task = 'npart'
+        else:
+            alt_task = None
+
+        if alt_task:
+            result_path_alt_original = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name}.json"
+            result_path_alt_safe = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name_safe}.json"
+
+            if os.path.exists(result_path_alt_original):
+                result_path = result_path_alt_original
+                logger.info(f"Using alternative task naming '{alt_task}' (original: '{task}') with original model name: {result_path}")
+            elif os.path.exists(result_path_alt_safe):
+                result_path = result_path_alt_safe
+                logger.info(f"Using alternative task naming '{alt_task}' (original: '{task}') with sanitized model name: {result_path}")
+
+    if not result_path:
+        # Build comprehensive error message
+        tried_paths = [result_path_original, result_path_safe]
+        if alt_task:
+            tried_paths.extend([
+                f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name}.json",
+                f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name_safe}.json"
+            ])
+        error_msg = f"Model results file not found. Tried:\n" + "\n".join(f"  - {p}" for p in tried_paths)
         logger.error(f"❌ {error_msg}")
         print(f"\n❌ Evaluation failed: {error_msg}\n")
         raise RuntimeError(error_msg)
 
+    # Try to find dummy/reference data file with task name fallback
     dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
 
+    if not os.path.exists(dummy_path) and alt_task:
+        # Try alternative task naming for dummy_path
+        dummy_path_alt = f"data/{dataset}/{alt_task}/{precision_level}/{flag}_questions.json"
+        if os.path.exists(dummy_path_alt):
+            dummy_path = dummy_path_alt
+            logger.info(f"Using alternative task naming '{alt_task}' for reference data (original: '{task}')")
+
     if not os.path.exists(dummy_path):
-        error_msg = f"Reference data file not found: {dummy_path}"
+        tried_paths = [f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"]
+        if alt_task:
+            tried_paths.append(f"data/{dataset}/{alt_task}/{precision_level}/{flag}_questions.json")
+        error_msg = f"Reference data file not found. Tried:\n" + "\n".join(f"  - {p}" for p in tried_paths)
         logger.error(f"❌ {error_msg}")
         print(f"\n❌ Evaluation failed: {error_msg}\n")
         raise RuntimeError(error_msg)
@@ -181,8 +220,16 @@ def evaluate(
 
     # Load tool call history from Excel file (if exists)
     # Try original model name first (with colon), then fallback to sanitized version
-    table_file_original = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name}.xlsx"
-    table_file_safe = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name_safe}.xlsx"
+    # Also handle alternative task naming (use the same alt_task from result_path logic)
+    actual_task = task
+    if result_path and alt_task:
+        # If we used alt_task for result_path, use it for table_file too
+        if alt_task in result_path:
+            actual_task = alt_task
+            logger.info(f"Using alternative task name '{alt_task}' for table file lookup (original: '{task}')")
+
+    table_file_original = f"results_model_attempt/{dataset}/{precision_level}/{actual_task}/{flag}_tool_call_{model_name}.xlsx"
+    table_file_safe = f"results_model_attempt/{dataset}/{precision_level}/{actual_task}/{flag}_tool_call_{model_name_safe}.xlsx"
 
     if os.path.exists(table_file_original):
         table_file = table_file_original

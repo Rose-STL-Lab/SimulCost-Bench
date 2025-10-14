@@ -695,6 +695,47 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     result_file = f"{result_dir}/{flag}_{model_name}.json"
     table_file  = f"{result_dir}/{flag}_tool_call_{model_name}.xlsx"
 
+    # Auto-fallback for task name variations (e.g., "npart" vs "n_part")
+    # If the primary file doesn't exist, try the alternative naming convention
+    if not os.path.exists(dataset_file):
+        # Only handle npart ↔ n_part mapping (precise match only)
+        if task == 'npart':
+            alt_task = 'n_part'
+        elif task == 'n_part':
+            alt_task = 'npart'
+        else:
+            alt_task = None
+
+        if alt_task:
+            # Construct alternative file paths
+            if is_icl_dataset:
+                for variant in icl_variants:
+                    if f"_icl_{variant}" in dataset:
+                        base_dataset = dataset.replace(f"_icl_{variant}", "")
+                        alt_dataset_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{alt_task}_{flag}_dataset.json"
+                        alt_archive_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{alt_task}_{flag}_agent.json"
+                        break
+            elif dataset == "heat_1d_bo":
+                alt_dataset_file = f"data/heat_1d_bo/human_write/{precision_level}/{alt_task}_{flag}_dataset.json"
+                alt_archive_file = f"data/heat_1d_bo/human_write/{precision_level}/{alt_task}_{flag}_agent.json"
+            else:
+                alt_dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{alt_task}_{flag}_dataset.json"
+                alt_archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{alt_task}_{flag}_agent.json"
+
+            # Use alternative paths if they exist
+            if os.path.exists(alt_dataset_file):
+                print(f"[INFO] Using alternative file naming: {alt_task} (original: {task})")
+                dataset_file = alt_dataset_file
+                archive_file = alt_archive_file
+                # Update result/log paths to use the alternative task name for consistency
+                result_dir = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}"
+                log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{alt_task}"
+                os.makedirs(result_dir, exist_ok=True)
+                os.makedirs(log_dir,    exist_ok=True)
+                log_file    = f"{log_dir}/{flag}_{model_name}.log"
+                result_file = f"{result_dir}/{flag}_{model_name}.json"
+                table_file  = f"{result_dir}/{flag}_tool_call_{model_name}.xlsx"
+
     return dict(dataset_file=dataset_file, archive_file=archive_file,
                 log_file=log_file, result_file=result_file,
                 table_file=table_file, result_dir=result_dir,
