@@ -96,15 +96,23 @@ def evaluate(
     logger = setup_logging(log_file)
 
     # Build paths for epoch_1d precision_level structure
-    result_path = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name_safe}.json"
-    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    # Try original model name first (with colon), then fallback to sanitized version
+    result_path_original = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name}.json"
+    result_path_safe = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name_safe}.json"
 
-    # Validate paths exist
-    if not os.path.exists(result_path):
-        error_msg = f"Model results file not found: {result_path}"
+    if os.path.exists(result_path_original):
+        result_path = result_path_original
+        logger.info(f"Using original model name in file path (with colon): {result_path}")
+    elif os.path.exists(result_path_safe):
+        result_path = result_path_safe
+        logger.info(f"Using sanitized model name in file path (colon replaced): {result_path}")
+    else:
+        error_msg = f"Model results file not found. Tried:\n  - {result_path_original}\n  - {result_path_safe}"
         logger.error(f"❌ {error_msg}")
         print(f"\n❌ Evaluation failed: {error_msg}\n")
         raise RuntimeError(error_msg)
+
+    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
 
     if not os.path.exists(dummy_path):
         error_msg = f"Reference data file not found: {dummy_path}"
@@ -135,10 +143,20 @@ def evaluate(
     dummy_by_qid = {d["QID"]: d for d in dummy_dataset}
 
     # Load tool call history from Excel file (if exists)
-    table_file = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name_safe}.xlsx"
+    # Try original model name first (with colon), then fallback to sanitized version
+    table_file_original = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name}.xlsx"
+    table_file_safe = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_tool_call_{model_name_safe}.xlsx"
+
+    if os.path.exists(table_file_original):
+        table_file = table_file_original
+    elif os.path.exists(table_file_safe):
+        table_file = table_file_safe
+    else:
+        table_file = None
+
     tool_call_df = None
     attempt_history_by_qid = {}
-    if os.path.exists(table_file):
+    if table_file and os.path.exists(table_file):
         try:
             tool_call_df = pd.read_excel(table_file)
             logger.info(f"✅ Loaded tool call history from {table_file} ({len(tool_call_df)} tool calls)")
