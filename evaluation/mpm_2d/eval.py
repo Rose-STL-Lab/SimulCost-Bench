@@ -138,6 +138,7 @@ def evaluate(
     result_path_safe = f"results_model_attempt/{dataset}/{precision_level}/{task}/{flag}_{model_name_safe}.json"
 
     result_path = None
+    alt_task = None  # Initialize to avoid UnboundLocalError
     if os.path.exists(result_path_original):
         result_path = result_path_original
         logger.info(f"Using original model name in file path (with colon): {result_path}")

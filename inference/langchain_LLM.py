@@ -686,11 +686,8 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
         # Standard dataset structure
         dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
         archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_agent.json"
-    
-    # --------------------------------
-    os.makedirs(result_dir, exist_ok=True)
-    os.makedirs(log_dir,    exist_ok=True)
 
+    # Initialize file paths (directories will be created after alt_task logic)
     log_file    = f"{log_dir}/{flag}_{model_name}.log"
     result_file = f"{result_dir}/{flag}_{model_name}.json"
     table_file  = f"{result_dir}/{flag}_tool_call_{model_name}.xlsx"
@@ -730,11 +727,13 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 # Update result/log paths to use the alternative task name for consistency
                 result_dir = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}"
                 log_dir    = f"log_model_tool_call/{dataset}/{precision_level}/{alt_task}"
-                os.makedirs(result_dir, exist_ok=True)
-                os.makedirs(log_dir,    exist_ok=True)
                 log_file    = f"{log_dir}/{flag}_{model_name}.log"
                 result_file = f"{result_dir}/{flag}_{model_name}.json"
                 table_file  = f"{result_dir}/{flag}_tool_call_{model_name}.xlsx"
+
+    # Create directories after determining final task name (to avoid creating empty folders)
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(log_dir,    exist_ok=True)
 
     return dict(dataset_file=dataset_file, archive_file=archive_file,
                 log_file=log_file, result_file=result_file,
