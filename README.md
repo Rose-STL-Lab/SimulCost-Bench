@@ -9,6 +9,7 @@ A comprehensive benchmark for evaluating Large Language Models (LLMs) on computa
 - [Generate Questions](#️-generate-questions)
 - [Generate Benchmark Datasets](#-generate-benchmark-datasets)
 - [Configure Model Providers](#-configure-model-providers)
+- [Customize Simulation Results Directory](#-customize-simulation-results-directory)
 - [Run Inference](#-run-inference)
 - [Resume Functionality](#-resume-functionality)
 - [Evaluate Performance](#-evaluate-models-performance)
@@ -46,6 +47,9 @@ poetry install --no-root
 **Note**: To run 1D EPOCH PIC simulations, see the [EPOCH Setup Guide](EPOCH_SETUP.md) for additional configuration requirements.
 
 ## 📋 Tasks and Zero-Shot Support
+
+<details>
+<summary><b>Click to expand the full task support table</b></summary>
 
 The table below summarizes the available tasks for each simulation type and indicates whether each task supports zero-shot inference.
 
@@ -86,11 +90,17 @@ The table below summarizes the available tasks for each simulation type and indi
 | 2D MPM                   | `n_part`         | ✅ Supported        |
 | 2D MPM                   | `cfl`            | ✅ Supported        |
 
+</details>
+
 
 <!-- ## 🧐 Human Written Version -->
 ## 🕵️ Generate Questions
 
 Generate question templates for different physics domains and task types.
+
+<details>
+<summary><b>Click to view commands for all simulation types</b></summary>
+
 ```bash
 # 1D Heat Transfer
 python qs_gen/1D_heat_transfer.py
@@ -117,11 +127,17 @@ python qs_gen/1D_epoch.py
 python qs_gen/2D_mpm.py
 ```
 
+</details>
+
 **Output:** Generated questions are saved to `data/{simulation}/{task}/{precision_level}/question.json`
 
 ## 🚀 Generate Benchmark Datasets
 
 Create complete benchmark datasets with problem instances and ground truth solutions.
+
+<details>
+<summary><b>Click to view commands for all simulation types</b></summary>
+
 ```bash
 # 1D Heat Transfer
 python dataset_gen/oneD_heat_transfer.py
@@ -147,6 +163,8 @@ python dataset_gen/oneD_epoch.py
 # 2D Material Point Method (MPM) Simulation
 python dataset_gen/twoD_mpm.py
 ```
+
+</details>
 
 **Output:** Datasets are saved to: `data/{simulation}/{task}/{precision_level}/human_write/` directory 
 
@@ -208,13 +226,48 @@ python scripts/list_custom_models.py
 
 For detailed implementation guide, see [Custom Model Integration Guide](custom_model/README.md).
 
+## 📂 Customize Simulation Results Directory
+
+By default, simulation results are saved to `sim_res/` in the current working directory. You can configure a custom absolute path for storing simulation results.
+
+### Configuration
+
+Add the following to your `.env` file:
+
+```ini
+# Optional: Specify custom directory for simulation results
+# If not set, results will be saved to ./sim_res/ (relative path)
+SIM_RES_BASE_DIR=/path/to/your/custom/directory
+```
+
+### Examples
+
+**Use absolute path:**
+```ini
+SIM_RES_BASE_DIR=/data/leo_work_new
+```
+Results will be saved to: `/data/leo_work_new/sim_res/...`
+
+**Use default relative path:**
+```ini
+# Comment out or remove the SIM_RES_BASE_DIR line
+# SIM_RES_BASE_DIR=/data/leo_work_new
+```
+Results will be saved to: `./sim_res/...` (relative to working directory)
+
+<!-- ### Supported Simulations
+
+Currently supported for:
+- 2D Material Point Method (MPM) simulations (`unstruct_mpm`)
+
+**Note:** This feature is backward compatible. If `SIM_RES_BASE_DIR` is not set, the system will use the default relative path behavior. -->
+
 ## 🧠 Run Inference
 
 Execute LLM inference on benchmark datasets to generate predictions.
 
 ```bash
 # Commercial API Models
-python inference/langchain_LLM.py -p bedrock -m anthropic.claude-3-5-haiku-20241022-v1:0 -d heat_1d -t cfl -l medium -z
 python inference/langchain_LLM.py -p openai -m gpt-4o -d heat_1d -t cfl -l medium -z
 
 # Single Custom Model
@@ -224,14 +277,14 @@ python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl 
 bash scripts/inference_eval/inference_eval_heat_1d.sh
 ```
 
-**📋 Available Datasets & Tasks:**
+<!-- **📋 Available Datasets & Tasks:**
 - **Heat 1D**: `cfl`, `n_space`
 - **Heat 2D**: `dx`, `error_threshold`, `relax`, `t_init`
 - **Burgers 1D**: `cfl`, `k`, `beta`, `n_space`
 - **Euler 1D**: `cfl`, `beta`, `k`, `n_space`
 - **2D Navier-Stokes Channel**: `mesh_x`, `mesh_y`, `omega_u`, `omega_v`, `omega_p`, `diff_u_threshold`, `diff_v_threshold`, `res_iter_v_threshold`
 - **2D Navier-Stokes Transient**: `resolution`, `cfl`, `relaxation_factor`, `residual_threshold`
-- **1D EPOCH PIC**: `dt_multiplier`, `nx`, `npart`, `field_order`, `particle_order`
+- **1D EPOCH PIC**: `dt_multiplier`, `nx`, `npart`, `field_order`, `particle_order` -->
 
 **Parameters:**
 - `-p`: LLM provider (`openai`, `gemini`, `bedrock`, `custom_model`)
