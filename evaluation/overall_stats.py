@@ -94,50 +94,36 @@ class OverallStatsGenerator:
         If target_dataset is specified, only include that dataset.
 
         Returns:
-            List of dataset names that have summary files
+            List of dataset names
         """
-        # Fixed dataset paths to read from
-        fixed_datasets = ['burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d']
+        # Fixed dataset paths to read from (now read from merged_results.parquet)
+        fixed_datasets = ['burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d', 'mpm_2d']
 
-        datasets = []
-        if not self.base_dir.exists():
-            return datasets
-
-        # If target dataset is specified, only look for that one
+        # If target dataset is specified, only return that one
         if self.target_dataset:
             if self.target_dataset in fixed_datasets:
-                target_dir = self.base_dir / self.target_dataset
-                if target_dir.exists() and target_dir.is_dir():
-                    summary_file = target_dir / f"{self.target_dataset}_sum.csv"
-                    if summary_file.exists():
-                        return [self.target_dataset]
+                return [self.target_dataset]
             return []
 
-        # Check only fixed datasets
-        for dataset in fixed_datasets:
-            dataset_dir = self.base_dir / dataset
-            if dataset_dir.exists() and dataset_dir.is_dir():
-                summary_file = dataset_dir / f"{dataset}_sum.csv"
-                if summary_file.exists():
-                    datasets.append(dataset)
-
-        return sorted(datasets)
+        # Return all fixed datasets
+        return sorted(fixed_datasets)
 
     def load_all_datasets(self) -> pd.DataFrame:
         """
         Load and combine evaluation results from all available datasets.
+        Reads from merged_results.parquet and aggregates data.
         Only includes data from specific target models.
 
         Returns:
-            Combined DataFrame containing results from all datasets
+            Combined DataFrame containing aggregated results from all datasets
         """
         datasets = self.find_available_datasets()
         if not datasets:
-            raise ValueError("No datasets found with summary CSV files")
+            raise ValueError("No datasets found")
 
         print(f"Found {len(datasets)} datasets: {', '.join(datasets)}")
 
-        # Define target models to include (using cleaned names as they appear in CSV)
+        # Define target models to include (matching names in parquet file)
         target_models = [
             'Claude-3.7-Sonnet',
             'Llama-3-70B-Instruct',
@@ -145,35 +131,77 @@ class OverallStatsGenerator:
             'Qwen3-32B'
         ]
 
-        all_data = []
-        total_records = 0
+        # Read merged results from parquet
+        parquet_path = self.base_dir / "merged_results.parquet"
+        if not parquet_path.exists():
+            raise ValueError(f"Merged results file not found: {parquet_path}")
 
+        print(f"Loading data from {parquet_path}...")
+        df = pd.read_parquet(parquet_path)
+
+        # Filter to target datasets only (exclude ICL variants and epoch_1d)
+        df = df[df['dataset'].isin(datasets)]
+        print(f"  - Filtered to {len(datasets)} target datasets")
+
+        # Filter to target models only
+        df = df[df['model_name'].isin(target_models)]
+        print(f"  - Filtered to {len(target_models)} target models")
+
+        if len(df) == 0:
+            raise ValueError("No data found after filtering")
+
+        # Convert inference_mode format: zero_shot -> Zero-shot, iterative -> Iterative
+        inference_mode_mapping = {
+            'zero_shot': 'Zero-shot',
+            'iterative': 'Iterative'
+        }
+        df['inference_mode'] = df['inference_mode'].map(inference_mode_mapping)
+
+        print(f"  - Total filtered records: {len(df)}")
+
+        # First-level aggregation: calculate metrics per (dataset, model, precision, mode, task)
+        print("  - Performing first-level aggregation by task...")
+        task_level = df.groupby(['dataset', 'model_name', 'precision_level', 'inference_mode', 'task']).agg({
+            'is_successful': 'mean',  # success rate per task
+            'efficiency': 'mean',      # mean efficiency per task
+            'qid': 'count'             # number of samples per task
+        }).reset_index()
+
+        task_level.rename(columns={
+            'is_successful': 'success_rate_task',
+            'efficiency': 'mean_efficiency_task',
+            'qid': 'num_samples_task'
+        }, inplace=True)
+
+        # Second-level aggregation: average across tasks
+        print("  - Performing second-level aggregation across tasks...")
+        aggregated_results = []
+
+        for (dataset, model, precision, mode), group in task_level.groupby(
+            ['dataset', 'model_name', 'precision_level', 'inference_mode']
+        ):
+            # Calculate simple averages across tasks
+            avg_success_rate = group['success_rate_task'].mean()
+            avg_efficiency = group['mean_efficiency_task'].mean()
+            total_samples = group['num_samples_task'].sum()
+
+            aggregated_results.append({
+                'Model': model,
+                'Simulation': dataset,
+                'Precision Level': precision,
+                'Inference Mode': mode,
+                'Number of Samples': int(total_samples),
+                'success_rate': round(avg_success_rate, 2),
+                'mean_efficiency': round(avg_efficiency, 2)
+            })
+
+        combined_df = pd.DataFrame(aggregated_results)
+        print(f"Total aggregated records: {len(combined_df)}")
+
+        # Print summary by dataset
         for dataset in datasets:
-            # Handle regular model data
-            csv_path = self.base_dir / dataset / f"{dataset}_sum.csv"
-            try:
-                df = pd.read_csv(csv_path)
-
-                # Filter to only include target models (after reading, since CSV already has cleaned names)
-                if 'Model' in df.columns:
-                    df = df[df['Model'].isin(target_models)]
-                    if len(df) == 0:
-                        print(f"  - No target models found in {dataset}")
-                        continue
-
-                records_count = len(df)
-                total_records += records_count
-                all_data.append(df)
-                print(f"  - Loaded {records_count} records from {dataset}")
-            except Exception as e:
-                print(f"  - Warning: Failed to load {dataset}: {e}")
-                continue
-
-        if not all_data:
-            raise ValueError("No valid dataset files could be loaded")
-
-        combined_df = pd.concat(all_data, ignore_index=True)
-        print(f"Total combined records: {len(combined_df)}")
+            dataset_records = len(combined_df[combined_df['Simulation'] == dataset])
+            print(f"  - {dataset}: {dataset_records} aggregated records")
 
         return combined_df
 

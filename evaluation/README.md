@@ -85,7 +85,7 @@ The parquet files contain the following columns:
 | `precision_level` | str | Precision level (`low`, `medium`, `high`) |
 | `inference_mode` | str | Inference mode (`zero_shot`, `iterative`) |
 | `model_name` | str | Model identifier |
-| `qid` | str | Question ID |
+| `qid` | int | Question ID |
 | `profile` | str | Problem profile/configuration |
 | `target_parameters` | str | Parameters being optimized |
 | `non_target_parameters` | str | Fixed parameters |
@@ -140,6 +140,15 @@ The parquet files contain the following columns:
 - `model_t_init`, `dummy_t_init`
 - `rmse`: Root mean square error
 
+**MPM 2D** (`mpm_2d`):
+- `model_nx`, `dummy_nx`
+- `model_npart`, `dummy_npart`
+- `model_cfl`, `dummy_cfl`
+- `case`: Simulation case identifier (e.g., cantilever, vibration_bar, disk_collision)
+- `avg_energy_diff`: Average energy difference
+- `energy_tolerance`: Energy tolerance threshold
+- `var_threshold`: Variance threshold
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---
@@ -151,7 +160,7 @@ The parquet files contain the following columns:
 The `merge_results.py` script automatically combines evaluation results from multiple datasets:
 
 ```bash
-python evaluation/stats_utils/merge_results.py
+python evaluation/merge_results.py
 ```
 
 **What it does:**
@@ -182,7 +191,7 @@ The merge script automatically standardizes model names for consistency. The fol
 | `meta.llama3-70b-instruct-v1:0` | `Llama-3-70B-Instruct` |
 | `gpt-5-2025-08-07` | `GPT-5` |
 
-**Important**: All model names must be in the mapping dictionary. If an unmapped model name is encountered, the script will raise a `ValueError` with the unmapped model names listed. To add new models, edit `MODEL_NAME_MAPPING` in `evaluation/stats_utils/merge_results.py`.
+**Important**: All model names must be in the mapping dictionary. If an unmapped model name is encountered, the script will raise a `ValueError` with the unmapped model names listed. To add new models, edit `MODEL_NAME_MAPPING` in `evaluation/merge_results.py`.
 
 ### Manual Usage
 
@@ -194,10 +203,6 @@ df = pd.read_parquet('eval_results/merged_results.parquet')
 
 # Filter by standard dataset
 epoch_df = df[df['dataset'] == 'epoch_1d']
-euler_df = df[df['dataset'] == 'euler_1d']
-burgers_df = df[df['dataset'] == 'burgers_1d']
-heat1d_df = df[df['dataset'] == 'heat_1d']
-heat2d_df = df[df['dataset'] == 'heat_2d']
 
 # Filter by ICL variant
 icl_accuracy_df = df[df['dataset'].str.contains('icl_accuracy_focused')]

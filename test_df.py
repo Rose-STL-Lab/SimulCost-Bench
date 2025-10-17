@@ -252,22 +252,22 @@ def main():
         epilog="""
 Examples:
   # Show basic info about the DataFrame
-  python test_df.py path/to/file.parquet --info
+  python test_df.py eval_results/merged_results.parquet --info
 
   # List all columns
-  python test_df.py path/to/file.parquet --columns
+  python test_df.py eval_results/merged_results.parquet --columns
 
   # Show row at index 5
-  python test_df.py path/to/file.parquet --index 5
+  python test_df.py eval_results/merged_results.parquet --index 5
 
   # Show row with QID 6
-  python test_df.py path/to/file.parquet --qid 6
+  python test_df.py eval_results/merged_results.parquet --qid 6
 
   # Show attempt history for ALL tasks with QID 6
-  python test_df.py path/to/file.parquet --attempt-history --qid 6
+  python test_df.py eval_results/merged_results.parquet --attempt-history --qid 6
 
   # Show attempt history for specific task (e.g., 'cfl') with QID 6
-  python test_df.py path/to/file.parquet --attempt-history --qid 6 --task cfl
+  python test_df.py eval_results/merged_results.parquet --attempt-history --qid 6 --task cfl
 
   # Compare inference modes across tasks
   python test_df.py eval_results/merged_results.parquet --mode-comparison

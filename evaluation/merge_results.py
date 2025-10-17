@@ -244,6 +244,7 @@ def main():
         "burgers_1d",
         "heat_1d",
         "heat_2d",
+        "mpm_2d",
         "euler_1d_icl_accuracy_focused",
         "euler_1d_icl_cost_excluded",
         "euler_1d_icl_full",

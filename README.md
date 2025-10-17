@@ -353,6 +353,7 @@ python evaluation/tabulate.py -d euler_1d
 python evaluation/tabulate.py -d ns_2d
 python evaluation/tabulate.py -d ns_transient_2d
 python evaluation/tabulate.py -d epoch_1d
+python evaluation/tabulate.py -d mpm_2d
 ```
 
 **Parameters:**
@@ -373,6 +374,7 @@ python evaluation/simul_sum.py -d euler_1d
 python evaluation/simul_sum.py -d ns_2d
 python evaluation/simul_sum.py -d ns_transient_2d
 python evaluation/simul_sum.py -d epoch_1d
+python evaluation/simul_sum.py -d mpm_2d
 ```
 
 **Parameters:**
