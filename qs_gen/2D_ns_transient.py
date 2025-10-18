@@ -306,10 +306,10 @@ class TwoDTransientNavierStokesQuestionGenerator:
             "2. **CFL Optimization**",
             "   - **cfl**: Courant-Friedrichs-Lewy number controlling time step stability",
             "",
-            "3. **Relaxation Factor Optimization (0-shot)**",
+            "3. **Relaxation Factor Optimization**",
             "   - **relaxation_factor**: Pressure correction relaxation factor controlling convergence rate",
             "",
-            "4. **Residual Threshold Optimization (0-shot)**",
+            "4. **Residual Threshold Optimization**",
             "   - **residual_threshold**: Pressure solver convergence threshold",
             "",
             "### Convergence Criteria",
@@ -332,7 +332,6 @@ class TwoDTransientNavierStokesQuestionGenerator:
             "",
             f"**Current Problem Precision Level**: {precision_level.upper()}",
             f"- **Normalized RMSE Tolerance**: ≤ {precision_config['norm_rmse_tolerance']}",
-            f"- **Description**: {precision_config['description']}"
         ])
         return "\n".join(question_lines)
     
