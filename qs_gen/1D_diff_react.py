@@ -37,11 +37,11 @@ PRECISION_LEVELS = {
         "description": "Relaxed convergence criteria"
     },
     "medium": {
-        "tolerance_rmse": 5e-4,
+        "tolerance_rmse": 0.001,
         "description": "Moderate convergence criteria"
     },
     "high": {
-        "tolerance_rmse": 1e-10,
+        "tolerance_rmse": 0.0001,
         "description": "Most stringent convergence criteria"
     },
 }

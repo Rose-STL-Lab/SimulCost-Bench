@@ -89,6 +89,11 @@ The table below summarizes the available tasks for each simulation type and indi
 | 2D MPM                   | `nx`             | ✅ Supported        |
 | 2D MPM                   | `n_part`         | ✅ Supported        |
 | 2D MPM                   | `cfl`            | ✅ Supported        |
+| 1D Diffusion-Reaction    | `cfl`                | ✅ Supported        |
+| 1D Diffusion-Reaction    | `n_space`            | ✅ Supported        |
+| 1D Diffusion-Reaction    | `tol`                | ✅ Supported        |
+| 1D Diffusion-Reaction    | `min_step`           | ✅ Supported        |
+| 1D Diffusion-Reaction    | `initial_step_guess` | ❌ Only Zero-Shot   |
 
 </details>
 
@@ -125,6 +130,9 @@ python qs_gen/1D_epoch.py
 
 # 2D Material Point Method (MPM) Simulation
 python qs_gen/2D_mpm.py
+
+# 1D Diffusion-Reaction Equations with Newton Method
+python qs_gen/1D_diff_react.py
 ```
 
 </details>
@@ -162,6 +170,9 @@ python dataset_gen/oneD_epoch.py
 
 # 2D Material Point Method (MPM) Simulation
 python dataset_gen/twoD_mpm.py
+
+# 1D Diffusion-Reaction Equations with Newton Method
+python dataset_gen/oneD_diff_react.py
 ```
 
 </details>
