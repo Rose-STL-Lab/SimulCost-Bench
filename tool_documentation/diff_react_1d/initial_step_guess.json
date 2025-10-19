@@ -1,0 +1,24 @@
+{
+  "run_oneD_diff_react": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "diff_react_1d_check_converge_initial_step_guess",
+        "description": "Conduct a 1D diffusion-reaction simulation with initial_step_guess parameter (zero-shot only, no refinement). Returns {\"refined_parameter\": str, \"current_value\": float, \"refined_value\": float, \"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "n_space": { "type": "integer", "description": "Number of spatial points" },
+            "cfl": { "type": "number", "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping stability" },
+            "tol": { "type": "number", "description": "Newton solver tolerance" },
+            "min_step": { "type": "number", "description": "Minimum step size for line search" },
+            "initial_step_guess": { "type": "number", "description": "Initial step size for Newton solver line search" }
+          },
+          "required": [
+            "n_space", "cfl", "tol", "min_step", "initial_step_guess"
+          ]
+        }
+      }
+    }
+  }
+}

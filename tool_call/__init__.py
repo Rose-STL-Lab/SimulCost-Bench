@@ -67,6 +67,16 @@ from .mpm_2d.run_twoD_mpm import (
     mpm_2d_check_converge_parameter
 )
 
+# Diffusion-Reaction 1D functions
+from .diff_react_1d.run_oneD_diff_react import (
+    diff_react_1d_check_converge_cfl,
+    diff_react_1d_check_converge_n_space,
+    diff_react_1d_check_converge_tol,
+    diff_react_1d_check_converge_min_step,
+    diff_react_1d_check_converge_initial_step_guess,
+    diff_react_1d_check_converge_parameter
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -120,4 +130,12 @@ __all__ = [
     "mpm_2d_check_converge_npart",
     "mpm_2d_check_converge_cfl",
     "mpm_2d_check_converge_parameter",
+
+    # Diffusion-Reaction 1D
+    "diff_react_1d_check_converge_cfl",
+    "diff_react_1d_check_converge_n_space",
+    "diff_react_1d_check_converge_tol",
+    "diff_react_1d_check_converge_min_step",
+    "diff_react_1d_check_converge_initial_step_guess",
+    "diff_react_1d_check_converge_parameter",
 ]
