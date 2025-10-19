@@ -34,7 +34,8 @@ show_help() {
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
     echo "                   Available: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
     echo "                              epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
-    echo "                              heat_2d, ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
+    echo "                              heat_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
+    echo "                              ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
     echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
     echo ""
     echo "  -h, --help       Show this help message"
@@ -338,6 +339,22 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
 
+        "mpm_2d")
+            echo "📋 Running MPM 2D evaluation..."
+            tasks=("nx" "npart" "cfl")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d -t $task -l $precision $mode"
+                        python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
         "ns_transient_2d_icl_accuracy_focused")
             echo "📋 Running NS Transient 2D ICL Accuracy Focused evaluation..."
             tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
@@ -385,12 +402,61 @@ for DATASET in "${DATASETS[@]}"; do
                 done
             done
             ;;
-            
+
+        "mpm_2d_icl_accuracy_focused")
+            echo "📋 Running MPM 2D ICL Accuracy Focused evaluation..."
+            tasks=("nx" "npart" "cfl")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_accuracy_focused -t $task -l $precision $mode"
+                        python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_accuracy_focused -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "mpm_2d_icl_cost_excluded")
+            echo "📋 Running MPM 2D ICL Cost Excluded evaluation..."
+            tasks=("nx" "npart" "cfl")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_cost_excluded -t $task -l $precision $mode"
+                        python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_cost_excluded -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
+        "mpm_2d_icl_full")
+            echo "📋 Running MPM 2D ICL Full evaluation..."
+            tasks=("nx" "npart" "cfl")
+            precision_levels=("low" "medium" "high")
+            modes=("-z")   # "-z" for zero-shot
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_full -t $task -l $precision $mode"
+                        python evaluation/mpm_2d/eval.py -m $MODEL -d mpm_2d_icl_full -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
         *)
             echo "❌ Unsupported dataset: $DATASET"
             echo "Supported datasets: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
             echo "                    epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
-            echo "                    heat_2d, ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
+            echo "                    heat_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
+            echo "                    ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
             echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
             exit 1
             ;;

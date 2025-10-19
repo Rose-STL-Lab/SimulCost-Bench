@@ -599,7 +599,10 @@ DATASET_TASK_MAP = {
     "ns_transient_2d_icl_cost_excluded": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL cost_excluded version
     "ns_transient_2d_icl_full": ["resolution", "cfl", "relaxation_factor", "residual_threshold"],  # ICL full version
     "epoch_1d": ["dt_multiplier", "nx", "npart", "field_order", "particle_order"],
-    "mpm_2d": ["nx", "npart", "cfl"]
+    "mpm_2d": ["nx", "npart", "cfl"],
+    "mpm_2d_icl_accuracy_focused": ["nx", "npart", "cfl"],
+    "mpm_2d_icl_cost_excluded": ["nx", "npart", "cfl"],
+    "mpm_2d_icl_full": ["nx", "npart", "cfl"]
 }
 
 # Generate all valid tasks for choices
@@ -770,6 +773,10 @@ Available dataset-task combinations:
   ns_transient_2d_icl_cost_excluded: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
   ns_transient_2d_icl_full: resolution, cfl, relaxation_factor, residual_threshold (use -l for precision_level: low/medium/high) [ICL full version]
   epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (use -l for precision_level: low/medium/high)
+  mpm_2d: nx, npart, cfl (use -l for precision_level: low/medium/high)
+  mpm_2d_icl_accuracy_focused: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
+  mpm_2d_icl_cost_excluded: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
+  mpm_2d_icl_full: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL full version]
 
 Note: All datasets now use precision_level structure for better organization.
         """

@@ -28,7 +28,8 @@ run_cmd () {
 icl_datasets=("heat_1d_icl_accuracy_focused" "heat_1d_icl_cost_excluded" "heat_1d_icl_full")
 tasks=("cfl" "n_space")
 precision_levels=("low" "medium" "high")
-modes=("-z")   # "-z" for zero-shot, empty string for iterative
+# modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+modes=("")
 
 # ========= Model configuration =========
 # Configure one provider and corresponding models at a time

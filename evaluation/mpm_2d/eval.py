@@ -139,6 +139,14 @@ def evaluate(
 
     result_path = None
     alt_task = None  # Initialize to avoid UnboundLocalError
+
+    # Set up alt_task mapping early (before file search) so it's available throughout
+    # Only handle npart ↔ n_part mapping (precise match only)
+    if task == 'npart':
+        alt_task = 'n_part'
+    elif task == 'n_part':
+        alt_task = 'npart'
+
     if os.path.exists(result_path_original):
         result_path = result_path_original
         logger.info(f"Using original model name in file path (with colon): {result_path}")
@@ -146,14 +154,7 @@ def evaluate(
         result_path = result_path_safe
         logger.info(f"Using sanitized model name in file path (colon replaced): {result_path}")
     else:
-        # Only handle npart ↔ n_part mapping (precise match only)
-        if task == 'npart':
-            alt_task = 'n_part'
-        elif task == 'n_part':
-            alt_task = 'npart'
-        else:
-            alt_task = None
-
+        # Try alternative task naming if available
         if alt_task:
             result_path_alt_original = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name}.json"
             result_path_alt_safe = f"results_model_attempt/{dataset}/{precision_level}/{alt_task}/{flag}_{model_name_safe}.json"
@@ -179,19 +180,21 @@ def evaluate(
         raise RuntimeError(error_msg)
 
     # Try to find dummy/reference data file with task name fallback
-    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    # For ICL variants, dummy solutions are still from the base mpm_2d dataset
+    # Only ICL examples differ between variants
+    dummy_path = f"data/mpm_2d/{task}/{precision_level}/{flag}_questions.json"
 
     if not os.path.exists(dummy_path) and alt_task:
         # Try alternative task naming for dummy_path
-        dummy_path_alt = f"data/{dataset}/{alt_task}/{precision_level}/{flag}_questions.json"
+        dummy_path_alt = f"data/mpm_2d/{alt_task}/{precision_level}/{flag}_questions.json"
         if os.path.exists(dummy_path_alt):
             dummy_path = dummy_path_alt
             logger.info(f"Using alternative task naming '{alt_task}' for reference data (original: '{task}')")
 
     if not os.path.exists(dummy_path):
-        tried_paths = [f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"]
+        tried_paths = [f"data/mpm_2d/{task}/{precision_level}/{flag}_questions.json"]
         if alt_task:
-            tried_paths.append(f"data/{dataset}/{alt_task}/{precision_level}/{flag}_questions.json")
+            tried_paths.append(f"data/mpm_2d/{alt_task}/{precision_level}/{flag}_questions.json")
         error_msg = f"Reference data file not found. Tried:\n" + "\n".join(f"  - {p}" for p in tried_paths)
         logger.error(f"❌ {error_msg}")
         print(f"\n❌ Evaluation failed: {error_msg}\n")
@@ -564,7 +567,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="mpm_2d",
-                        help="Dataset name (e.g., mpm_2d)")
+                        choices=["mpm_2d", "mpm_2d_icl_accuracy_focused", "mpm_2d_icl_cost_excluded", "mpm_2d_icl_full"],
+                        help="Dataset name: mpm_2d (standard) or mpm_2d_icl_* (with ICL examples)")
     parser.add_argument("-t", "--task", default="nx",
                         choices=list(VALID_TASKS),
                         help="Task: one of the 3 MPM 2D tasks")
