@@ -253,7 +253,10 @@ def main():
         "heat_1d_icl_full",
         "ns_transient_2d_icl_accuracy_focused",
         "ns_transient_2d_icl_cost_excluded",
-        "ns_transient_2d_icl_full"
+        "ns_transient_2d_icl_full",
+        "mpm_2d_icl_accuracy_focused",
+        "mpm_2d_icl_cost_excluded",
+        "mpm_2d_icl_full"
     ]
     output_file = Path(base_dir) / "merged_results.parquet"
 

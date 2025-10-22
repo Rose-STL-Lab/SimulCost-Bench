@@ -26,7 +26,8 @@ run_cmd () {
 
 # ========= Parameter lists =========
 icl_datasets=("ns_transient_2d_icl_accuracy_focused" "ns_transient_2d_icl_cost_excluded" "ns_transient_2d_icl_full")
-tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+# tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
+tasks=("resolution" "cfl")
 precision_levels=("low" "medium" "high")
 # modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 modes=("")
@@ -57,21 +58,6 @@ models=(
 #   "gpt-5-2025-08-07"
 # )
 
-# ========= Helper function to determine modes for each task =========
-get_modes_for_task() {
-  local task="$1"
-  case "$task" in
-    "relaxation_factor"|"residual_threshold")
-      # These tasks use zero-shot mode only
-      echo "-z"
-      ;;
-    *)
-      # Other tasks use both modes
-      echo "-z "
-      ;;
-  esac
-}
-
 # ========= Main loop =========
 echo "🚀 Starting NS Transient 2D ICL variants inference and evaluation"
 echo "📋 ICL datasets: ${icl_datasets[*]}"
@@ -87,10 +73,14 @@ for dataset in "${icl_datasets[@]}"; do
   for task in "${tasks[@]}"; do
     echo "  🎯 Task: $task"
 
-    # Get task-specific modes
-    task_modes=$(get_modes_for_task "$task")
+    # Determine modes for this task
+    if [[ "$task" == "relaxation_factor" || "$task" == "residual_threshold" ]]; then
+      task_modes=("-z")  # These tasks use zero-shot mode only
+    else
+      task_modes=("${modes[@]}")  # Other tasks use modes defined in the modes array
+    fi
 
-    for mode in $task_modes; do
+    for mode in "${task_modes[@]}"; do
       mode_name=$([ "$mode" = "-z" ] && echo "zero-shot" || echo "iterative")
       echo "    📊 Mode: $mode_name"
 
