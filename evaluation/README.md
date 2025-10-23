@@ -80,7 +80,7 @@ The parquet files contain the following columns:
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `dataset` | str | Dataset name (e.g., `epoch_1d`, `euler_1d`) |
+| `dataset` | str | Dataset name (e.g., `epoch_1d`, `euler_1d`, `diff_react_1d`) |
 | `task` | str | Task type (e.g., `cfl`, `beta`, `resolution`) |
 | `precision_level` | str | Precision level (`low`, `medium`, `high`) |
 | `inference_mode` | str | Inference mode (`zero_shot`, `iterative`) |
@@ -149,6 +149,14 @@ The parquet files contain the following columns:
 - `energy_tolerance`: Energy tolerance threshold
 - `var_threshold`: Variance threshold
 
+**Diffusion-Reaction 1D** (`diff_react_1d`):
+- `model_n_space`, `dummy_n_space`
+- `model_cfl`, `dummy_cfl`
+- `model_tol`, `dummy_tol`
+- `reaction_type`: Reaction term type (fisher, allee, cubic)
+- `wave_error`: Relative wave position error
+- `rmse_tolerance`: Task-specific RMSE tolerance (varies by task: n_space/cfl/tol)
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---
@@ -166,8 +174,8 @@ python evaluation/merge_results.py
 **What it does:**
 1. Scans `eval_results/{dataset}/dataframes/` for all parquet files
 2. Combines files from standard and ICL variant datasets:
-   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_1d`, `heat_2d`
-   - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `heat_1d_icl_accuracy_focused`, `heat_1d_icl_cost_excluded`, `heat_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`
+   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_1d`, `heat_2d`, `mpm_2d`, `diff_react_1d`
+   - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `heat_1d_icl_accuracy_focused`, `heat_1d_icl_cost_excluded`, `heat_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`, `mpm_2d_icl_accuracy_focused`, `mpm_2d_icl_cost_excluded`, `mpm_2d_icl_full`
 3. Applies model name mapping to standardize model identifiers (e.g., `qwen3_8b` → `Qwen3-8B`)
 4. Validates that all model names are in the mapping dictionary (raises error if unmapped models found)
 5. Handles schema differences (fills missing columns with `NaN`)

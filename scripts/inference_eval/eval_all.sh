@@ -36,7 +36,7 @@ show_help() {
     echo "                              epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
     echo "                              heat_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
     echo "                              ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
+    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -46,8 +46,10 @@ show_help() {
     echo "  epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (with precision levels: low, medium, high)"
     echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
     echo "  heat_2d: dx, error_threshold (both modes), relax, t_init (zero-shot only) (with precision levels: low, medium, high)"
+    echo "  mpm_2d: nx, npart, cfl (with precision levels: low, medium, high)"
     echo "  ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (with precision levels: low, medium, high)"
     echo "  ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (with precision levels: low, medium, high)"
+    echo "  diff_react_1d: cfl, n_space, tol (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -451,13 +453,29 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
 
+        "diff_react_1d")
+            echo "📋 Running Diffusion-Reaction 1D evaluation..."
+            tasks=("cfl" "n_space" "tol")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/diff_react_1d/eval.py -m $MODEL -d diff_react_1d -t $task -l $precision $mode"
+                        python evaluation/diff_react_1d/eval.py -m $MODEL -d diff_react_1d -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
         *)
             echo "❌ Unsupported dataset: $DATASET"
             echo "Supported datasets: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
             echo "                    epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
             echo "                    heat_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
             echo "                    ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full"
+            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d"
             exit 1
             ;;
     esac
