@@ -26,7 +26,7 @@ def _load_profile_config(profile):
         config = yaml.safe_load(f)
 
     return {
-        'reaction_type': config.get('reaction_type', 'fisher'),
+        'reaction_type': config['reaction_type'],
         'allee_threshold': config.get('allee_threshold', None),
     }
 
@@ -39,7 +39,6 @@ def _refine_parameters(params, refine_param):
         'cfl': lambda x: x * 0.5,
         'n_space': lambda x: x * 2,
         'tol': lambda x: x * 0.1,
-        'min_step': lambda x: x * 0.1,
     }
 
     if refine_param in refinement_rules:
@@ -56,12 +55,14 @@ def diff_react_1d_check_converge_parameter(
     n_space: int,
     cfl: float,
     tol: float,
-    min_step: float,
-    initial_step_guess: float,
     rmse_tolerance: float,
     refine_param: str,
 ):
     """Generic convergence check function that can refine any parameter."""
+
+    # Use default values for fixed parameters
+    min_step = 1e-6
+    initial_step_guess = 1.0
 
     # Load profile configuration
     config = _load_profile_config(profile)
@@ -98,27 +99,20 @@ def diff_react_1d_check_converge_parameter(
 
     accumulated_cost += current_cost
 
-    # Skip refine simulation for initial_step_guess (zero-shot only)
-    if refine_param == 'initial_step_guess':
-        print(f"Skipping refine step for {refine_param} (zero-shot only)")
-        converged = True
-        rmse = 0.0
-        refine_cost = 0
-    else:
-        # Run refined simulation (convergence checking does not increase cost)
-        refine_cost = run_sim_diff_react_1d(
-            profile=profile,
-            n_space=refined_params['n_space'],
-            cfl=refined_params['cfl'],
-            tol=refined_params['tol'],
-            min_step=refined_params['min_step'],
-            initial_step_guess=refined_params['initial_step_guess'],
-            reaction_type=reaction_type,
-            allee_threshold=allee_threshold
-        )
+    # Run refined simulation (convergence checking does not increase cost)
+    refine_cost = run_sim_diff_react_1d(
+        profile=profile,
+        n_space=refined_params['n_space'],
+        cfl=refined_params['cfl'],
+        tol=refined_params['tol'],
+        min_step=refined_params['min_step'],
+        initial_step_guess=refined_params['initial_step_guess'],
+        reaction_type=reaction_type,
+        allee_threshold=allee_threshold
+    )
 
-        # Compare results
-        converged, metrics1, metrics2, rmse = compare_res_diff_react_1d(
+    # Compare results
+    converged, metrics1, metrics2, rmse = compare_res_diff_react_1d(
             profile1=profile,
             n_space1=base_params['n_space'],
             cfl1=base_params['cfl'],
@@ -166,11 +160,3 @@ def diff_react_1d_check_converge_n_space(**kwargs):
 def diff_react_1d_check_converge_tol(**kwargs):
     """Check convergence by refining tol (*0.1)."""
     return diff_react_1d_check_converge_parameter(refine_param='tol', **kwargs)
-
-def diff_react_1d_check_converge_min_step(**kwargs):
-    """Check convergence by refining min_step (*0.1)."""
-    return diff_react_1d_check_converge_parameter(refine_param='min_step', **kwargs)
-
-def diff_react_1d_check_converge_initial_step_guess(**kwargs):
-    """Check convergence for initial_step_guess (zero-shot only, no refinement)."""
-    return diff_react_1d_check_converge_parameter(refine_param='initial_step_guess', **kwargs)

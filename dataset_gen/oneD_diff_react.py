@@ -7,14 +7,13 @@ from inference import save_result
 import argparse
 from utils.param_compatibility import fetch_param
 
-def build_cfl_workflow(zero_shot: bool, n_space0: int, tol0: float, min_step0: float, initial_step_guess0: float) -> str:
+def build_cfl_workflow(zero_shot: bool, n_space0: int, tol0: float) -> str:
     """Build the workflow for CFL parameter optimization"""
     header = (
         "cfl (CFL number - Courant-Friedrichs-Lewy condition) determines the time step size for stability: "
         "$\\Delta t = \\text{CFL} \\cdot (\\Delta x)^2$ for diffusion-dominated problems.\n"
         "You may **only** change `cfl`.\n"
-        f"The fixed values are: n_space={n_space0}, tol={tol0}, "
-        f"min_step={min_step0}, initial_step_guess={initial_step_guess0}. **You must not change them!**\n"
+        f"The fixed values are: n_space={n_space0}, tol={tol0}. **You must not change them!**\n"
     )
     if zero_shot:
         body = (
@@ -35,14 +34,13 @@ def build_cfl_workflow(zero_shot: bool, n_space0: int, tol0: float, min_step0: f
         )
     return header + body
 
-def build_n_space_workflow(zero_shot: bool, cfl0: float, tol0: float, min_step0: float, initial_step_guess0: float) -> str:
+def build_n_space_workflow(zero_shot: bool, cfl0: float, tol0: float) -> str:
     """Build the workflow for n_space parameter optimization"""
     header = (
         "n_space (Number of spatial points) determines the spatial discretization resolution: "
         "$\\Delta x = L / n_{space}$ where L is the domain length.\n"
         "You may **only** change `n_space`.\n"
-        f"The fixed values are: cfl={cfl0}, tol={tol0}, "
-        f"min_step={min_step0}, initial_step_guess={initial_step_guess0}. **You must not change them!**\n"
+        f"The fixed values are: cfl={cfl0}, tol={tol0}. **You must not change them!**\n"
     )
     if zero_shot:
         body = (
@@ -63,14 +61,13 @@ def build_n_space_workflow(zero_shot: bool, cfl0: float, tol0: float, min_step0:
         )
     return header + body
 
-def build_tol_workflow(zero_shot: bool, n_space0: int, cfl0: float, min_step0: float, initial_step_guess0: float) -> str:
+def build_tol_workflow(zero_shot: bool, n_space0: int, cfl0: float) -> str:
     """Build the workflow for tol parameter optimization"""
     header = (
         "tol (Newton solver tolerance) determines the convergence criteria for the Newton method: "
         "the iteration stops when the residual norm falls below this tolerance.\n"
         "You may **only** change `tol`.\n"
-        f"The fixed values are: n_space={n_space0}, cfl={cfl0}, "
-        f"min_step={min_step0}, initial_step_guess={initial_step_guess0}. **You must not change them!**\n"
+        f"The fixed values are: n_space={n_space0}, cfl={cfl0}. **You must not change them!**\n"
     )
     if zero_shot:
         body = (
@@ -91,63 +88,6 @@ def build_tol_workflow(zero_shot: bool, n_space0: int, cfl0: float, min_step0: f
         )
     return header + body
 
-def build_min_step_workflow(zero_shot: bool, n_space0: int, cfl0: float, tol0: float, initial_step_guess0: float) -> str:
-    """Build the workflow for min_step parameter optimization"""
-    header = (
-        "min_step (Minimum step size for line search) determines the robustness of the line search algorithm: "
-        "the line search stops when the step size falls below this threshold.\n"
-        "You may **only** change `min_step`.\n"
-        f"The fixed values are: n_space={n_space0}, cfl={cfl0}, "
-        f"tol={tol0}, initial_step_guess={initial_step_guess0}. **You must not change them!**\n"
-    )
-    if zero_shot:
-        body = (
-            "You have only one opportunity to choose an optimal value for min_step.\n"
-            "No trial-and-error or iterative optimization is permitted.\n"
-            "Your goal is to select a value that balances convergence robustness and computational cost.\n"
-            "Step 1: Make your best **one-shot** guess for min_step.\n"
-            "Step 2: Call the Convergence Test Function and check if converged.\n"
-            "Step 3: Output final answer with no further tool calls."
-        )
-    else:
-        body = (
-            "Step 1: Estimate an initial choice of min_step, as you will gradually refine the solution and check convergence.\n"
-            "Step 2: Call the Convergence Test Function; check if converged.\n"
-            "Step 3: Refine min_step based on the feedback from the simulation.\n"
-            "Step 4: You have at most 10 total opportunities to refine your parameter.\n"
-            "Step 5: If you think the experiment can be stopped, you must respond with the final response format and make no further function calls. If you reach the 10th refinement, you **must** still perform a convergence check immediately after that refinement; then, regardless of whether it is converged or not, respond with the final response format and make no further function calls."
-        )
-    return header + body
-
-def build_initial_step_guess_workflow(zero_shot: bool, n_space0: int, cfl0: float, tol0: float, min_step0: float) -> str:
-    """Build the workflow for initial_step_guess parameter optimization (zero-shot only)"""
-    header = (
-        "initial_step_guess (Initial step size for Newton solver line search) determines the initial aggressiveness "
-        "of the line search: larger values may converge faster but risk instability.\n"
-        "You may **only** change `initial_step_guess`.\n"
-        f"The fixed values are: n_space={n_space0}, cfl={cfl0}, "
-        f"tol={tol0}, min_step={min_step0}. **You must not change them!**\n"
-    )
-    if zero_shot:
-        body = (
-            "You have only one opportunity to choose an optimal value for initial_step_guess.\n"
-            "No trial-and-error or iterative optimization is permitted.\n"
-            "Your goal is to select a value that balances convergence speed and stability.\n"
-            "Step 1: Make your best **one-shot** guess for initial_step_guess.\n"
-            "Step 2: Call the Convergence Test Function and check if converged.\n"
-            "Step 3: Output final answer with no further tool calls."
-        )
-    else:
-        # This should not be called, but provide a fallback
-        body = (
-            "Note: initial_step_guess optimization is designed for zero-shot mode only.\n"
-            "You have only one opportunity to choose an optimal value.\n"
-            "Step 1: Make your best guess for initial_step_guess.\n"
-            "Step 2: Call the Convergence Test Function and check if converged.\n"
-            "Step 3: Output final answer with no further tool calls."
-        )
-    return header + body
-
 zero_shot_HUMAN_CODE = r"""
 def forward(self, data: dict):
     # Extract input data
@@ -161,9 +101,7 @@ def forward(self, data: dict):
         focused_parameters=[
             "n_space",
             "cfl",
-            "tol",
-            "min_step",
-            "initial_step_guess"
+            "tol"
         ],
         tolerance_rmse=data.get("tolerance_rmse")
     )
@@ -218,9 +156,7 @@ def forward(self, data: dict):
         focused_parameters=[
             'n_space',
             'cfl',
-            'tol',
-            'min_step',
-            'initial_step_guess'
+            'tol'
         ],
         tolerance_rmse=data.get('tolerance_rmse')
     )
@@ -326,7 +262,7 @@ class oneD_DiffReact_DatasetGenerator(DatasetGenerator):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--task", choices=["cfl", "n_space", "tol", "min_step", "initial_step_guess"],
+    parser.add_argument("-t", "--task", choices=["cfl", "n_space", "tol"],
                         help="Task to solve (if not specified, generates all tasks)")
     parser.add_argument("-z", "--zero_shot", action="store_true",
                         help="Enable zero-shot mode (if not specified, generates both modes)")
@@ -336,7 +272,7 @@ def main():
     if args.task:
         tasks = [args.task]
     else:
-        tasks = ["cfl", "n_space", "tol", "min_step", "initial_step_guess"]
+        tasks = ["cfl", "n_space", "tol"]
 
     # If no specific mode is provided, generate both modes
     if args.zero_shot:
@@ -378,10 +314,6 @@ def main():
             for zflag in modes:
                 flag = "zero_shot" if zflag else "iterative"
 
-                # Skip iterative mode for initial_step_guess task
-                if not zflag and task == "initial_step_guess":
-                    continue
-
                 question_file = f"{task_dir}/{precision_level}/{flag}_questions.json"
 
                 if not os.path.exists(question_file):
@@ -401,33 +333,15 @@ def main():
                     if task == "cfl":
                         n_space0 = fetch_param(first_params, "n_space")
                         tol0 = fetch_param(first_params, "tol")
-                        min_step0 = fetch_param(first_params, "min_step")
-                        initial_step_guess0 = fetch_param(first_params, "initial_step_guess")
-                        wf = build_cfl_workflow(zflag, n_space0, tol0, min_step0, initial_step_guess0)
+                        wf = build_cfl_workflow(zflag, n_space0, tol0)
                     elif task == "n_space":
                         cfl0 = fetch_param(first_params, "cfl")
                         tol0 = fetch_param(first_params, "tol")
-                        min_step0 = fetch_param(first_params, "min_step")
-                        initial_step_guess0 = fetch_param(first_params, "initial_step_guess")
-                        wf = build_n_space_workflow(zflag, cfl0, tol0, min_step0, initial_step_guess0)
+                        wf = build_n_space_workflow(zflag, cfl0, tol0)
                     elif task == "tol":
                         n_space0 = fetch_param(first_params, "n_space")
                         cfl0 = fetch_param(first_params, "cfl")
-                        min_step0 = fetch_param(first_params, "min_step")
-                        initial_step_guess0 = fetch_param(first_params, "initial_step_guess")
-                        wf = build_tol_workflow(zflag, n_space0, cfl0, min_step0, initial_step_guess0)
-                    elif task == "min_step":
-                        n_space0 = fetch_param(first_params, "n_space")
-                        cfl0 = fetch_param(first_params, "cfl")
-                        tol0 = fetch_param(first_params, "tol")
-                        initial_step_guess0 = fetch_param(first_params, "initial_step_guess")
-                        wf = build_min_step_workflow(zflag, n_space0, cfl0, tol0, initial_step_guess0)
-                    elif task == "initial_step_guess":
-                        n_space0 = fetch_param(first_params, "n_space")
-                        cfl0 = fetch_param(first_params, "cfl")
-                        tol0 = fetch_param(first_params, "tol")
-                        min_step0 = fetch_param(first_params, "min_step")
-                        wf = build_initial_step_guess_workflow(zflag, n_space0, cfl0, tol0, min_step0)
+                        wf = build_tol_workflow(zflag, n_space0, cfl0)
 
                     single_ds = generator.generate_dataset(wf, [q], zflag)[0]
 

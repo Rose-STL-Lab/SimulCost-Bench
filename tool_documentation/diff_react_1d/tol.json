@@ -10,12 +10,10 @@
           "properties": {
             "n_space": { "type": "integer", "description": "Number of spatial points" },
             "cfl": { "type": "number", "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping stability" },
-            "tol": { "type": "number", "description": "Newton solver tolerance" },
-            "min_step": { "type": "number", "description": "Minimum step size for line search" },
-            "initial_step_guess": { "type": "number", "description": "Initial step size for Newton solver line search" }
+            "tol": { "type": "number", "description": "Newton solver tolerance" }
           },
           "required": [
-            "n_space", "cfl", "tol", "min_step", "initial_step_guess"
+            "n_space", "cfl", "tol"
           ]
         }
       }

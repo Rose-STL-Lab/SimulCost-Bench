@@ -33,16 +33,28 @@ TASKS_JSON_PATH = (
 
 PRECISION_LEVELS = {
     "low": {
-        "tolerance_rmse": 0.15,
-        "description": "Relaxed convergence criteria"
+        "tolerance_rmse": {
+            "n_space": 0.05,
+            "cfl": 0.05,
+            "tol": 1e-5
+        },
+        "description": "Relaxed convergence criteria (wave position based)"
     },
     "medium": {
-        "tolerance_rmse": 0.001,
-        "description": "Moderate convergence criteria"
+        "tolerance_rmse": {
+            "n_space": 0.01,
+            "cfl": 0.005,
+            "tol": 1e-6
+        },
+        "description": "Moderate convergence criteria (wave position based)"
     },
     "high": {
-        "tolerance_rmse": 0.0001,
-        "description": "Most stringent convergence criteria"
+        "tolerance_rmse": {
+            "n_space": 0.001,
+            "cfl": 0.0001,
+            "tol": 1e-7
+        },
+        "description": "Most stringent convergence criteria (wave position based)"
     },
 }
 
@@ -70,47 +82,80 @@ class OneDDiffReactQuestionGenerator:
 
         return data
 
+    def _infer_precision_level(self, precision_config: Dict[str, Any]) -> str:
+        """Infer precision level from precision_config values
+
+        Since tasks.json has nested tolerance_rmse structure, we need to infer it
+        from the tolerance_rmse dict values.
+        """
+        tolerance_rmse = precision_config.get("tolerance_rmse")
+
+        if not isinstance(tolerance_rmse, dict):
+            raise ValueError(f"Expected tolerance_rmse to be a dict, got {type(tolerance_rmse)}")
+
+        # Match against known precision levels
+        for level_name, level_config in PRECISION_LEVELS.items():
+            expected_tol = level_config["tolerance_rmse"]
+            if tolerance_rmse == expected_tol:
+                return level_name
+
+        # Fallback: if exact match not found, raise error for clarity
+        raise ValueError(
+            f"Unknown precision level: tolerance_rmse={tolerance_rmse}"
+        )
+
     def generate_all_questions(self) -> None:
         """Generate questions for all tasks and precision levels"""
-        # cfl, n_space, tol, min_step support both iterative and zero-shot
-        iterative_supported_tasks = ["cfl", "n_space", "tol", "min_step"]
-        # initial_step_guess only supports zero-shot
-        zero_shot_only_tasks = ["initial_step_guess"]
-
-        all_tasks = iterative_supported_tasks + zero_shot_only_tasks
+        tasks = ["cfl", "n_space", "tol"]
+        # All three tasks support both iterative and zero-shot modes
 
         total_files = 0
         total_questions = 0
 
         print("=" * 80)
-        for task in all_tasks:
+        for task in tasks:
             print(f"\nTASK: {task.upper()}")
             print("-" * 50)
 
             for precision_level in PRECISION_LEVELS.keys():
                 precision_config = PRECISION_LEVELS[precision_level]
-                tolerance_rmse = precision_config["tolerance_rmse"]
+                tolerance_rmse = precision_config["tolerance_rmse"][task]
 
                 print(f"  {precision_level.upper()} precision:")
                 print(f"    Tolerance RMSE: {tolerance_rmse}")
 
-                # Generate iterative questions only for supported tasks
-                if task in iterative_supported_tasks:
-                    dataset_iter = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=False)
-                    if dataset_iter:  # Only save if there are questions
-                        self._save_dataset(dataset_iter, task=task, precision_level=precision_level, zero_shot=False)
-                        total_files += 1
-                        total_questions += len(dataset_iter)
-                        print(f"      Iterative: {len(dataset_iter):2d} questions")
-                    else:
-                        print(f"      Iterative: 0 questions (no data)")
+                # Generate iterative questions (all tasks support iterative)
+                dataset_iter = self.generate_question_dataset(
+                    task=task,
+                    precision_level=precision_level,
+                    zero_shot=False
+                )
+                if dataset_iter:  # Only save if there are questions
+                    self._save_dataset(
+                        dataset_iter,
+                        task=task,
+                        precision_level=precision_level,
+                        zero_shot=False
+                    )
+                    total_files += 1
+                    total_questions += len(dataset_iter)
+                    print(f"      Iterative: {len(dataset_iter):2d} questions")
                 else:
-                    print(f"      Iterative: Not supported for {task}")
+                    print(f"      Iterative: 0 questions (no data)")
 
-                # Generate zero-shot questions for all tasks
-                dataset_zero = self.generate_question_dataset(task=task, precision_level=precision_level, zero_shot=True)
+                # Generate zero-shot questions (all tasks support zero-shot)
+                dataset_zero = self.generate_question_dataset(
+                    task=task,
+                    precision_level=precision_level,
+                    zero_shot=True
+                )
                 if dataset_zero:  # Only save if there are questions
-                    self._save_dataset(dataset_zero, task=task, precision_level=precision_level, zero_shot=True)
+                    self._save_dataset(
+                        dataset_zero,
+                        task=task,
+                        precision_level=precision_level,
+                        zero_shot=True
+                    )
                     total_files += 1
                     total_questions += len(dataset_zero)
                     print(f"      Zero-shot: {len(dataset_zero):2d} questions")
@@ -126,12 +171,14 @@ class OneDDiffReactQuestionGenerator:
         dataset: List[Dict] = []
         precision_config = PRECISION_LEVELS[precision_level]
 
-        # Filter tasks by target parameter and precision level
-        matching_tasks = [
-            t for t in self.tasks_data["tasks"]
-            if (t["target_parameter"] == task and
-                t["precision_level"] == precision_level)
-        ]
+        # Filter tasks by target parameter and inferred precision level
+        matching_tasks = []
+        for t in self.tasks_data["tasks"]:
+            if t["target_parameter"] == task:
+                # Infer precision level from precision_config
+                inferred_level = self._infer_precision_level(t["precision_config"])
+                if inferred_level == precision_level:
+                    matching_tasks.append(t)
 
         qid = 1
         for task_data in matching_tasks:
@@ -175,87 +222,50 @@ class OneDDiffReactQuestionGenerator:
             optimal_value = results["optimal_parameter_value"]
 
             # Calculate dummy cost according to requirements
-            # Special handling for initial_step_guess (grid search): use cost corresponding to optimal_parameter_value
-            if task == "initial_step_guess" and zero_shot:
-                # Find the index of optimal_parameter_value in param_history
-                try:
-                    optimal_index = param_history.index(optimal_value)
-                    dummy_cost = cost_history[optimal_index]
-                except (ValueError, IndexError) as e:
-                    raise ValueError(f"Cannot find optimal value {optimal_value} in parameter_history for profile {profile}: {e}")
+            # For zero-shot: use the second-to-last cost
+            # For iterative: sum all costs except the last one
+            if zero_shot and len(cost_history) > 1:
+                dummy_cost = cost_history[-2]
+            elif len(cost_history) > 1:
+                dummy_cost = sum(cost_history[:-1])
             else:
-                # For other tasks: use standard logic
-                # zero_shot: use second-to-last cost (cost before final convergence check)
-                # iterative: use sum of all costs except the last one
-                dummy_cost = cost_history[-2] if zero_shot and len(cost_history) > 1 else sum(cost_history[:-1]) if len(cost_history) > 1 else cost_history[0]
+                dummy_cost = cost_history[0]
 
             # Strict validation for non_target_parameters
             if "non_target_parameters" not in task_data:
                 raise KeyError(f"Missing 'non_target_parameters' in task data for profile {profile}")
 
             non_target_params = task_data["non_target_parameters"]
-            tunable_params = ["cfl", "n_space", "tol", "min_step", "initial_step_guess"]
+            tunable_params = ["cfl", "n_space", "tol"]
 
-            # Handle two different formats of parameter_history:
-            # 1. List of dicts (for cfl, n_space, tol): contains all tunable parameters
-            # 2. List of scalars (for min_step, initial_step_guess): contains only target parameter values
+            # Find the best_params from parameter_history based on optimal_parameter_value
+            best_params = None
+            for param_set in param_history:
+                if param_set.get(task) == optimal_value:
+                    best_params = param_set.copy()
+                    break
 
-            if param_history and isinstance(param_history[0], dict):
-                # Format 1: parameter_history is a list of dicts
-                # Find the best_params from parameter_history based on optimal_parameter_value
-                best_params = None
-                for param_set in param_history:
-                    if param_set.get(task) == optimal_value:
-                        best_params = param_set.copy()
-                        break
+            # If not found, this is an error in the data
+            if best_params is None:
+                raise ValueError(
+                    f"Could not find optimal parameter {task}={optimal_value} "
+                    f"in parameter_history"
+                )
 
-                if best_params is None:
-                    raise ValueError(f"Could not find optimal parameter {task}={optimal_value} in parameter_history for profile {profile}")
+            # Filter best_params to only include the 3 tunable parameters
+            filtered_best_params = {
+                key: best_params[key] for key in tunable_params
+                if key in best_params
+            }
 
-                # Filter to only include tunable parameters
-                filtered_best_params = {
-                    key: best_params[key] for key in tunable_params
-                    if key in best_params
+            # Filter param_history to only include the 3 tunable parameters
+            filtered_param_history = []
+            for param_set in param_history:
+                filtered_set = {
+                    key: param_set[key] for key in tunable_params
+                    if key in param_set
                 }
-
-                # Filter param_history to only include tunable parameters
-                filtered_param_history = []
-                for param_set in param_history:
-                    filtered_set = {
-                        key: param_set[key] for key in tunable_params
-                        if key in param_set
-                    }
-                    filtered_param_history.append(filtered_set)
-
-            else:
-                # Format 2: parameter_history is a list of scalar values
-                # Reconstruct full parameter sets by combining with non_target_parameters
-
-                # Build best_params by combining non-target params with optimal value
-                # For initial_step_guess (grid search): use optimal_value
-                # For min_step (iterative search): use param_history[-1] (last iteration)
-                filtered_best_params = {}
-                for key in tunable_params:
-                    if key == task:
-                        if task == "initial_step_guess":
-                            # Grid search: optimal_value is the best among all trials
-                            filtered_best_params[key] = optimal_value
-                        else:
-                            # Iterative search: last iteration is the best
-                            filtered_best_params[key] = param_history[-1]
-                    elif key in non_target_params:
-                        filtered_best_params[key] = non_target_params[key]
-
-                # Reconstruct param_history as list of dicts
-                filtered_param_history = []
-                for param_value in param_history:
-                    param_dict = {}
-                    for key in tunable_params:
-                        if key == task:
-                            param_dict[key] = param_value
-                        elif key in non_target_params:
-                            param_dict[key] = non_target_params[key]
-                    filtered_param_history.append(param_dict)
+                filtered_param_history.append(filtered_set)
 
             # Build question entry
             question_entry = {
@@ -271,7 +281,7 @@ class OneDDiffReactQuestionGenerator:
                 "cost_history": cost_history,
                 "best_params": filtered_best_params,
                 "param_history": filtered_param_history,
-                "question": self._build_question_text(params, precision_level, precision_config),
+                "question": self._build_question_text(params, task, precision_level, precision_config),
             }
 
             dataset.append(question_entry)
@@ -280,7 +290,7 @@ class OneDDiffReactQuestionGenerator:
         return dataset
 
     @staticmethod
-    def _build_question_text(params: dict, precision_level: str, precision_config: dict) -> str:
+    def _build_question_text(params: dict, task: str, precision_level: str, precision_config: dict) -> str:
         """Build question text from diff_react_1d.md documentation"""
 
         # Strict validation - fail fast
@@ -401,34 +411,56 @@ class OneDDiffReactQuestionGenerator:
         if "allee_threshold" in params:
             question_lines.append(f"- **Allee Threshold**: {params['allee_threshold']}")
 
+        # Get task-specific tolerance values
+        tolerance_rmse_dict = precision_config["tolerance_rmse"]
+
         question_lines.extend([
+            "",
+            "## Convergence Metrics",
+            "",
+            "The simulated results are considered correct if they meet the precision-dependent tolerance criteria and satisfy convergence criteria:",
+            "",
+            "**Convergence Criteria:**",
+            "1. **Wave position convergence:** Relative wave position error falls below specified tolerance",
+            "2. **Physical constraints:** Solution satisfies appropriate physical metrics based on reaction type",
+            "3. **Wave propagation:** For Fisher-KPP, traveling waves propagate at expected speeds",
+            "4. **Specialized metrics:** For Allee effect (p2), wave propagation quality is checked (max gradient > 0.04)",
+            "5. **Reaction balance:** Temporal variation measure for solution stability",
+            "",
+            "### Physical Metrics",
+            "",
+            "The solver computes several physical metrics to assess solution quality:",
+            "",
+            "**For Fisher-KPP and Allen-Cahn reactions:**",
+            "- **Maximum principle:** Solution should be bounded by initial min/max values",
+            "- **Boundary conditions:** Dirichlet conditions u(0,t)=1, u(L,t)=0 must be satisfied",
+            "- **Reaction balance:** Temporal variation measure `np.mean(np.abs(np.diff(u, axis=0)), axis=1)`",
+            "",
+            "**For Allee effect reactions:**",
+            "- **Wave propagation quality:** Checks for sharp wave fronts (max gradient > 0.04)",
+            "- **Reaction balance:** Same temporal variation measure as other reactions",
+            "- **Maximum principle:** Bypassed (hardcoded as satisfied due to expected threshold dynamics)",
+            "- **Boundary conditions:** Bypassed (hardcoded as satisfied due to complex wave behavior)",
+            "",
+            "**Reaction Balance Calculation:**",
+            "The reaction balance measures temporal variation in the solution:",
+            "```python",
+            "reaction_balance = np.mean(np.abs(np.diff(u, axis=0)), axis=1)",
+            "```",
+            "This calculates the average absolute change between consecutive time steps across all spatial points, providing a measure of solution stability and temporal evolution.",
             "",
             "## Parameter Tuning Tasks",
             "",
             "### Tasks",
             "",
             "1. **CFL Convergence Search**",
-            "   - **cfl**: CFL number controls time step size: $\\Delta t = \\text{CFL} \\cdot (\\Delta x)^2$ for diffusion stability",
+            "   - CFL number controls time step size: $\\Delta t = \\text{CFL} \\cdot (\\Delta x)^2$ for diffusion stability",
             "",
             "2. **n_space Convergence Search**",
-            "   - **n_space**: n_space determines spatial resolution: $\\Delta x = L / n_{space}$",
+            "   - n_space determines spatial resolution: $\\Delta x = L / n_{space}$",
             "",
             "3. **Tolerance Convergence Search**",
-            "   - **tol**: Newton solver tolerance controls convergence criteria",
-            "",
-            "4. **Min Step Optimization**",
-            "   - **min_step**: Minimum step size for line search controls robustness",
-            "",
-            "5. **Initial Step Guess Optimization**",
-            "   - **initial_step_guess**: Initial step size for line search controls aggressiveness",
-            "",
-            "### Convergence Criteria",
-            "",
-            "The solution is considered converged when:",
-            "",
-            "1. **Newton convergence:** Residual norm falls below specified tolerance",
-            "2. **Physical bounds:** Solution remains bounded and physically reasonable",
-            "3. **Wave propagation:** For Fisher-KPP, traveling waves propagate at expected speeds",
+            "   - Newton solver tolerance controls convergence criteria",
             "",
             "### Cost Calculation",
             "",
@@ -444,7 +476,7 @@ class OneDDiffReactQuestionGenerator:
             "3. Linear system solve",
             "",
             f"**Current Problem Precision Level**: {precision_level.upper()}",
-            f"- **Tolerance RMSE**: ≤ {precision_config['tolerance_rmse']}",
+            f"- **Tolerance RMSE**: ≤ {tolerance_rmse_dict[task]}",
         ])
 
         return "\n".join(question_lines)
@@ -465,11 +497,10 @@ def main() -> None:
     print("1D DIFFUSION-REACTION QUESTION GENERATOR")
     print("=" * 80)
     print(f"Output directory: data/diff_react_1d/{{task}}/{{precision_level}}/")
-    print(f"Iterative tasks: cfl, n_space, tol, min_step")
-    print(f"Zero-shot only tasks: initial_step_guess")
+    print(f"Tasks (all support iterative + zero-shot): cfl, n_space, tol")
     print(f"Precision levels: {list(PRECISION_LEVELS.keys())}")
     print(f"File types:")
-    print(f"  - iterative_questions.json (for cfl, n_space, tol, min_step)")
+    print(f"  - iterative_questions.json (for all tasks)")
     print(f"  - zero_shot_questions.json (for all tasks)")
 
     gen = OneDDiffReactQuestionGenerator()

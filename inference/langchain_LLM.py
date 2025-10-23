@@ -392,6 +392,9 @@ def parallel_inference(dataset: List[Dict], forward_func: str, logger: logging.L
                 result['precision_level'] = data['precision_level']
             if 'tolerance_rmse' in data:
                 result['tolerance_rmse'] = data['tolerance_rmse']
+            # Diff_react_1d specific field
+            if 'reaction_type' in data:
+                result['reaction_type'] = data['reaction_type']
             # NS_2D specific tolerances
             if 'mass_tolerance' in data:
                 result['mass_tolerance'] = data['mass_tolerance']
@@ -602,7 +605,8 @@ DATASET_TASK_MAP = {
     "mpm_2d": ["nx", "npart", "cfl"],
     "mpm_2d_icl_accuracy_focused": ["nx", "npart", "cfl"],
     "mpm_2d_icl_cost_excluded": ["nx", "npart", "cfl"],
-    "mpm_2d_icl_full": ["nx", "npart", "cfl"]
+    "mpm_2d_icl_full": ["nx", "npart", "cfl"],
+    "diff_react_1d": ["cfl", "n_space", "tol"]
 }
 
 # Generate all valid tasks for choices
@@ -777,6 +781,7 @@ Available dataset-task combinations:
   mpm_2d_icl_accuracy_focused: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
   mpm_2d_icl_cost_excluded: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
   mpm_2d_icl_full: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL full version]
+  diff_react_1d: cfl, n_space, tol (use -l for precision_level: low/medium/high)
 
 Note: All datasets now use precision_level structure for better organization.
         """

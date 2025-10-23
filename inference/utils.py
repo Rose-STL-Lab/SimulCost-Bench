@@ -45,7 +45,10 @@ TOOL_NAME_KEYS = {
     "epoch_1d_check_converge_particle_order": ["nx", "dt_multiplier", "npart", "field_order", "particle_order"],
     "mpm_2d_check_converge_nx": ["nx", "npart", "cfl"],
     "mpm_2d_check_converge_npart": ["nx", "npart", "cfl"],
-    "mpm_2d_check_converge_cfl": ["nx", "npart", "cfl"]
+    "mpm_2d_check_converge_cfl": ["nx", "npart", "cfl"],
+    "diff_react_1d_check_converge_cfl": ["n_space", "cfl", "tol"],
+    "diff_react_1d_check_converge_n_space": ["n_space", "cfl", "tol"],
+    "diff_react_1d_check_converge_tol": ["n_space", "cfl", "tol"]
 }
 
 
@@ -382,6 +385,34 @@ class ToolCallManager:
                     cfl=fetch_param(tool_args, "cfl"),
                     energy_tolerance=self.energy_tolerance,
                     var_threshold=self.var_threshold,
+                )
+            elif tool_name in [
+                "diff_react_1d_check_converge_cfl", "diff_react_1d_check_converge_n_space",
+                "diff_react_1d_check_converge_tol"
+            ]:
+                # diff_react_1d uses task-specific tolerance from tolerance_rmse dict
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for diff_react_1d tools but was not provided in dataset (QID={self.qid})")
+
+                # Extract task name from tool name (e.g., "diff_react_1d_check_converge_cfl" -> "cfl")
+                task = tool_name.replace("diff_react_1d_check_converge_", "")
+
+                # tolerance_rmse is a dict like {"n_space": 0.05, "cfl": 0.05, "tol": 1e-05}
+                if not isinstance(self.tolerance_rmse, dict):
+                    raise ValueError(f"tolerance_rmse for diff_react_1d must be a dict, got {type(self.tolerance_rmse)} (QID={self.qid})")
+
+                if task not in self.tolerance_rmse:
+                    raise ValueError(f"Task '{task}' not found in tolerance_rmse dict: {self.tolerance_rmse} (QID={self.qid})")
+
+                rmse_tolerance = self.tolerance_rmse[task]
+
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    n_space=fetch_param(tool_args, "n_space"),
+                    cfl=fetch_param(tool_args, "cfl"),
+                    tol=fetch_param(tool_args, "tol"),
+                    rmse_tolerance=rmse_tolerance
                 )
             else:
                 # Critical else branch to handle unrecognized tool names

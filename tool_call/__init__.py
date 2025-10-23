@@ -72,8 +72,6 @@ from .diff_react_1d.run_oneD_diff_react import (
     diff_react_1d_check_converge_cfl,
     diff_react_1d_check_converge_n_space,
     diff_react_1d_check_converge_tol,
-    diff_react_1d_check_converge_min_step,
-    diff_react_1d_check_converge_initial_step_guess,
     diff_react_1d_check_converge_parameter
 )
 
@@ -135,7 +133,5 @@ __all__ = [
     "diff_react_1d_check_converge_cfl",
     "diff_react_1d_check_converge_n_space",
     "diff_react_1d_check_converge_tol",
-    "diff_react_1d_check_converge_min_step",
-    "diff_react_1d_check_converge_initial_step_guess",
     "diff_react_1d_check_converge_parameter",
 ]

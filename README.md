@@ -92,8 +92,8 @@ The table below summarizes the available tasks for each simulation type and indi
 | 1D Diffusion-Reaction    | `cfl`                | ✅ Supported        |
 | 1D Diffusion-Reaction    | `n_space`            | ✅ Supported        |
 | 1D Diffusion-Reaction    | `tol`                | ✅ Supported        |
-| 1D Diffusion-Reaction    | `min_step`           | ✅ Supported        |
-| 1D Diffusion-Reaction    | `initial_step_guess` | ❌ Only Zero-Shot   |
+<!-- | 1D Diffusion-Reaction    | `min_step`           | ✅ Supported        |
+| 1D Diffusion-Reaction    | `initial_step_guess` | ❌ Only Zero-Shot   | -->
 
 </details>
 
