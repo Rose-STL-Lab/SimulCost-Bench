@@ -8,6 +8,7 @@ This script automatically detects and merges parquet files from:
 - eval_results/burgers_1d/dataframes/
 - eval_results/heat_1d/dataframes/
 - eval_results/heat_2d/dataframes/
+- eval_results/diff_react_1d/dataframes/
 - eval_results/euler_1d_icl_accuracy_focused/dataframes/
 - eval_results/euler_1d_icl_cost_excluded/dataframes/
 - eval_results/euler_1d_icl_full/dataframes/
@@ -245,6 +246,7 @@ def main():
         "heat_1d",
         "heat_2d",
         "mpm_2d",
+        "diff_react_1d",
         "euler_1d_icl_accuracy_focused",
         "euler_1d_icl_cost_excluded",
         "euler_1d_icl_full",

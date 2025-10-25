@@ -19,7 +19,7 @@ def load_and_process_data(parquet_path: str):
     df = pd.read_parquet(parquet_path)
 
     # Filter only the target datasets
-    target_datasets = ['burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d', 'mpm_2d']
+    target_datasets = ['burgers_1d', 'diff_react_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d', 'mpm_2d']
     df_filtered = df[df['dataset'].isin(target_datasets)].copy()
 
     # Standardize model names

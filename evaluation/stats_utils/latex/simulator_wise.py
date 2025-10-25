@@ -19,7 +19,7 @@ def load_and_process_data(parquet_path: str):
     df = pd.read_parquet(parquet_path)
 
     # Filter only the target datasets (exclude icl variants)
-    target_datasets = ['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d']
+    target_datasets = ['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d']
     df_filtered = df[df['dataset'].isin(target_datasets)].copy()
 
     # Standardize precision level names for sorting
@@ -72,6 +72,7 @@ def format_dataset_name(dataset_name):
     """Format dataset name for display in table caption."""
     name_mapping = {
         'burgers_1d': 'Burgers 1D',
+        'diff_react_1d': 'Diffusion-Reaction 1D',
         'epoch_1d': 'Epoch 1D',
         'euler_1d': 'Euler 1D',
         'heat_1d': 'Heat 1D',
@@ -181,7 +182,7 @@ def main():
     df = load_and_process_data(parquet_path)
 
     # Define datasets and model order
-    datasets = sorted(['burgers_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d'])
+    datasets = sorted(['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d'])
     model_order = sorted(df['model_name'].unique())
 
     # Output directory

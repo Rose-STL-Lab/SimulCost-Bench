@@ -97,7 +97,7 @@ class OverallStatsGenerator:
             List of dataset names
         """
         # Fixed dataset paths to read from (now read from merged_results.parquet)
-        fixed_datasets = ['burgers_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d', 'mpm_2d']
+        fixed_datasets = ['burgers_1d', 'diff_react_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'ns_transient_2d', 'mpm_2d']
 
         # If target dataset is specified, only return that one
         if self.target_dataset:
