@@ -94,8 +94,9 @@ The table below summarizes the available tasks for each simulation type and indi
 | 1D Diffusion-Reaction    | `cfl`                | ✅ Supported        |
 | 1D Diffusion-Reaction    | `n_space`            | ✅ Supported        |
 | 1D Diffusion-Reaction    | `tol`                | ✅ Supported        |
-<!-- | 1D Diffusion-Reaction    | `min_step`           | ✅ Supported        |
-| 1D Diffusion-Reaction    | `initial_step_guess` | ❌ Only Zero-Shot   | -->
+| 2D Euler Gas Dynamics    | `n_grid_x`       | ✅ Supported        |
+| 2D Euler Gas Dynamics    | `cfl`            | ✅ Supported        |
+| 2D Euler Gas Dynamics    | `cg_tolerance`   | ✅ Supported        |
 
 </details>
 
@@ -135,6 +136,9 @@ python qs_gen/2D_mpm.py
 
 # 1D Diffusion-Reaction Equations with Newton Method
 python qs_gen/1D_diff_react.py
+
+# 2D Euler Equations with Advection-Projection Method
+python qs_gen/2D_euler.py
 ```
 
 </details>
@@ -175,6 +179,9 @@ python dataset_gen/twoD_mpm.py
 
 # 1D Diffusion-Reaction Equations with Newton Method
 python dataset_gen/oneD_diff_react.py
+
+# 2D Euler Equations with Advection-Projection Method
+python dataset_gen/twoD_euler.py
 ```
 
 </details>
