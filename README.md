@@ -46,6 +46,8 @@ poetry install --no-root
 
 **Note**: To run 1D EPOCH PIC simulations, see the [EPOCH Setup Guide](EPOCH_SETUP.md) for additional configuration requirements.
 
+**Note**: To run 2D Euler gas dynamics simulations, see the [Euler 2D Setup Guide](EULER_2D_SETUP.md) for additional configuration requirements.
+
 ## 📋 Tasks and Zero-Shot Support
 
 <details>

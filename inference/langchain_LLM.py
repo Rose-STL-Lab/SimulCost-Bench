@@ -606,7 +606,8 @@ DATASET_TASK_MAP = {
     "mpm_2d_icl_accuracy_focused": ["nx", "npart", "cfl"],
     "mpm_2d_icl_cost_excluded": ["nx", "npart", "cfl"],
     "mpm_2d_icl_full": ["nx", "npart", "cfl"],
-    "diff_react_1d": ["cfl", "n_space", "tol"]
+    "diff_react_1d": ["cfl", "n_space", "tol"],
+    "euler_2d": ["cfl", "n_grid_x", "cg_tolerance"]
 }
 
 # Generate all valid tasks for choices

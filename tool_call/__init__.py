@@ -75,6 +75,13 @@ from .diff_react_1d.run_oneD_diff_react import (
     diff_react_1d_check_converge_parameter
 )
 
+# Euler 2D functions
+from .euler_2d.run_twoD_euler_PDE_exp import (
+    euler_2d_check_converge_cfl,
+    euler_2d_check_converge_n_grid_x,
+    euler_2d_check_converge_cg_tolerance
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -134,4 +141,9 @@ __all__ = [
     "diff_react_1d_check_converge_n_space",
     "diff_react_1d_check_converge_tol",
     "diff_react_1d_check_converge_parameter",
+
+    # Euler 2D
+    "euler_2d_check_converge_cfl",
+    "euler_2d_check_converge_n_grid_x",
+    "euler_2d_check_converge_cg_tolerance",
 ]

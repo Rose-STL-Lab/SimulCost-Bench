@@ -29,7 +29,7 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d"
+    echo "                   Available: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -39,6 +39,7 @@ show_help() {
     echo "  epoch_1d: dt_multiplier, nx, npart, field_order, particle_order (with precision levels: low, medium, high)"
     echo "  heat_1d: cfl, n_space (with precision levels: low, medium, high)"
     echo "  heat_2d: dx, error_threshold (both modes), relax, t_init (zero-shot only) (with precision levels: low, medium, high)"
+    echo "  euler_2d: n_grid_x, cfl, cg_tolerance (with precision levels: low, medium, high)"
     echo "  mpm_2d: nx, npart, cfl (with precision levels: low, medium, high)"
     echo "  ns_2d: mesh_x, mesh_y, omega_u, omega_v, omega_p, diff_u_threshold, diff_v_threshold, res_iter_v_threshold (with precision levels: low, medium, high)"
     echo "  ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (with precision levels: low, medium, high)"
@@ -199,7 +200,25 @@ for DATASET in "${DATASETS[@]}"; do
                 done
             done
             ;;
-            
+
+        "euler_2d")
+            echo "📋 Running Euler 2D evaluation..."
+            tasks=("n_grid_x" "cfl" "cg_tolerance")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/euler_2d/eval.py -m $MODEL -d euler_2d -t $task -l $precision $mode"
+                        if ! python evaluation/euler_2d/eval.py -m $MODEL -d euler_2d -t $task -l $precision $mode; then
+                            echo "⚠️  Evaluation failed for model: $MODEL, task: $task, precision: $precision, mode: ${mode:-iterative}. Continuing with next evaluation..."
+                        fi
+                    done
+                done
+            done
+            ;;
+
         "ns_2d")
             echo "📋 Running NS 2D evaluation..."
             tasks=("mesh_x" "mesh_y" "omega_u" "omega_v" "omega_p" "diff_u_threshold" "diff_v_threshold" "res_iter_v_threshold")
@@ -290,7 +309,7 @@ for DATASET in "${DATASETS[@]}"; do
 
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d"
+            echo "Supported datasets: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d"
             exit 1
             ;;
     esac
