@@ -39,6 +39,9 @@ def euler_2d_check_converge_cfl(
     )
 
     return {
+        "refined_parameter": 'cfl',
+        "current_value": cfl,
+        "refined_value": refine_cfl,
         "RMSE": round(rmse, 6),
         "is_converged": bool(converged),
         "accumulated_cost": accumulated_cost,
@@ -73,6 +76,9 @@ def euler_2d_check_converge_n_grid_x(
     )
 
     return {
+        "refined_parameter": 'n_grid_x',
+        "current_value": n_grid_x,
+        "refined_value": refine_n_grid_x,
         "RMSE": round(rmse, 6),
         "is_converged": bool(converged),
         "accumulated_cost": accumulated_cost,
@@ -107,6 +113,9 @@ def euler_2d_check_converge_cg_tolerance(
     )
 
     return {
+        "refined_parameter": 'cg_tolerance',
+        "current_value": cg_tolerance,
+        "refined_value": refine_cg_tolerance,
         "RMSE": round(rmse, 6),
         "is_converged": bool(converged),
         "accumulated_cost": accumulated_cost,
