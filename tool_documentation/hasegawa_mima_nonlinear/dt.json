@@ -1,0 +1,19 @@
+{
+  "run_hasegawa_mima_nonlinear": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "hasegawa_mima_nonlinear_check_converge_dt",
+        "description": "Conduct a Hasegawa-Mima nonlinear plasma turbulence simulation and evaluate temporal resolution convergence by refining dt (*0.5). Returns {\"refined_parameter\": str, \"current_value\": float, \"refined_value\": float, \"norm_RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "N": { "type": "integer", "description": "Grid resolution for spatial discretization" },
+            "dt": { "type": "number", "description": "Current time step size for RK4 integration" }
+          },
+          "required": ["N", "dt"]
+        }
+      }
+    }
+  }
+}

@@ -97,6 +97,8 @@ The table below summarizes the available tasks for each simulation type and indi
 | 2D Euler Gas Dynamics    | `n_grid_x`       | ✅ Supported        |
 | 2D Euler Gas Dynamics    | `cfl`            | ✅ Supported        |
 | 2D Euler Gas Dynamics    | `cg_tolerance`   | ✅ Supported        |
+| Hasegawa-Mima Nonlinear  | `N`              | ✅ Supported        |
+| Hasegawa-Mima Nonlinear  | `dt`             | ✅ Supported        |
 
 </details>
 
@@ -139,6 +141,9 @@ python qs_gen/1D_diff_react.py
 
 # 2D Euler Equations with Advection-Projection Method
 python qs_gen/2D_euler.py
+
+# Hasegawa-Mima Nonlinear Equation with Pseudo-Spectral Method
+python qs_gen/hasegawa_mima_nonlinear.py
 ```
 
 </details>
@@ -182,6 +187,9 @@ python dataset_gen/oneD_diff_react.py
 
 # 2D Euler Equations with Advection-Projection Method
 python dataset_gen/twoD_euler.py
+
+# Hasegawa-Mima Nonlinear Equation with Pseudo-Spectral Method
+python dataset_gen/hasegawa_mima_nonlinear.py
 ```
 
 </details>

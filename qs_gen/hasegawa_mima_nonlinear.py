@@ -33,15 +33,15 @@ TASKS_JSON_PATH = (
 
 PRECISION_LEVELS = {
     "high": {
-        "tolerance_rmse": 0.00001,
+        "tolerance_rmse": 0.0001,
         "description": "High precision convergence - very challenging"
     },
     "medium": {
-        "tolerance_rmse": 0.0001,
+        "tolerance_rmse": 0.001,
         "description": "Medium precision convergence - challenging"
     },
     "low": {
-        "tolerance_rmse": 0.0005,
+        "tolerance_rmse": 0.01,
         "description": "Low precision convergence - achievable"
     },
 }

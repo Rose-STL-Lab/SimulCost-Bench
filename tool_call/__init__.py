@@ -82,6 +82,12 @@ from .euler_2d.run_twoD_euler_PDE_exp import (
     euler_2d_check_converge_cg_tolerance
 )
 
+# Hasegawa-Mima Nonlinear functions
+from .hasegawa_mima_nonlinear.run_hasegawa_mima_nonlinear import (
+    hasegawa_mima_nonlinear_check_converge_N,
+    hasegawa_mima_nonlinear_check_converge_dt
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -146,4 +152,8 @@ __all__ = [
     "euler_2d_check_converge_cfl",
     "euler_2d_check_converge_n_grid_x",
     "euler_2d_check_converge_cg_tolerance",
+
+    # Hasegawa-Mima Nonlinear
+    "hasegawa_mima_nonlinear_check_converge_N",
+    "hasegawa_mima_nonlinear_check_converge_dt",
 ]

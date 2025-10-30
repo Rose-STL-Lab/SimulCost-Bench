@@ -51,7 +51,9 @@ TOOL_NAME_KEYS = {
     "diff_react_1d_check_converge_tol": ["n_space", "cfl", "tol"],
     "euler_2d_check_converge_cfl": ["n_grid_x", "cfl", "cg_tolerance"],
     "euler_2d_check_converge_n_grid_x": ["n_grid_x", "cfl", "cg_tolerance"],
-    "euler_2d_check_converge_cg_tolerance": ["n_grid_x", "cfl", "cg_tolerance"]
+    "euler_2d_check_converge_cg_tolerance": ["n_grid_x", "cfl", "cg_tolerance"],
+    "hasegawa_mima_nonlinear_check_converge_N": ["N", "dt"],
+    "hasegawa_mima_nonlinear_check_converge_dt": ["N", "dt"]
 }
 
 
@@ -432,6 +434,20 @@ class ToolCallManager:
                     cfl=fetch_param(tool_args, "cfl"),
                     cg_tolerance=fetch_param(tool_args, "cg_tolerance"),
                     rmse_tolerance=tolerance
+                )
+            elif tool_name in [
+                "hasegawa_mima_nonlinear_check_converge_N", "hasegawa_mima_nonlinear_check_converge_dt"
+            ]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for hasegawa_mima_nonlinear tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    N=fetch_param(tool_args, "N"),
+                    dt=fetch_param(tool_args, "dt"),
+                    tolerance_rmse=tolerance
                 )
             else:
                 # Critical else branch to handle unrecognized tool names
