@@ -1,0 +1,20 @@
+{
+  "run_twoD_euler_PDE_exp": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "euler_2d_check_converge_cfl",
+        "description": "Conduct a 2D Euler PDE simulation and evaluate CFL convergence by halving CFL (*0.5). Returns {\"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "n_grid_x": { "type": "integer", "description": "Grid resolution in x-direction" },
+            "cfl": { "type": "number", "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping" },
+            "cg_tolerance": { "type": "number", "description": "Conjugate gradient solver tolerance for pressure projection" }
+          },
+          "required": ["n_grid_x", "cfl", "cg_tolerance"]
+        }
+      }
+    }
+  }
+}
