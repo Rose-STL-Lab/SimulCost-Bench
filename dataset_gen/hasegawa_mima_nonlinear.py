@@ -75,7 +75,7 @@ def forward(self, data: dict):
             "N",
             "dt"
         ],
-        norm_rmse_tolerance=data.get("norm_rmse_tolerance")
+        tolerance_rmse=data.get("tolerance_rmse")
     )
 
     # Set up experiment agent
@@ -129,7 +129,7 @@ def forward(self, data: dict):
             'N',
             'dt'
         ],
-        norm_rmse_tolerance=data.get('norm_rmse_tolerance')
+        tolerance_rmse=data.get('tolerance_rmse')
     )
 
     exp_instr = (
@@ -316,7 +316,7 @@ def main():
                         "zero_shot": q.get("zero_shot"),
                         "target_parameter": q.get("target_parameter"),
                         "precision_level": q.get("precision_level"),
-                        "norm_rmse_tolerance": precision_config.get("tolerance_rmse"),  # Note: qs_gen uses "tolerance_rmse"
+                        "tolerance_rmse": precision_config.get("tolerance_rmse"),
                         "messages": single_ds.get("messages")
                     }
 
