@@ -16,8 +16,8 @@ Key differences from other solvers:
 - Test cases: monopole, dipole, sinusoidal, sin_x_gauss_y, gauss_x_sin_y
 
 Usage:
-    python evaluation/hasegawa_mima_nonlinear/eval.py -t N -p medium -m model_name
-    python evaluation/hasegawa_mima_nonlinear/eval.py -t dt -p low -m model_name -z
+    python evaluation/hasegawa_mima_nonlinear/eval.py -t N -l medium -m model_name
+    python evaluation/hasegawa_mima_nonlinear/eval.py -t dt -l low -m model_name -z
 """
 import json
 import os
@@ -191,7 +191,7 @@ def evaluate(
                         "refined_parameter": str(row['refined_parameter']),
                         "current_value": str(row['current_value']),
                         "refined_value": str(row['refined_value']),
-                        "rmse": str(row['rmse']),
+                        "rmse": str(row['norm_RMSE']),
                         "is_converged": str(row['is_converged']),
                         "accumulated_cost": str(row['accumulated_cost']),
                         "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
@@ -470,7 +470,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--task", default="N",
                         choices=list(VALID_TASKS),
                         help="Task: one of the 2 tasks (N, dt)")
-    parser.add_argument("-p", "--precision_level", default="medium",
+    parser.add_argument("-l", "--precision_level", default="medium",
                         choices=list(VALID_PRECISION_LEVELS),
                         help="Precision level for hasegawa_mima_nonlinear dataset")
     parser.add_argument("-m", "--model",

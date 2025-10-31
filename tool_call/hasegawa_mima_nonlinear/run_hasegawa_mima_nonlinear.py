@@ -97,9 +97,11 @@ def hasegawa_mima_nonlinear_check_converge_parameter(
     )
 
     if is_converged:
-        print(f"Convergence achieved for {refine_param} refinement (RMSE: {rmse_diff:.6f})")
+        rmse_str = f"{rmse_diff:.6f}" if rmse_diff is not None else "None"
+        print(f"Convergence achieved for {refine_param} refinement (RMSE: {rmse_str})")
     else:
-        print(f"No convergence for {refine_param} refinement (RMSE: {rmse_diff:.6f})")
+        rmse_str = f"{rmse_diff:.6f}" if rmse_diff is not None else "None"
+        print(f"No convergence for {refine_param} refinement (RMSE: {rmse_str})")
 
     return {
         "refined_parameter": refine_param,
