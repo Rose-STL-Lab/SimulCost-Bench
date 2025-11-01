@@ -297,6 +297,10 @@ def evaluate(
                 )
                 success = is_converged
 
+                # Convert None to float('inf') for formatting compatibility
+                if rmse_diff is None:
+                    rmse_diff = float('inf')
+
             except Exception as e:
                 logger.warning(f"⚠️ QID {qid}: Error in success determination: {e}, marking as failed")
                 success = False
