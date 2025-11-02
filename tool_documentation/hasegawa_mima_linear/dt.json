@@ -1,0 +1,33 @@
+{
+  "run_hasegawa_mima_linear": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "hasegawa_mima_linear_check_converge_dt",
+        "description": "Conduct a Hasegawa-Mima linear plasma turbulence simulation and evaluate temporal resolution convergence by comparing against analytical solution. Returns {\"refined_parameter\": str, \"current_value\": float, \"RMSE\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int}.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "N": {
+              "type": "integer",
+              "description": "Grid resolution for spatial discretization"
+            },
+            "dt": {
+              "type": "number",
+              "description": "Current time step size for numerical integration"
+            },
+            "cg_atol": {
+              "type": "number",
+              "description": "Conjugate gradient solver absolute tolerance"
+            }
+          },
+          "required": [
+            "N",
+            "dt",
+            "cg_atol"
+          ]
+        }
+      }
+    }
+  }
+}
