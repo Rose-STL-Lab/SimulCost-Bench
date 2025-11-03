@@ -88,6 +88,13 @@ from .hasegawa_mima_nonlinear.run_hasegawa_mima_nonlinear import (
     hasegawa_mima_nonlinear_check_converge_dt
 )
 
+# Hasegawa-Mima Linear functions
+from .hasegawa_mima_linear.run_hasegawa_mima_linear import (
+    hasegawa_mima_linear_check_converge_N,
+    hasegawa_mima_linear_check_converge_dt,
+    hasegawa_mima_linear_check_converge_cg_atol
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -156,4 +163,9 @@ __all__ = [
     # Hasegawa-Mima Nonlinear
     "hasegawa_mima_nonlinear_check_converge_N",
     "hasegawa_mima_nonlinear_check_converge_dt",
+
+    # Hasegawa-Mima Linear
+    "hasegawa_mima_linear_check_converge_N",
+    "hasegawa_mima_linear_check_converge_dt",
+    "hasegawa_mima_linear_check_converge_cg_atol",
 ]

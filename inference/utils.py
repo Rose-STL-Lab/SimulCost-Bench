@@ -53,7 +53,10 @@ TOOL_NAME_KEYS = {
     "euler_2d_check_converge_n_grid_x": ["n_grid_x", "cfl", "cg_tolerance"],
     "euler_2d_check_converge_cg_tolerance": ["n_grid_x", "cfl", "cg_tolerance"],
     "hasegawa_mima_nonlinear_check_converge_N": ["N", "dt"],
-    "hasegawa_mima_nonlinear_check_converge_dt": ["N", "dt"]
+    "hasegawa_mima_nonlinear_check_converge_dt": ["N", "dt"],
+    "hasegawa_mima_linear_check_converge_N": ["N", "dt", "cg_atol"],
+    "hasegawa_mima_linear_check_converge_dt": ["N", "dt", "cg_atol"],
+    "hasegawa_mima_linear_check_converge_cg_atol": ["N", "dt", "cg_atol"]
 }
 
 
@@ -448,6 +451,28 @@ class ToolCallManager:
                     N=fetch_param(tool_args, "N"),
                     dt=fetch_param(tool_args, "dt"),
                     tolerance_rmse=tolerance
+                )
+            elif tool_name in [
+                "hasegawa_mima_linear_check_converge_N",
+                "hasegawa_mima_linear_check_converge_dt",
+                "hasegawa_mima_linear_check_converge_cg_atol"
+            ]:
+                # Use tolerance_rmse from dataset - required field
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse is required for hasegawa_mima_linear tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
+
+                # Extract check_param from tool_name (e.g., "hasegawa_mima_linear_check_converge_N" -> "N")
+                check_param = tool_name.replace("hasegawa_mima_linear_check_converge_", "")
+
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    N=fetch_param(tool_args, "N"),
+                    dt=fetch_param(tool_args, "dt"),
+                    cg_atol=fetch_param(tool_args, "cg_atol"),
+                    tolerance_rmse=tolerance,
+                    check_param=check_param
                 )
             else:
                 # Critical else branch to handle unrecognized tool names

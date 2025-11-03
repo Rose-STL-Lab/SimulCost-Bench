@@ -59,7 +59,7 @@ python evaluation/heat_1d/eval.py -m <model> -d heat_1d -t <task> -l <precision>
 
 Each evaluation run produces **two types of outputs**:
 
-1. **JSON Files** (detailed results per question):
+1. **Log Files** (detailed results per question):
    - Location: `eval_results/{dataset}/{task}/{precision_level}/`
    - Contains: Full evaluation details for each question instance
 

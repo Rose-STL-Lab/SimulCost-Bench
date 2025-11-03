@@ -608,7 +608,8 @@ DATASET_TASK_MAP = {
     "mpm_2d_icl_full": ["nx", "npart", "cfl"],
     "diff_react_1d": ["cfl", "n_space", "tol"],
     "euler_2d": ["cfl", "n_grid_x", "cg_tolerance"],
-    "hasegawa_mima_nonlinear": ["N", "dt"]
+    "hasegawa_mima_nonlinear": ["N", "dt"],
+    "hasegawa_mima_linear": ["N", "dt", "cg_atol"]
 }
 
 # Generate all valid tasks for choices
@@ -784,6 +785,9 @@ Available dataset-task combinations:
   mpm_2d_icl_cost_excluded: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
   mpm_2d_icl_full: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL full version]
   diff_react_1d: cfl, n_space, tol (use -l for precision_level: low/medium/high)
+  euler_2d: cfl, n_grid_x, cg_tolerance (use -l for precision_level: low/medium/high)
+  hasegawa_mima_nonlinear: N, dt (use -l for precision_level: low/medium/high)
+  hasegawa_mima_linear: N, dt, cg_atol (use -l for precision_level: low/medium/high)
 
 Note: All datasets now use precision_level structure for better organization.
         """

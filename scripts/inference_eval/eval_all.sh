@@ -36,7 +36,7 @@ show_help() {
     echo "                              epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
     echo "                              heat_2d, euler_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
     echo "                              ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear"
+    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -52,6 +52,7 @@ show_help() {
     echo "  ns_transient_2d: resolution, cfl, relaxation_factor, residual_threshold (with precision levels: low, medium, high)"
     echo "  diff_react_1d: cfl, n_space, tol (with precision levels: low, medium, high)"
     echo "  hasegawa_mima_nonlinear: N, dt (with precision levels: low, medium, high)"
+    echo "  hasegawa_mima_linear: N, dt, cg_atol (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -503,13 +504,29 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
 
+        "hasegawa_mima_linear")
+            echo "📋 Running Hasegawa-Mima Linear evaluation..."
+            tasks=("N" "dt" "cg_atol")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/hasegawa_mima_linear/eval.py -m $MODEL -d hasegawa_mima_linear -t $task -l $precision $mode"
+                        python evaluation/hasegawa_mima_linear/eval.py -m $MODEL -d hasegawa_mima_linear -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
         *)
             echo "❌ Unsupported dataset: $DATASET"
             echo "Supported datasets: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
             echo "                    epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
             echo "                    heat_2d, euler_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
             echo "                    ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear"
+            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear"
             exit 1
             ;;
     esac
