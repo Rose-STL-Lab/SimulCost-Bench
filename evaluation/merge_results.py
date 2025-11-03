@@ -4,6 +4,7 @@ Merge evaluation results from multiple datasets into a single parquet file.
 This script automatically detects and merges parquet files from:
 - eval_results/epoch_1d/dataframes/
 - eval_results/euler_1d/dataframes/
+- eval_results/euler_2d/dataframes/
 - eval_results/ns_transient_2d/dataframes/
 - eval_results/burgers_1d/dataframes/
 - eval_results/heat_1d/dataframes/
@@ -241,6 +242,7 @@ def main():
     datasets = [
         "epoch_1d",
         "euler_1d",
+        "euler_2d",
         "ns_transient_2d",
         "burgers_1d",
         "heat_1d",

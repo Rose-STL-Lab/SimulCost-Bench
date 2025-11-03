@@ -157,6 +157,14 @@ The parquet files contain the following columns:
 - `wave_error`: Relative wave position error
 - `rmse_tolerance`: Task-specific RMSE tolerance (varies by task: n_space/cfl/tol)
 
+**Euler 2D** (`euler_2d`):
+- `model_n_grid_x`, `dummy_n_grid_x`
+- `model_cfl`, `dummy_cfl`
+- `model_cg_tolerance`, `dummy_cg_tolerance`
+- `case`: Simulation case identifier (e.g., central_explosion, sod_tube, lax_tube, mach_3, stair_flow, strong_tube, high_mach, interact_blast, rarefaction)
+- `rmse`: Root mean square error
+- `rmse_tolerance`: RMSE tolerance threshold
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---
