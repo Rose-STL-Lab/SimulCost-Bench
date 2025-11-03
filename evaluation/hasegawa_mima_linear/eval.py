@@ -194,11 +194,10 @@ def evaluate(
                         "tool_reason": str(row['tool_reason']),
                         "refined_parameter": str(row['refined_parameter']),
                         "current_value": str(row['current_value']),
-                        "rmse": str(row['norm_RMSE']),
+                        "rmse": str(row['RMSE']),
                         "is_converged": str(row['is_converged']),
                         "accumulated_cost": str(row['accumulated_cost']),
                         "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
-                        "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row['The cost of the solver verifying convergence (This will not be included in your accumulated_cost)']),
                     }
                     attempt_list.append(attempt_dict)
                 attempt_history_by_qid[int(qid)] = attempt_list
