@@ -462,17 +462,13 @@ class ToolCallManager:
                     raise ValueError(f"tolerance_rmse is required for hasegawa_mima_linear tools but was not provided in dataset (QID={self.qid})")
                 tolerance = self.tolerance_rmse
 
-                # Extract check_param from tool_name (e.g., "hasegawa_mima_linear_check_converge_N" -> "N")
-                check_param = tool_name.replace("hasegawa_mima_linear_check_converge_", "")
-
                 result = func(
                     accumulated_cost=self.accumulated_cost,
                     profile=profile,
                     N=fetch_param(tool_args, "N"),
                     dt=fetch_param(tool_args, "dt"),
                     cg_atol=fetch_param(tool_args, "cg_atol"),
-                    tolerance_rmse=tolerance,
-                    check_param=check_param
+                    tolerance_rmse=tolerance
                 )
             else:
                 # Critical else branch to handle unrecognized tool names
