@@ -23,3 +23,7 @@ claude.md
 extracted_prompts
 temp
 fort.20
+
+**/.DS_Store
+**/*.png
+**/*.pdf
