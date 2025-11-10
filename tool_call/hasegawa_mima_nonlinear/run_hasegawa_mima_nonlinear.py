@@ -79,7 +79,7 @@ def hasegawa_mima_nonlinear_check_converge_parameter(
     print(f"Refined {refine_param} = {refined_params[refine_param]}")
 
     # Run current simulation
-    current_cost, current_results = get_results(
+    current_cost, current_results, _ = get_results(
         profile=profile,
         N=base_params['N'],
         dt=base_params['dt']

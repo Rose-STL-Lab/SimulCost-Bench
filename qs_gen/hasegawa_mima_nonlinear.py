@@ -188,7 +188,7 @@ class HasegawaMimaQuestionGenerator:
                 params: Dict[str, Any] = yaml.safe_load(fp)
 
             # Validate required fields in params (fail-fast)
-            required_fields = ["case", "L", "v_star", "Dx", "N", "dt"]
+            required_fields = ["case", "L", "v_star", "Dx", "N", "dt", "max_wall_time", "record_dt", "end_frame"]
             for field in required_fields:
                 if field not in params:
                     raise KeyError(
@@ -302,7 +302,9 @@ class HasegawaMimaQuestionGenerator:
             "",
             "## Introduction",
             "",
-            "This simulation solves the nonlinear Hasegawa-Mima equation for drift wave turbulence in magnetized plasmas, using a pseudo-spectral method with RK4 time integration and 2/3 rule dealiasing:",
+            "This simulation solves the nonlinear Hasegawa-Mima equation for drift wave turbulence in magnetized plasmas, using a pseudo-spectral method with RK4 time integration and 2/3 rule dealiasing.",
+            "",
+            f"**Wall Time Constraint**: To prevent runaway simulations, a configurable wall time limit (default: {params.get('max_wall_time', 120)} seconds) is enforced. Simulations that exceed this limit are terminated early and flagged as incomplete via the function call.",
             "",
             "**Governing equation:**",
             r"$$\frac{\partial q}{\partial t} + \left[\{\phi, q\}\right] + v_* \frac{\partial \phi}{\partial y} = 0$$",
@@ -326,6 +328,13 @@ class HasegawaMimaQuestionGenerator:
             r"$$q^{n+1} = q^n + \frac{\Delta t}{6}(k_1 + 2k_2 + 2k_3 + k_4)$$",
             "",
             "where $k_i$ are the RK4 stage evaluations of the RHS in spectral space.",
+            "",
+            "**Simulation Duration:**",
+            "",
+            f"- Recording interval: `record_dt = {params.get('record_dt', 1000.0)}` time units",
+            f"- Number of frames: `end_frame = {params.get('end_frame', 10)}`",
+            f"- Total simulation time: $T = \\text{{record\\_dt}} \\times \\text{{end\\_frame}} = {params.get('record_dt', 1000.0) * params.get('end_frame', 10):,.0f}$ time units",
+            r"- Number of time steps: $N_{\text{steps}} = T / \Delta t$",
             "",
             "### Spatial Discretization",
             "",

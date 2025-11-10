@@ -76,6 +76,7 @@ def hasegawa_mima_linear_check_converge_parameter(
     print(f"Parameters: N={N}, dt={dt}, cg_atol={cg_atol:.2e}")
 
     # Run current numerical simulation
+    # Note: max_wall_time is handled by the wrapper (defaults to config value of 120s)
     current_cost = run_sim_hasegawa_mima_linear(
         profile=profile,
         N=N,
