@@ -96,8 +96,6 @@ def compute_paired_ttest(paired_df, metric_col="is_successful"):
     }
 
 
-
-
 def main():
     parquet_path = "eval_results/merged_results.parquet"
     output_dir = Path("plots/res/analysis")
@@ -148,9 +146,7 @@ def main():
     print("\n" + "=" * 70)
     print("PER-MODEL PAIRED T-TESTS")
     print("=" * 70)
-    print(
-        f"\n{'Model':<25s} {'t':>7s} {'p-value':>10s} {'Sig':>4s} {'Mean Diff':>10s} {'95% CI':>20s} {'n':>6s}"
-    )
+    print(f"\n{'Model':<25s} {'t':>7s} {'p-value':>10s} {'Sig':>4s} {'Mean Diff':>10s} {'95% CI':>20s} {'n':>6s}")
     print("-" * 90)
 
     results_list = []

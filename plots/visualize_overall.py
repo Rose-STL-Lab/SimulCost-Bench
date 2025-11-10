@@ -182,7 +182,7 @@ def plot(parquet_path, output_dir, datasets, paired_only, per_dataset):
                 df_iter=df_iter_dataset,
                 output_dir=output_dir,
                 filename_prefix=dataset,
-                first_groupby=["dataset", "model_name", "precision_level"],
+                first_groupby=["dataset", "task", "model_name", "precision_level"],
                 paired_only=paired_only,
             )
 
