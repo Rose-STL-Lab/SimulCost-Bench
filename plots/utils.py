@@ -34,6 +34,56 @@ def read_iterative_data(parquet_path: str, datasets=None):
     return df
 
 
+def get_paired_data(df_zs, df_iter):
+    """
+    Merge zero-shot and iterative data on matching task configurations.
+
+    Returns a single dataframe with both zero-shot and iterative values side-by-side
+    for entries that exist in both modes.
+
+    Args:
+        df_zs: DataFrame with zero-shot results
+        df_iter: DataFrame with iterative results
+
+    Returns:
+        DataFrame with columns: match_cols, all_zs_columns (with _zs suffix), all_iter_columns (with _iter suffix)
+        Only includes rows that have matches in both dataframes.
+    """
+    # Define columns that identify the task/configuration
+    match_cols = [
+        "dataset",
+        "task",
+        "precision_level",
+        "model_name",
+        "profile",
+        "target_parameters",
+        "non_target_parameters",
+    ]
+
+    # Create match keys
+    df_zs_copy = df_zs.copy()
+    df_iter_copy = df_iter.copy()
+
+    df_zs_copy["_match_key"] = df_zs_copy[match_cols].apply(lambda row: tuple(row), axis=1)
+    df_iter_copy["_match_key"] = df_iter_copy[match_cols].apply(lambda row: tuple(row), axis=1)
+
+    # Get columns to merge (exclude match_cols to avoid duplication, keep _match_key for merging)
+    zs_value_cols = [col for col in df_zs_copy.columns if col not in match_cols]
+    iter_value_cols = [col for col in df_iter_copy.columns if col not in match_cols]
+
+    # Merge on match key
+    merged = df_zs_copy[match_cols + zs_value_cols].merge(
+        df_iter_copy[iter_value_cols],
+        on="_match_key",
+        suffixes=("_zs", "_iter"),
+    )
+
+    # Drop the match key column (no longer needed)
+    merged = merged.drop(columns=["_match_key"])
+
+    return merged
+
+
 def compute_mean_metrics(df, metric_key, first_groupby, second_groupby):
     """
     Calculate mean metric with two-stage averaging.
