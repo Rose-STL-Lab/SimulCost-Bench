@@ -2,6 +2,19 @@ from costsci_tools.wrappers.hasegawa_mima_linear import run_sim_hasegawa_mima_li
 import numpy as np
 import yaml
 import os
+import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables to support SIM_RES_BASE_DIR
+load_dotenv()
+SIM_RES_BASE_DIR = os.getenv("SIM_RES_BASE_DIR", None)
+
+def _get_sim_path(relative_path):
+    """Convert relative path to absolute path using SIM_RES_BASE_DIR if set."""
+    if SIM_RES_BASE_DIR:
+        return os.path.join(SIM_RES_BASE_DIR, relative_path)
+    return relative_path
 
 def _to_jsonable(obj):
     """Convert numpy objects to JSON serializable format."""
@@ -63,10 +76,11 @@ def hasegawa_mima_linear_check_converge_parameter(
         dict: Contains convergence information including:
             - refined_parameter: Name of parameter being checked
             - current_value: Current value of the parameter
-            - RMSE: Root mean square error vs analytical solution
+            - RMSE: Root mean square error vs analytical solution (None if wall time exceeded)
             - is_converged: Boolean indicating if convergence criteria is met
             - accumulated_cost: Updated accumulated cost
             - The cost of the solver simulating the environment: Cost of current simulation
+            - wall_time_exceeded: Boolean indicating if simulation exceeded maximum wall time
     """
 
     # Load profile configuration (optional - for reference)
@@ -94,6 +108,15 @@ def hasegawa_mima_linear_check_converge_parameter(
     # The get_error_metric function automatically compares with the cached analytical solution
     rmse = get_error_metric(sim_dir)
 
+    # Read wall_time_exceeded status from meta.json
+    # Apply path transformation to support SIM_RES_BASE_DIR
+    meta_path = Path(_get_sim_path(sim_dir)) / "meta.json"
+    wall_time_exceeded = False
+    if meta_path.exists():
+        with open(meta_path) as f:
+            meta = json.load(f)
+        wall_time_exceeded = meta.get("wall_time_exceeded", False)
+
     # Check convergence
     if rmse is not None:
         is_converged = rmse <= tolerance_rmse
@@ -118,6 +141,7 @@ def hasegawa_mima_linear_check_converge_parameter(
         "is_converged": bool(is_converged),
         "accumulated_cost": accumulated_cost,
         "The cost of the solver simulating the environment": current_cost,
+        "wall_time_exceeded": wall_time_exceeded,
     }
 
 # Convenience functions for each parameter

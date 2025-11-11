@@ -196,6 +196,7 @@ def evaluate(
                         "accumulated_cost": str(row['accumulated_cost']),
                         "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
                         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row['The cost of the solver verifying convergence (This will not be included in your accumulated_cost)']),
+                        "wall_time_exceeded": str(row.get('wall_time_exceeded', 'False')),
                     }
                     attempt_list.append(attempt_dict)
                 attempt_history_by_qid[int(qid)] = attempt_list
@@ -296,6 +297,22 @@ def evaluate(
                     tolerance_rmse=rmse_tol
                 )
                 success = is_converged
+
+                # Check if wall time was exceeded in the last attempt
+                wall_time_exceeded = False
+                attempt_history = attempt_history_by_qid.get(qid, [])
+                if attempt_history:
+                    last_attempt = attempt_history[-1]
+                    try:
+                        wall_time_str = last_attempt.get("wall_time_exceeded", "False")
+                        wall_time_exceeded = wall_time_str.lower() in ("true", "1", "yes")
+                    except Exception:
+                        pass
+
+                # If wall time exceeded, definitely not successful
+                if wall_time_exceeded:
+                    success = False
+                    logger.info(f"⚠️ QID {qid}: Wall time exceeded, marking as failed")
 
                 # Convert None to float('inf') for formatting compatibility
                 if rmse_diff is None:

@@ -198,6 +198,7 @@ def evaluate(
                         "is_converged": str(row['is_converged']),
                         "accumulated_cost": str(row['accumulated_cost']),
                         "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
+                        "wall_time_exceeded": str(row.get('wall_time_exceeded', 'False')),
                     }
                     attempt_list.append(attempt_dict)
                 attempt_history_by_qid[int(qid)] = attempt_list
@@ -285,6 +286,7 @@ def evaluate(
             logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
             success = False
             rmse_diff = float('inf')
+            wall_time_exceeded = False
 
             # --------- Select reference parameter set ---------
             ref_iter = get_reference_params(dummy)
@@ -299,6 +301,7 @@ def evaluate(
             try:
                 # Try to get RMSE from the last attempt in tool call history
                 rmse_diff = None
+                wall_time_exceeded = False
                 attempt_history = attempt_history_by_qid.get(qid, [])
                 if attempt_history:
                     last_attempt = attempt_history[-1]
@@ -309,6 +312,13 @@ def evaluate(
                     except (ValueError, TypeError):
                         pass
 
+                    # Check if wall time was exceeded in the last attempt
+                    try:
+                        wall_time_str = last_attempt.get("wall_time_exceeded", "False")
+                        wall_time_exceeded = wall_time_str.lower() in ("true", "1", "yes")
+                    except Exception:
+                        pass
+
                 # If RMSE not found in attempt history, try to get from last_iter
                 if rmse_diff is None and "rmse" in last_iter:
                     try:
@@ -317,7 +327,13 @@ def evaluate(
                         pass
 
                 # Use converged flag as success indicator
-                success = converged
+                # If wall time exceeded, definitely not successful
+                if wall_time_exceeded:
+                    success = False
+                    if rmse_diff is None or np.isinf(rmse_diff):
+                        logger.info(f"⚠️ QID {qid}: Wall time exceeded, marking as failed")
+                else:
+                    success = converged
 
                 # Convert None to float('inf') for formatting compatibility
                 if rmse_diff is None:
@@ -359,6 +375,7 @@ def evaluate(
             f"\n📊 --- Evaluation Result ---\n"
             f"🆔 QID: {qid}\n"
             f"🔄 Converged flag: {converged}\n"
+            f"⏱️ Wall time exceeded: {wall_time_exceeded}\n"
             f"🎯 Success (within tolerance): {success}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
@@ -419,6 +436,7 @@ def evaluate(
             # Evaluation results
             'is_converged': converged,
             'is_successful': success,
+            'wall_time_exceeded': wall_time_exceeded,
             'model_cost': cost,
             'dummy_cost': dummy_cost,
             'rmse': rmse_diff if not (np.isnan(rmse_diff) or np.isinf(rmse_diff)) else None,
