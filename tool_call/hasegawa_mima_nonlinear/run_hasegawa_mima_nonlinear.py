@@ -110,7 +110,7 @@ def hasegawa_mima_nonlinear_check_converge_parameter(
         "norm_RMSE": round(float(rmse_diff), 6) if rmse_diff is not None else None,
         "is_converged": bool(is_converged),
         "accumulated_cost": accumulated_cost,
-        "The cost of the solver simulating the envir=onment": current_cost,
+        "The cost of the solver simulating the environment": current_cost,
         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": cost2,
         "wall_time_exceeded": not simulation_completed,
     }
