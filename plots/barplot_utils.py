@@ -101,10 +101,32 @@ class GroupedBarPlot:
 
                     x_positions.append(bar_pos + bar_width / 2)  # Center of bar
 
-                # Use hatching pattern to differentiate bars within subgroup
-                hatch = None if j == 0 else "//" if j == 1 else "\\\\"
-                edgecolor = color if j == 0 else "black"
-                linewidth = 0 if j == 0 else 0.5
+                # Use hatching pattern and fill to differentiate bars within subgroup
+                # Support up to 4 bars: solid, dots, backward hatch, hollow
+                if j == 0:
+                    hatch = None
+                    edgecolor = color
+                    linewidth = 0
+                    facecolor = color
+                    alpha = 0.85
+                elif j == 1:
+                    hatch = "//"
+                    edgecolor = "black"
+                    linewidth = 0.5
+                    facecolor = color
+                    alpha = 0.85
+                elif j == 2:
+                    hatch = "..."
+                    edgecolor = "black"
+                    linewidth = 0.5
+                    facecolor = color
+                    alpha = 0.85
+                else:  # j == 3 or higher
+                    hatch = None
+                    edgecolor = color
+                    linewidth = 1.5
+                    facecolor = "none"
+                    alpha = 1.0
 
                 # Label: only mention bar_type for first subgroup, otherwise just subgroup name
                 if i == 0:
@@ -117,8 +139,8 @@ class GroupedBarPlot:
                     values,
                     bar_width,
                     label=label,
-                    color=color,
-                    alpha=0.85,
+                    color=facecolor,
+                    alpha=alpha,
                     hatch=hatch,
                     edgecolor=edgecolor,
                     linewidth=linewidth,
