@@ -33,10 +33,10 @@ models=(
  "meta.llama3-70b-instruct-v1:0"
 )
 
-# model_provider="custom_model"
-# models=(
-#  "qwen3_32b"
-# )
+model_provider="custom_model"
+models=(
+ "qwen3_32b"
+)
 
 # model_provider="openai"
 # models=(
