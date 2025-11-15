@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     # Get paired data
     print("Getting paired data...")
-    paired = get_paired_data(df_zs, df_iter)
+    paired = get_paired_data(df_zs, df_iter, merge=True)
     print(f"Paired entries: {len(paired)}")
 
     # Generate forest plot

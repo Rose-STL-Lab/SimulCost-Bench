@@ -102,7 +102,7 @@ class GroupedBarPlot:
                     x_positions.append(bar_pos + bar_width / 2)  # Center of bar
 
                 # Use hatching pattern and fill to differentiate bars within subgroup
-                # Support up to 4 bars: solid, dots, backward hatch, hollow
+                # Support up to 4 bars: solid, forward hatch, dots, hollow
                 if j == 0:
                     hatch = None
                     edgecolor = color
@@ -128,11 +128,8 @@ class GroupedBarPlot:
                     facecolor = "none"
                     alpha = 1.0
 
-                # Label: only mention bar_type for first subgroup, otherwise just subgroup name
-                if i == 0:
-                    label = f"{bar_type.title()}: {subgroup.title()}"
-                else:
-                    label = subgroup.title()
+                # Create label that combines bar_type and subgroup for proper legend
+                label = f"{bar_type}: {subgroup}"
 
                 bars = self.ax.bar(
                     x_positions,
@@ -165,9 +162,10 @@ class GroupedBarPlot:
         self.ax.set_ylabel(ylabel, fontsize=16, fontweight="bold")
         self.ax.set_xticks(np.arange(n_groups))
         self.ax.set_xticklabels(groups, rotation=45, ha="right", fontweight="bold")
-        # Create legend with rows organized by bar type
+        # Create legend organized by bar type (rows) and subgroup (columns)
         handles, labels = self.ax.get_legend_handles_labels()
-        # Reorganize: first n_subgroups handles are for first bar_type, next n_subgroups for second bar_type, etc.
+        # The handles/labels are currently: [bar0_sub0, bar0_sub1, bar0_sub2, bar1_sub0, bar1_sub1, ...]
+        # We want rows of bar types, columns of subgroups
         self.ax.legend(handles, labels, loc="upper right", framealpha=0.9, ncol=n_subgroups)
         self.ax.grid(axis="y", alpha=0.3, linestyle="--")
 

@@ -34,20 +34,19 @@ def read_iterative_data(parquet_path: str, datasets=None):
     return df
 
 
-def get_paired_data(df_zs, df_iter):
+def get_paired_data(df_zs, df_iter, merge):
     """
-    Merge zero-shot and iterative data on matching task configurations.
-
-    Returns a single dataframe with both zero-shot and iterative values side-by-side
-    for entries that exist in both modes.
+    Filter to only include matching task configurations that exist in both dataframes.
 
     Args:
-        df_zs: DataFrame with zero-shot results
-        df_iter: DataFrame with iterative results
+        df_zs: DataFrame with zero-shot (or first variant) results
+        df_iter: DataFrame with iterative (or second variant) results
+        merge: If True, merge into single dataframe with _zs/_iter suffixes.
+               If False, return tuple of (filtered_df_zs, filtered_df_iter) with only matching rows.
 
     Returns:
-        DataFrame with columns: match_cols, all_zs_columns (with _zs suffix), all_iter_columns (with _iter suffix)
-        Only includes rows that have matches in both dataframes.
+        If merge=True: Single DataFrame with both datasets merged (columns have _zs/_iter suffixes)
+        If merge=False: Tuple of (filtered_df_zs, filtered_df_iter) containing only paired entries
     """
     # Define columns that identify the task/configuration
     match_cols = [
@@ -67,18 +66,30 @@ def get_paired_data(df_zs, df_iter):
     df_zs_copy["_match_key"] = df_zs_copy[match_cols].apply(lambda row: tuple(row), axis=1)
     df_iter_copy["_match_key"] = df_iter_copy[match_cols].apply(lambda row: tuple(row), axis=1)
 
-    # Get columns to merge (exclude match_cols to avoid duplication, keep _match_key for merging)
-    zs_value_cols = [col for col in df_zs_copy.columns if col not in match_cols]
-    iter_value_cols = [col for col in df_iter_copy.columns if col not in match_cols]
+    # Find common match keys
+    common_keys = set(df_zs_copy["_match_key"]) & set(df_iter_copy["_match_key"])
 
-    # Merge on match key
-    merged = df_zs_copy[match_cols + zs_value_cols].merge(
-        df_iter_copy[iter_value_cols],
+    # Filter both dataframes to only common keys
+    df_zs_filtered = df_zs_copy[df_zs_copy["_match_key"].isin(common_keys)].copy()
+    df_iter_filtered = df_iter_copy[df_iter_copy["_match_key"].isin(common_keys)].copy()
+
+    if not merge:
+        # Return filtered dataframes without merging
+        df_zs_filtered = df_zs_filtered.drop(columns=["_match_key"])
+        df_iter_filtered = df_iter_filtered.drop(columns=["_match_key"])
+        return df_zs_filtered, df_iter_filtered
+
+    # Merge into single dataframe
+    zs_value_cols = [col for col in df_zs_filtered.columns if col not in match_cols]
+    iter_value_cols = [col for col in df_iter_filtered.columns if col not in match_cols]
+
+    merged = df_zs_filtered[match_cols + zs_value_cols].merge(
+        df_iter_filtered[iter_value_cols],
         on="_match_key",
         suffixes=("_zs", "_iter"),
     )
 
-    # Drop the match key column (no longer needed)
+    # Drop the match key column
     merged = merged.drop(columns=["_match_key"])
 
     return merged
@@ -112,7 +123,9 @@ def compute_mean_metrics(df, metric_key, first_groupby, second_groupby):
     return metrics
 
 
-def create_overall_metric_plot(zero_shot_metrics, iterative_metrics, xlabel, ylabel, ylim, output_path):
+def create_overall_metric_plot(
+    zero_shot_metrics, iterative_metrics, xlabel, ylabel, ylim, output_path, include_overall
+):
     """
     Create bar plot grouped by model with precision level subgroups.
 
@@ -123,6 +136,7 @@ def create_overall_metric_plot(zero_shot_metrics, iterative_metrics, xlabel, yla
         ylabel: Y-axis label
         ylim: Tuple (ymin, ymax) for y-axis limits
         output_path: Path to save the figure
+        include_overall: Whether to include "Overall" group averaging across all models
     """
     # Configuration: human-readable names
     precision_levels = ["low", "medium", "high"]
@@ -130,16 +144,6 @@ def create_overall_metric_plot(zero_shot_metrics, iterative_metrics, xlabel, yla
 
     # Get all unique models
     models = sorted(zero_shot_metrics["model_name"].unique())
-
-    # Calculate overall average (unweighted across models)
-    overall_zs = {}
-    overall_iter = {}
-    for precision in precision_levels:
-        zs_data = zero_shot_metrics[zero_shot_metrics["precision_level"] == precision]
-        overall_zs[precision] = zs_data["metric_value"].mean()
-
-        iter_data = iterative_metrics[iterative_metrics["precision_level"] == precision]
-        overall_iter[precision] = iter_data["metric_value"].mean()
 
     # Prepare data dict: model -> precision_name -> mode_name -> value
     data_dict = {}
@@ -163,14 +167,24 @@ def create_overall_metric_plot(zero_shot_metrics, iterative_metrics, xlabel, yla
             ]["metric_value"].values[0]
             data_dict[model][precision_name]["multi-round"] = iter_value
 
-    # Add overall average
-    data_dict["Overall"] = {}
-    for precision in precision_levels:
-        precision_name = precision_names[precision]
-        data_dict["Overall"][precision_name] = {
-            "single-round": overall_zs[precision],
-            "multi-round": overall_iter[precision],
-        }
+    # Add overall average if requested
+    if include_overall:
+        overall_zs = {}
+        overall_iter = {}
+        for precision in precision_levels:
+            zs_data = zero_shot_metrics[zero_shot_metrics["precision_level"] == precision]
+            overall_zs[precision] = zs_data["metric_value"].mean()
+
+            iter_data = iterative_metrics[iterative_metrics["precision_level"] == precision]
+            overall_iter[precision] = iter_data["metric_value"].mean()
+
+        data_dict["Overall"] = {}
+        for precision in precision_levels:
+            precision_name = precision_names[precision]
+            data_dict["Overall"][precision_name] = {
+                "single-round": overall_zs[precision],
+                "multi-round": overall_iter[precision],
+            }
 
     plotter = GroupedBarPlot(figsize=(18, 7))
     plotter.plot(data_dict, xlabel=xlabel, ylabel=ylabel, ylim=ylim)

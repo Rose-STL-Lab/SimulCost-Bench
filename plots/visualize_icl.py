@@ -5,453 +5,178 @@ Compares normal evaluation vs ICL variants (full, accuracy-focused, cost-exclude
 """
 
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 
-from utils import compute_mean_metrics
-from barplot_utils import GroupedBarPlot
-from constants import ICL_BASE_DATASETS, ICL_VARIANTS, ICL_VARIANT_ORDER
-
-# Set style
-sns.set_style("whitegrid")
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["font.serif"] = ["Times New Roman"]
-plt.rcParams["font.size"] = 14
-plt.rcParams["axes.labelsize"] = 16
-plt.rcParams["axes.titlesize"] = 18
-plt.rcParams["xtick.labelsize"] = 14
-plt.rcParams["ytick.labelsize"] = 14
-plt.rcParams["legend.fontsize"] = 14
+from utils import read_0shot_data, read_iterative_data, get_paired_data
+from visualize_overall import _plot_metrics_for_data
+from constants import ICL_BASE_DATASETS, ICL_VARIANT_ORDER, ICL_MODEL
 
 
-def load_icl_data(parquet_path, inference_mode):
+def _prepare_icl_data(parquet_path, datasets):
     """
-    Load data for ICL analysis, including base datasets and their ICL variants.
+    Read ICL data and transform it to match the structure expected by overall plotting.
+
+    Transform ICL variants from dataset-level distinction to model-level distinction:
+    - Read all ICL datasets in one go (Normal + variants)
+    - Rename model to include variant suffix based on dataset name
+    - Strip ICL suffix from dataset names
 
     Args:
         parquet_path: Path to merged_results.parquet
-        inference_mode: "zero_shot" or "iterative"
+        datasets: List of base datasets to include
 
     Returns:
-        DataFrame with all ICL-related data
+        df_zs, df_iter: DataFrames ready for overall plotting logic
     """
-    df = pd.read_parquet(parquet_path)
+    # Build combined dataset list (all variants)
+    all_datasets = []
+    all_datasets.extend(datasets)  # Normal
+    all_datasets.extend([f"{ds}_icl_full" for ds in datasets])
+    all_datasets.extend([f"{ds}_icl_accuracy_focused" for ds in datasets])
+    all_datasets.extend([f"{ds}_icl_cost_excluded" for ds in datasets])
 
-    # Filter by inference mode
-    df = df[df["inference_mode"] == inference_mode].copy()
+    # Read all data in one IO and filter for ICL model only
+    df_zs = read_0shot_data(parquet_path, datasets=all_datasets)
+    df_iter = read_iterative_data(parquet_path, datasets=all_datasets)
 
-    # Build list of all datasets to include (base + variants)
-    datasets_to_include = []
-    for base in ICL_BASE_DATASETS:
-        datasets_to_include.append(base)  # Normal version
-        for suffix in ICL_VARIANT_ORDER:
-            if suffix:  # Skip empty string (already added base)
-                datasets_to_include.append(base + suffix)
+    df_zs = df_zs[df_zs["model_name"] == ICL_MODEL].copy()
+    df_iter = df_iter[df_iter["model_name"] == ICL_MODEL].copy()
 
-    # Filter to only include relevant datasets
-    df = df[df["dataset"].isin(datasets_to_include)].copy()
+    # Transform: move variant from dataset name to model name
+    # Add variant suffix to model name based on dataset suffix
+    df_zs["model_name"] = df_zs.apply(
+        lambda row: (
+            row["model_name"] + "-ICL-Full"
+            if "_icl_full" in row["dataset"]
+            else (
+                row["model_name"] + "-ICL-Accuracy"
+                if "_icl_accuracy_focused" in row["dataset"]
+                else row["model_name"] + "-ICL-NoCost" if "_icl_cost_excluded" in row["dataset"] else row["model_name"]
+            )
+        ),
+        axis=1,
+    )
+    df_iter["model_name"] = df_iter.apply(
+        lambda row: (
+            row["model_name"] + "-ICL-Full"
+            if "_icl_full" in row["dataset"]
+            else (
+                row["model_name"] + "-ICL-Accuracy"
+                if "_icl_accuracy_focused" in row["dataset"]
+                else row["model_name"] + "-ICL-NoCost" if "_icl_cost_excluded" in row["dataset"] else row["model_name"]
+            )
+        ),
+        axis=1,
+    )
 
-    # Add a column to identify the base dataset and variant type
-    df["base_dataset"] = df["dataset"].apply(lambda x: get_base_dataset(x))
-    df["icl_variant"] = df["dataset"].apply(lambda x: get_icl_variant(x))
+    # Strip ICL suffix from dataset names
+    df_zs["dataset"] = df_zs["dataset"].str.replace("_icl_full", "", regex=False)
+    df_zs["dataset"] = df_zs["dataset"].str.replace("_icl_accuracy_focused", "", regex=False)
+    df_zs["dataset"] = df_zs["dataset"].str.replace("_icl_cost_excluded", "", regex=False)
 
-    print(f"Loaded {len(df)} {inference_mode} records from {len(datasets_to_include)} datasets")
-    print(f"Base datasets: {ICL_BASE_DATASETS}")
-    print(f"Unique variants found: {sorted(df['icl_variant'].unique())}")
+    df_iter["dataset"] = df_iter["dataset"].str.replace("_icl_full", "", regex=False)
+    df_iter["dataset"] = df_iter["dataset"].str.replace("_icl_accuracy_focused", "", regex=False)
+    df_iter["dataset"] = df_iter["dataset"].str.replace("_icl_cost_excluded", "", regex=False)
 
-    return df
-
-
-def get_base_dataset(dataset_name):
-    """Extract base dataset name from dataset that may have ICL suffix."""
-    for base in ICL_BASE_DATASETS:
-        if dataset_name.startswith(base):
-            return base
-    return dataset_name
+    return df_zs, df_iter
 
 
-def get_icl_variant(dataset_name):
-    """Extract ICL variant suffix from dataset name."""
-    for suffix in ICL_VARIANT_ORDER:
-        if suffix == "":
-            # Check if it's exactly the base dataset (no suffix)
-            if dataset_name in ICL_BASE_DATASETS:
-                return ""
-        elif dataset_name.endswith(suffix):
-            return suffix
-    return ""
-
-
-def get_paired_icl_data(df):
+def plot(parquet_path, output_dir, paired_only, per_dataset):
     """
-    Filter to only include tasks that exist in ALL ICL variants.
-
-    Args:
-        df: DataFrame with ICL data (already filtered by inference mode)
-
-    Returns:
-        Filtered DataFrame containing only paired entries
-    """
-    # Match columns define what makes a task unique (excluding ICL variant)
-    match_cols = [
-        "base_dataset",
-        "task",
-        "precision_level",
-        "model_name",
-        "profile",
-        "target_parameters",
-        "non_target_parameters",
-    ]
-
-    # Create match key for each row
-    df_copy = df.copy()
-    df_copy["_match_key"] = df_copy[match_cols].apply(lambda row: tuple(row), axis=1)
-
-    # For each match key, count how many ICL variants exist
-    variant_counts = df_copy.groupby("_match_key")["icl_variant"].nunique()
-
-    # Keep only match keys that have all 4 ICL variants
-    paired_keys = variant_counts[variant_counts == len(ICL_VARIANT_ORDER)].index
-
-    # Filter to only paired entries
-    df_paired = df_copy[df_copy["_match_key"].isin(paired_keys)].copy()
-    df_paired = df_paired.drop(columns=["_match_key"])
-
-    print(f"  Original entries: {len(df)}")
-    print(f"  Paired entries (all 4 ICL variants): {len(df_paired)}")
-    print(f"  Reduction: {len(df) - len(df_paired)} entries ({(len(df) - len(df_paired))/len(df)*100:.1f}%)")
-
-    return df_paired
-
-
-def compute_icl_metrics(df, metric_key, paired_only=False):
-    """
-    Compute metrics for ICL comparison with two-stage averaging.
-
-    Args:
-        df: DataFrame with ICL data (already filtered by inference mode)
-        metric_key: 'is_successful' or 'efficiency'
-        paired_only: If True, filter to only tasks that exist in all ICL variants
-
-    Returns:
-        dict: {model_name: {precision_name: {variant_name: value}}}
-    """
-    # Apply pairing filter if requested
-    if paired_only:
-        print(f"  Applying pairing filter for {metric_key}...")
-        df = get_paired_icl_data(df)
-
-    data_dict = {}
-    models = sorted(df["model_name"].unique())
-    precision_levels = ["low", "medium", "high"]
-    precision_names = {"low": "Low Precision", "medium": "Medium Precision", "high": "High Precision"}
-
-    for model in models:
-        data_dict[model] = {}
-        model_data = df[df["model_name"] == model]
-
-        for prec in precision_levels:
-            data_dict[model][precision_names[prec]] = {}
-            prec_data = model_data[model_data["precision_level"] == prec]
-
-            # Compute metric for each ICL variant
-            for variant_suffix in ICL_VARIANT_ORDER:
-                variant_data = prec_data[prec_data["icl_variant"] == variant_suffix]
-
-                if len(variant_data) == 0:
-                    data_dict[model][precision_names[prec]][ICL_VARIANTS[variant_suffix]] = 0
-                    continue
-
-                # Two-stage averaging
-                metrics = compute_mean_metrics(
-                    variant_data,
-                    metric_key=metric_key,
-                    first_groupby=["base_dataset", "task", "model_name", "precision_level"],
-                    second_groupby=["model_name", "precision_level"],
-                )
-
-                if len(metrics) > 0:
-                    value = metrics["metric_value"].values[0]
-                    # Convert to percentage for success rate
-                    if metric_key == "is_successful":
-                        value *= 100
-                    data_dict[model][precision_names[prec]][ICL_VARIANTS[variant_suffix]] = value
-                else:
-                    data_dict[model][precision_names[prec]][ICL_VARIANTS[variant_suffix]] = 0
-
-    # Compute overall average across all models (add at the end)
-    overall_dict = {}
-    for prec in precision_levels:
-        overall_dict[precision_names[prec]] = {}
-        for variant_suffix in ICL_VARIANT_ORDER:
-            variant_name = ICL_VARIANTS[variant_suffix]
-            # Average the values across all models for this precision and variant
-            values = [
-                data_dict[model][precision_names[prec]][variant_name]
-                for model in models
-                if data_dict[model][precision_names[prec]][variant_name] > 0
-            ]
-            overall_dict[precision_names[prec]][variant_name] = sum(values) / len(values) if values else 0
-
-    # Add Overall at the end (rightmost position)
-    data_dict["Overall"] = overall_dict
-
-    return data_dict
-
-
-def plot_icl_per_dataset(parquet_path, output_dir):
-    """
-    Generate ICL comparison plots per dataset for zero-shot and iterative modes.
-    """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Load data for both modes
-    print("\n" + "=" * 70)
-    print("LOADING DATA FOR PER-DATASET ICL PLOTS")
-    print("=" * 70)
-
-    df_zs = load_icl_data(parquet_path, "zero_shot")
-    df_iter = load_icl_data(parquet_path, "iterative")
-
-    # Generate plots for each base dataset
-    for base_dataset in ICL_BASE_DATASETS:
-        print("\n" + "=" * 70)
-        print(f"PROCESSING DATASET: {base_dataset.upper()}")
-        print("=" * 70)
-
-        # Filter data for this base dataset
-        df_zs_dataset = df_zs[df_zs["base_dataset"] == base_dataset].copy()
-        df_iter_dataset = df_iter[df_iter["base_dataset"] == base_dataset].copy()
-
-        print(f"Zero-shot entries: {len(df_zs_dataset)}")
-        print(f"Iterative entries: {len(df_iter_dataset)}")
-
-        # Success rate - Zero-shot
-        print(f"\nComputing zero-shot success rate metrics for {base_dataset}...")
-        data_dict_zs_success = compute_icl_metrics(df_zs_dataset, "is_successful")
-
-        print(f"Creating zero-shot success rate plot for {base_dataset}...")
-        plotter_zs_success = GroupedBarPlot(figsize=(18, 7))
-        plotter_zs_success.plot(
-            data_dict=data_dict_zs_success,
-            xlabel="Model",
-            ylabel="Success Rate (%)",
-            ylim=(0, 105),
-            show_values=True,
-            value_format=".1f",
-        )
-        output_path = output_dir / f"icl_{base_dataset}_zero_shot_success_rate.png"
-        plotter_zs_success.save(output_path)
-
-        # Success rate - Iterative
-        print(f"\nComputing iterative success rate metrics for {base_dataset}...")
-        data_dict_iter_success = compute_icl_metrics(df_iter_dataset, "is_successful")
-
-        print(f"Creating iterative success rate plot for {base_dataset}...")
-        plotter_iter_success = GroupedBarPlot(figsize=(18, 7))
-        plotter_iter_success.plot(
-            data_dict=data_dict_iter_success,
-            xlabel="Model",
-            ylabel="Success Rate (%)",
-            ylim=(0, 105),
-            show_values=True,
-            value_format=".1f",
-        )
-        output_path = output_dir / f"icl_{base_dataset}_iterative_success_rate.png"
-        plotter_iter_success.save(output_path)
-
-        # Efficiency - Zero-shot
-        print(f"Computing zero-shot efficiency metrics for {base_dataset}...")
-        data_dict_zs_eff = compute_icl_metrics(df_zs_dataset, "efficiency")
-
-        max_eff = 0
-        for model_data in data_dict_zs_eff.values():
-            for prec_data in model_data.values():
-                for val in prec_data.values():
-                    if val > max_eff:
-                        max_eff = val
-
-        print(f"Creating zero-shot efficiency plot for {base_dataset}...")
-        plotter_zs_eff = GroupedBarPlot(figsize=(18, 7))
-        plotter_zs_eff.plot(
-            data_dict=data_dict_zs_eff,
-            xlabel="Model",
-            ylabel="Efficiency",
-            ylim=(0, max_eff * 1.25),
-            show_values=True,
-            value_format=".1f",
-        )
-        output_path = output_dir / f"icl_{base_dataset}_zero_shot_efficiency.png"
-        plotter_zs_eff.save(output_path)
-
-        # Efficiency - Iterative
-        print(f"Computing iterative efficiency metrics for {base_dataset}...")
-        data_dict_iter_eff = compute_icl_metrics(df_iter_dataset, "efficiency")
-
-        max_eff = 0
-        for model_data in data_dict_iter_eff.values():
-            for prec_data in model_data.values():
-                for val in prec_data.values():
-                    if val > max_eff:
-                        max_eff = val
-
-        print(f"Creating iterative efficiency plot for {base_dataset}...")
-        plotter_iter_eff = GroupedBarPlot(figsize=(18, 7))
-        plotter_iter_eff.plot(
-            data_dict=data_dict_iter_eff,
-            xlabel="Model",
-            ylabel="Efficiency",
-            ylim=(0, max_eff * 1.25),
-            show_values=True,
-            value_format=".1f",
-        )
-        output_path = output_dir / f"icl_{base_dataset}_iterative_efficiency.png"
-        plotter_iter_eff.save(output_path)
-
-    print("\n" + "=" * 70)
-    print("ALL PER-DATASET ICL PLOTS GENERATED SUCCESSFULLY!")
-    print("=" * 70)
-
-
-def plot_icl_comparison(parquet_path, output_dir, paired_only=False):
-    """
-    Generate ICL comparison plots for zero-shot and iterative modes (overall).
+    Generate ICL comparison plots.
 
     Args:
         parquet_path: Path to merged_results.parquet
         output_dir: Directory to save plots
-        paired_only: If True, filter to only tasks that exist in all ICL variants
+        paired_only: If True, filter to only tasks that exist in both zero-shot and iterative modes
+        per_dataset: If True, generate separate plots for each dataset; if False, generate overall plots
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    suffix = "_paired" if paired_only else ""
-    mode_str = "PAIRED" if paired_only else "ALL DATA"
+    mode_str = "PAIRED DATA ONLY" if paired_only else "ALL DATA"
 
-    # Plot for zero-shot mode
-    print("\n" + "=" * 70)
-    print(f"ZERO-SHOT ICL COMPARISON ({mode_str})")
-    print("=" * 70)
+    # Prepare ICL data (transform variant info from dataset to model)
+    if per_dataset:
+        # Process each dataset separately
+        for dataset in ICL_BASE_DATASETS:
+            print(f"\n{'='*60}")
+            print(f"Processing dataset: {dataset}")
+            print(f"{'='*60}")
 
-    df_zs = load_icl_data(parquet_path, "zero_shot")
+            # Load and transform data for this dataset
+            df_zs, df_iter = _prepare_icl_data(parquet_path, datasets=[dataset])
 
-    # Success rate plot
-    print("\nComputing success rate metrics...")
-    data_dict_zs_success = compute_icl_metrics(df_zs, "is_successful", paired_only=paired_only)
+            # Apply pairing filter if requested
+            if paired_only:
+                df_zs, df_iter = get_paired_data(df_zs, df_iter, merge=False)
 
-    print("Creating zero-shot success rate plot...")
-    plotter_zs_success = GroupedBarPlot(figsize=(18, 7))
-    plotter_zs_success.plot(
-        data_dict=data_dict_zs_success,
-        xlabel="Model",
-        ylabel="Success Rate (%)",
-        ylim=(0, 105),
-        show_values=True,
-        value_format=".1f",
-    )
-    output_path_zs_success = output_dir / f"icl_zero_shot_success_rate{suffix}.png"
-    plotter_zs_success.save(output_path_zs_success)
+            # Filter data for current dataset (after transformation, all have same base dataset name)
+            df_zs_dataset = df_zs[df_zs["dataset"] == dataset].copy()
+            df_iter_dataset = df_iter[df_iter["dataset"] == dataset].copy()
 
-    # Efficiency plot
-    print("Computing efficiency metrics...")
-    data_dict_zs_eff = compute_icl_metrics(df_zs, "efficiency", paired_only=paired_only)
+            # Plot metrics using overall plotting logic
+            _plot_metrics_for_data(
+                df_zs=df_zs_dataset,
+                df_iter=df_iter_dataset,
+                output_dir=output_dir,
+                filename_prefix=f"icl_{dataset}",
+                first_groupby=["dataset", "task", "model_name", "precision_level"],
+                paired_only=paired_only,
+                include_overall=False,
+            )
 
-    print("Creating zero-shot efficiency plot...")
-    plotter_zs_eff = GroupedBarPlot(figsize=(18, 7))
+        print("\n" + "=" * 60)
+        print(f"Done! Generated per-dataset ICL visualizations ({mode_str}).")
+        print("=" * 60)
+    else:
+        # Overall results across all datasets
+        df_zs, df_iter = _prepare_icl_data(parquet_path, datasets=ICL_BASE_DATASETS)
 
-    # Compute max efficiency for ylim
-    max_eff = 0
-    for model_data in data_dict_zs_eff.values():
-        for prec_data in model_data.values():
-            for val in prec_data.values():
-                if val > max_eff:
-                    max_eff = val
+        print(f"Loaded {len(df_zs)} zero-shot records")
+        print(f"Loaded {len(df_iter)} iterative records")
 
-    plotter_zs_eff.plot(
-        data_dict=data_dict_zs_eff,
-        xlabel="Model",
-        ylabel="Efficiency",
-        ylim=(0, max_eff * 1.25),
-        show_values=True,
-        value_format=".1f",
-    )
-    output_path_zs_eff = output_dir / f"icl_zero_shot_efficiency{suffix}.png"
-    plotter_zs_eff.save(output_path_zs_eff)
+        # Apply pairing filter if requested
+        if paired_only:
+            df_zs, df_iter = get_paired_data(df_zs, df_iter, merge=False)
+            print(f"Paired zero-shot: {len(df_zs)}")
+            print(f"Paired iterative: {len(df_iter)}")
 
-    # Plot for iterative mode
-    print("\n" + "=" * 70)
-    print(f"ITERATIVE ICL COMPARISON ({mode_str})")
-    print("=" * 70)
+        # Plot overall metrics using overall plotting logic
+        _plot_metrics_for_data(
+            df_zs=df_zs,
+            df_iter=df_iter,
+            output_dir=output_dir,
+            filename_prefix="icl",
+            first_groupby=["dataset", "task", "model_name", "precision_level"],
+            paired_only=paired_only,
+            include_overall=False,
+        )
 
-    df_iter = load_icl_data(parquet_path, "iterative")
-
-    # Success rate plot
-    print("\nComputing success rate metrics...")
-    data_dict_iter_success = compute_icl_metrics(df_iter, "is_successful", paired_only=paired_only)
-
-    print("Creating iterative success rate plot...")
-    plotter_iter_success = GroupedBarPlot(figsize=(18, 7))
-    plotter_iter_success.plot(
-        data_dict=data_dict_iter_success,
-        xlabel="Model",
-        ylabel="Success Rate (%)",
-        ylim=(0, 105),
-        show_values=True,
-        value_format=".1f",
-    )
-    output_path_iter_success = output_dir / f"icl_iterative_success_rate{suffix}.png"
-    plotter_iter_success.save(output_path_iter_success)
-
-    # Efficiency plot
-    print("Computing efficiency metrics...")
-    data_dict_iter_eff = compute_icl_metrics(df_iter, "efficiency", paired_only=paired_only)
-
-    print("Creating iterative efficiency plot...")
-    plotter_iter_eff = GroupedBarPlot(figsize=(18, 7))
-
-    # Compute max efficiency for ylim
-    max_eff = 0
-    for model_data in data_dict_iter_eff.values():
-        for prec_data in model_data.values():
-            for val in prec_data.values():
-                if val > max_eff:
-                    max_eff = val
-
-    plotter_iter_eff.plot(
-        data_dict=data_dict_iter_eff,
-        xlabel="Model",
-        ylabel="Efficiency",
-        ylim=(0, max_eff * 1.25),
-        show_values=True,
-        value_format=".1f",
-    )
-    output_path_iter_eff = output_dir / f"icl_iterative_efficiency{suffix}.png"
-    plotter_iter_eff.save(output_path_iter_eff)
-
-    print("\n" + "=" * 70)
-    print(f"ALL ICL {mode_str} PLOTS GENERATED SUCCESSFULLY!")
-    print("=" * 70)
+        print(f"\nDone! Generated overall ICL visualizations ({mode_str}).")
 
 
 if __name__ == "__main__":
-    # Generate overall ICL comparison plots (all data)
-    plot_icl_comparison(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/icl",
+    # 1. Overall with all data
+    plot(
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="res/icl",
         paired_only=False,
+        per_dataset=False,
     )
 
-    # Generate overall ICL comparison plots (paired only)
-    plot_icl_comparison(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/icl",
+    # 2. Overall with paired data only
+    plot(
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="res/icl",
         paired_only=True,
+        per_dataset=False,
     )
 
-    # Generate per-dataset ICL comparison plots
-    plot_icl_per_dataset(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/icl/per_dataset",
+    # 3. Per-dataset plots
+    plot(
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="res/icl/per_dataset",
+        paired_only=False,
+        per_dataset=True,
     )

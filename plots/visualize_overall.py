@@ -29,71 +29,7 @@ plt.rcParams["ytick.labelsize"] = 14
 plt.rcParams["legend.fontsize"] = 14
 
 
-def _apply_pairing_filter(df_zs, df_iter, verbose):
-    """
-    Apply pairing filter and return filtered dataframes.
-
-    Args:
-        df_zs: Zero-shot dataframe
-        df_iter: Iterative dataframe
-        verbose: Whether to print pairing statistics
-
-    Returns:
-        Tuple of (filtered_df_zs, filtered_df_iter)
-    """
-    if verbose:
-        print("\n" + "=" * 60)
-        print("BEFORE PAIRING:")
-        print("=" * 60)
-        print(f"Zero-shot entries: {len(df_zs)}")
-        print(f"Iterative entries: {len(df_iter)}")
-
-    print("\nGetting paired data (entries that exist in both modes)...")
-    paired = get_paired_data(df_zs, df_iter)
-
-    if verbose:
-        print("\n" + "=" * 60)
-        print("AFTER PAIRING:")
-        print("=" * 60)
-        print(f"Paired entries: {len(paired)}")
-
-    # Split back into zero-shot and iterative views for metric calculation
-    match_cols = [
-        "dataset",
-        "task",
-        "precision_level",
-        "model_name",
-        "profile",
-        "target_parameters",
-        "non_target_parameters",
-    ]
-
-    # Extract columns with _zs suffix for zero-shot metrics
-    zs_cols = match_cols + [col.replace("_zs", "") for col in paired.columns if col.endswith("_zs")]
-    df_zs_filtered = paired[
-        [
-            col if col in paired.columns else col + "_zs"
-            for col in zs_cols
-            if col + "_zs" in paired.columns or col in paired.columns
-        ]
-    ].copy()
-    df_zs_filtered.columns = [col.replace("_zs", "") for col in df_zs_filtered.columns]
-
-    # Extract columns with _iter suffix for iterative metrics
-    iter_cols = match_cols + [col.replace("_iter", "") for col in paired.columns if col.endswith("_iter")]
-    df_iter_filtered = paired[
-        [
-            col if col in paired.columns else col + "_iter"
-            for col in iter_cols
-            if col + "_iter" in paired.columns or col in paired.columns
-        ]
-    ].copy()
-    df_iter_filtered.columns = [col.replace("_iter", "") for col in df_iter_filtered.columns]
-
-    return df_zs_filtered, df_iter_filtered
-
-
-def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_groupby, paired_only):
+def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_groupby, paired_only, include_overall):
     """
     Plot success rate and efficiency metrics.
 
@@ -104,6 +40,7 @@ def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_gr
         filename_prefix: Prefix for output filenames (e.g., "overall" or "heat_2d")
         first_groupby: First-stage groupby columns
         paired_only: Whether using paired data (affects filename suffix)
+        include_overall: Whether to include "Overall" group averaging across all models
     """
     second_groupby = ["model_name", "precision_level"]
     suffix = "_paired" if paired_only else ""
@@ -123,6 +60,7 @@ def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_gr
         ylabel="Success Rate (%)",
         ylim=(0, 105),
         output_path=output_dir / f"{filename_prefix}_success_rate{suffix}.png",
+        include_overall=include_overall,
     )
 
     # Calculate efficiency metrics
@@ -138,6 +76,7 @@ def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_gr
         ylabel="Mean Efficiency",
         ylim=(0, max_eff * 1.25),
         output_path=output_dir / f"{filename_prefix}_efficiency{suffix}.png",
+        include_overall=include_overall,
     )
 
 
@@ -161,7 +100,8 @@ def plot(parquet_path, output_dir, datasets, paired_only, per_dataset):
 
     # Apply pairing filter if requested
     if paired_only:
-        df_zs, df_iter = _apply_pairing_filter(df_zs, df_iter, verbose=(not per_dataset))
+        df_zs, df_iter = get_paired_data(df_zs, df_iter, merge=False)
+        # df_zs, df_iter = _apply_pairing_filter(df_zs, df_iter, verbose=(not per_dataset))
 
     mode_str = "PAIRED DATA ONLY" if paired_only else "ALL DATA"
 
@@ -184,6 +124,7 @@ def plot(parquet_path, output_dir, datasets, paired_only, per_dataset):
                 filename_prefix=dataset,
                 first_groupby=["dataset", "task", "model_name", "precision_level"],
                 paired_only=paired_only,
+                include_overall=True,
             )
 
         print("\n" + "=" * 60)
@@ -198,6 +139,7 @@ def plot(parquet_path, output_dir, datasets, paired_only, per_dataset):
             filename_prefix="overall",
             first_groupby=["dataset", "task", "model_name", "precision_level"],
             paired_only=paired_only,
+            include_overall=True,
         )
         print(f"\nDone! Generated overall results visualizations ({mode_str}).")
 

@@ -23,13 +23,8 @@ ICL_BASE_DATASETS = [
     "ns_transient_2d",
 ]
 
-# ICL variant suffixes and their human-readable names
-ICL_VARIANTS = {
-    "": "Normal",  # Base dataset without suffix
-    "_icl_full": "ICL-Full",
-    "_icl_accuracy_focused": "ICL-Accuracy",
-    "_icl_cost_excluded": "ICL-NoCost",
-}
-
 # Order for plotting ICL variants
-ICL_VARIANT_ORDER = ["", "_icl_full", "_icl_accuracy_focused", "_icl_cost_excluded"]
+ICL_VARIANT_ORDER = ["Normal", "ICL-Full", "ICL-Accuracy", "ICL-NoCost"]
+
+# ICL is only for Claude model
+ICL_MODEL = "Claude-3.7-Sonnet"

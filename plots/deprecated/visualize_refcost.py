@@ -180,7 +180,7 @@ def plot_refcost(parquet_path, output_dir, datasets):
 
     # Get paired data
     print("\nGetting paired data...")
-    paired = get_paired_data(df_zs, df_iter)
+    paired = get_paired_data(df_zs, df_iter, merge=True)
     print(f"Paired entries: {len(paired)}")
 
     # Compute ref_cost metrics
