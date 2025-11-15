@@ -28,3 +28,14 @@ ICL_VARIANT_ORDER = ["Normal", "ICL-Full", "ICL-Accuracy", "ICL-NoCost"]
 
 # ICL is only for Claude model
 ICL_MODEL = "Claude-3.7-Sonnet"
+
+# Pairing columns for paired t-tests (columns that identify unique task configurations)
+PAIRING_COLS = [
+    "dataset",
+    "task",
+    "precision_level",
+    "model_name",
+    "profile",
+    "target_parameters",
+    "non_target_parameters",
+]

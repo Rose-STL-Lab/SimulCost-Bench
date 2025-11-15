@@ -2,7 +2,9 @@
 Utilities for visualization and data processing.
 """
 
+import numpy as np
 import pandas as pd
+from scipy import stats
 from barplot_utils import GroupedBarPlot
 
 
@@ -189,3 +191,74 @@ def create_overall_metric_plot(
     plotter = GroupedBarPlot(figsize=(18, 7))
     plotter.plot(data_dict, xlabel=xlabel, ylabel=ylabel, ylim=ylim)
     plotter.save(output_path)
+
+
+def compute_paired_differences(paired_df, metric_col, pairing_cols):
+    """
+    Extract paired differences for a specific metric.
+
+    Args:
+        paired_df: DataFrame from get_paired_data() with _zs and _iter suffixes
+        metric_col: Column name to compute differences for (without suffix)
+        pairing_cols: List of columns that identify unique pairs (e.g., ["dataset", "task", "model_name", "precision_level"])
+
+    Returns:
+        DataFrame with pairing_cols, metric_col_zs, metric_col_iter, difference
+    """
+    zs_col = f"{metric_col}_zs"
+    iter_col = f"{metric_col}_iter"
+
+    result = paired_df[pairing_cols + [zs_col, iter_col]].copy()
+
+    # Convert to numeric if boolean (for subtraction)
+    if result[zs_col].dtype == "bool":
+        result[zs_col] = result[zs_col].astype(int)
+    if result[iter_col].dtype == "bool":
+        result[iter_col] = result[iter_col].astype(int)
+
+    # Compute difference (iterative - zero_shot)
+    result["difference"] = result[iter_col] - result[zs_col]
+
+    return result
+
+
+def compute_paired_ttest(diff_df):
+    """
+    Perform paired t-test on differences.
+
+    Tests H0: mean(difference) = 0 vs H1: mean(difference) ≠ 0
+
+    Args:
+        diff_df: DataFrame with 'difference' column (from compute_paired_differences)
+
+    Returns:
+        dict with t_statistic, p_value, df, mean_diff, std_diff, se_diff, ci_95, n_pairs, significance flags
+    """
+    differences = diff_df["difference"].values
+    n = len(differences)
+
+    # Perform one-sample t-test on differences
+    t_statistic, p_value = stats.ttest_1samp(differences, 0)
+
+    # Calculate statistics
+    mean_diff = np.mean(differences)
+    std_diff = np.std(differences, ddof=1)
+    se_diff = std_diff / np.sqrt(n)
+
+    # 95% confidence interval
+    t_crit = stats.t.ppf(0.975, df=n - 1)
+    ci_95 = (mean_diff - t_crit * se_diff, mean_diff + t_crit * se_diff)
+
+    return {
+        "t_statistic": t_statistic,
+        "p_value": p_value,
+        "df": n - 1,
+        "mean_diff": mean_diff,
+        "std_diff": std_diff,
+        "se_diff": se_diff,
+        "ci_95": ci_95,
+        "n_pairs": n,
+        "significant_05": p_value < 0.05,
+        "significant_01": p_value < 0.01,
+        "significant_001": p_value < 0.001,
+    }

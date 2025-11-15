@@ -4,101 +4,22 @@ Statistical analysis of paired zero-shot vs iterative results.
 Performs paired t-tests on success rates and efficiency.
 """
 
-import numpy as np
 import pandas as pd
-from scipy import stats
 from pathlib import Path
 
-from utils import read_0shot_data, read_iterative_data, get_paired_data
-from constants import BASE_DATASETS
-
-
-def compute_paired_differences(paired_df, metric_col="is_successful"):
-    """
-    Extract paired differences for a specific metric.
-
-    Args:
-        paired_df: DataFrame from get_paired_data()
-        metric_col: Column name to compute differences for
-
-    Returns:
-        DataFrame with match_cols, metric_col_zs, metric_col_iter, difference
-    """
-    match_cols = [
-        "dataset",
-        "task",
-        "precision_level",
-        "model_name",
-        "profile",
-        "target_parameters",
-        "non_target_parameters",
-    ]
-
-    zs_col = f"{metric_col}_zs"
-    iter_col = f"{metric_col}_iter"
-
-    result = paired_df[match_cols + [zs_col, iter_col]].copy()
-
-    # Convert to numeric if boolean (for subtraction)
-    if result[zs_col].dtype == "bool":
-        result[zs_col] = result[zs_col].astype(int)
-    if result[iter_col].dtype == "bool":
-        result[iter_col] = result[iter_col].astype(int)
-
-    # Compute difference (iterative - zero_shot)
-    result["difference"] = result[iter_col] - result[zs_col]
-
-    return result
-
-
-def compute_paired_ttest(paired_df, metric_col="is_successful"):
-    """
-    Perform paired t-test on differences.
-
-    Tests H0: mean(difference) = 0 vs H1: mean(difference) ≠ 0
-
-    Args:
-        paired_df: DataFrame from get_paired_data()
-        metric_col: Column name to test
-
-    Returns:
-        dict with t_statistic, p_value, df, mean_diff, std_diff, se_diff, ci_95, n_pairs, significance flags
-    """
-    # Get differences
-    diff_df = compute_paired_differences(paired_df, metric_col)
-    differences = diff_df["difference"].values
-    n = len(differences)
-
-    # Perform one-sample t-test on differences
-    t_statistic, p_value = stats.ttest_1samp(differences, 0)
-
-    # Calculate statistics
-    mean_diff = np.mean(differences)
-    std_diff = np.std(differences, ddof=1)
-    se_diff = std_diff / np.sqrt(n)
-
-    # 95% confidence interval
-    t_crit = stats.t.ppf(0.975, df=n - 1)
-    ci_95 = (mean_diff - t_crit * se_diff, mean_diff + t_crit * se_diff)
-
-    return {
-        "t_statistic": t_statistic,
-        "p_value": p_value,
-        "df": n - 1,
-        "mean_diff": mean_diff,
-        "std_diff": std_diff,
-        "se_diff": se_diff,
-        "ci_95": ci_95,
-        "n_pairs": n,
-        "significant_05": p_value < 0.05,
-        "significant_01": p_value < 0.01,
-        "significant_001": p_value < 0.001,
-    }
+from utils import (
+    read_0shot_data,
+    read_iterative_data,
+    get_paired_data,
+    compute_paired_differences,
+    compute_paired_ttest,
+)
+from constants import BASE_DATASETS, PAIRING_COLS
 
 
 def main():
-    parquet_path = "eval_results/merged_results.parquet"
-    output_dir = Path("plots/res/analysis")
+    parquet_path = "../eval_results/merged_results.parquet"
+    output_dir = Path("res/analysis")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load data
@@ -115,8 +36,8 @@ def main():
     print("OVERALL PAIRED T-TEST (is_successful)")
     print("=" * 70)
 
-    ttest_result = compute_paired_ttest(paired, "is_successful")
-    diff_df = compute_paired_differences(paired, "is_successful")
+    diff_df = compute_paired_differences(paired, "is_successful", PAIRING_COLS)
+    ttest_result = compute_paired_ttest(diff_df)
 
     mean_zs = diff_df["is_successful_zs"].mean()
     mean_iter = diff_df["is_successful_iter"].mean()
@@ -153,8 +74,8 @@ def main():
     for model in sorted(paired["model_name"].unique()):
         model_paired = paired[paired["model_name"] == model]
 
-        ttest_res = compute_paired_ttest(model_paired, "is_successful")
-        diff_df = compute_paired_differences(model_paired, "is_successful")
+        diff_df = compute_paired_differences(model_paired, "is_successful", PAIRING_COLS)
+        ttest_res = compute_paired_ttest(diff_df)
 
         mean_zs = diff_df["is_successful_zs"].mean()
         mean_iter = diff_df["is_successful_iter"].mean()
@@ -185,11 +106,60 @@ def main():
             }
         )
 
-    # Save results to CSV
+    # Save per-model results to CSV
     results_df = pd.DataFrame(results_list)
-    output_file = output_dir / "paired_ttest_results.csv"
+    output_file = output_dir / "paired_ttest_per_model.csv"
     results_df.to_csv(output_file, index=False)
-    print(f"\n\nResults saved to: {output_file}")
+    print(f"\n\nPer-model results saved to: {output_file}")
+
+    # Per-precision analysis
+    print("\n" + "=" * 70)
+    print("PER-PRECISION PAIRED T-TESTS")
+    print("=" * 70)
+    print(f"\n{'Precision':<15s} {'t':>7s} {'p-value':>10s} {'Sig':>4s} {'Mean Diff':>10s} {'95% CI':>20s} {'n':>6s}")
+    print("-" * 90)
+
+    precision_results_list = []
+    for precision in ["low", "medium", "high"]:
+        precision_paired = paired[paired["precision_level"] == precision]
+
+        diff_df = compute_paired_differences(precision_paired, "is_successful", PAIRING_COLS)
+        ttest_res = compute_paired_ttest(diff_df)
+
+        mean_zs = diff_df["is_successful_zs"].mean()
+        mean_iter = diff_df["is_successful_iter"].mean()
+
+        sig = (
+            "***"
+            if ttest_res["p_value"] < 0.001
+            else "**" if ttest_res["p_value"] < 0.01 else "*" if ttest_res["p_value"] < 0.05 else "ns"
+        )
+
+        print(
+            f"{precision.capitalize():<15s} {ttest_res['t_statistic']:7.3f} {ttest_res['p_value']:10.2e} {sig:>4s} "
+            f"{ttest_res['mean_diff']:10.4f} [{ttest_res['ci_95'][0]:6.4f}, {ttest_res['ci_95'][1]:6.4f}] "
+            f"{ttest_res['n_pairs']:6d}"
+        )
+
+        precision_results_list.append(
+            {
+                "precision_level": precision,
+                "t_statistic": ttest_res["t_statistic"],
+                "p_value": ttest_res["p_value"],
+                "mean_diff": ttest_res["mean_diff"],
+                "ci_lower": ttest_res["ci_95"][0],
+                "ci_upper": ttest_res["ci_95"][1],
+                "n_pairs": ttest_res["n_pairs"],
+                "mean_zs": mean_zs,
+                "mean_iter": mean_iter,
+            }
+        )
+
+    # Save per-precision results to CSV
+    precision_results_df = pd.DataFrame(precision_results_list)
+    precision_output_file = output_dir / "paired_ttest_per_precision.csv"
+    precision_results_df.to_csv(precision_output_file, index=False)
+    print(f"\n\nPer-precision results saved to: {precision_output_file}")
 
 
 if __name__ == "__main__":
