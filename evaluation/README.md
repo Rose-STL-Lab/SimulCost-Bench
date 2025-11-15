@@ -165,6 +165,22 @@ The parquet files contain the following columns:
 - `rmse`: Root mean square error
 - `rmse_tolerance`: RMSE tolerance threshold
 
+**Hasegawa-Mima Linear** (`hasegawa_mima_linear`):
+- `model_N`, `dummy_N`: Grid resolution parameter
+- `model_dt`, `dummy_dt`: Time step size
+- `model_cg_atol`, `dummy_cg_atol`: Conjugate gradient absolute tolerance
+- `case`: Simulation case identifier (monopole, dipole, sin_x_gauss_y, gauss_x_sin_y)
+- `wall_time_exceeded`: Boolean flag indicating if wall time limit was exceeded
+- `rmse`: Root mean square error
+- `rmse_tolerance`: RMSE tolerance threshold
+
+**Hasegawa-Mima Nonlinear** (`hasegawa_mima_nonlinear`):
+- `model_N`, `dummy_N`: Grid resolution parameter
+- `model_dt`, `dummy_dt`: Time step size
+- `case`: Simulation case identifier (monopole, dipole, sinusoidal, sin_x_gauss_y, gauss_x_sin_y)
+- `rmse`: Root mean square error
+- `rmse_tolerance`: RMSE tolerance threshold
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---
@@ -182,7 +198,7 @@ python evaluation/merge_results.py
 **What it does:**
 1. Scans `eval_results/{dataset}/dataframes/` for all parquet files
 2. Combines files from standard and ICL variant datasets:
-   - **Standard datasets**: `epoch_1d`, `euler_1d`, `ns_transient_2d`, `burgers_1d`, `heat_1d`, `heat_2d`, `mpm_2d`, `diff_react_1d`
+   - **Standard datasets**: `epoch_1d`, `euler_1d`, `euler_2d`, `ns_transient_2d`, `burgers_1d`, `heat_1d`, `heat_2d`, `mpm_2d`, `diff_react_1d`, `hasegawa_mima_linear`, `hasegawa_mima_nonlinear`
    - **ICL variants**: `euler_1d_icl_accuracy_focused`, `euler_1d_icl_cost_excluded`, `euler_1d_icl_full`, `heat_1d_icl_accuracy_focused`, `heat_1d_icl_cost_excluded`, `heat_1d_icl_full`, `ns_transient_2d_icl_accuracy_focused`, `ns_transient_2d_icl_cost_excluded`, `ns_transient_2d_icl_full`, `mpm_2d_icl_accuracy_focused`, `mpm_2d_icl_cost_excluded`, `mpm_2d_icl_full`
 3. Applies model name mapping to standardize model identifiers (e.g., `qwen3_8b` → `Qwen3-8B`)
 4. Validates that all model names are in the mapping dictionary (raises error if unmapped models found)

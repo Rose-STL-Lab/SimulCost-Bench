@@ -10,6 +10,8 @@ This script automatically detects and merges parquet files from:
 - eval_results/heat_1d/dataframes/
 - eval_results/heat_2d/dataframes/
 - eval_results/diff_react_1d/dataframes/
+- eval_results/hasegawa_mima_linear/dataframes/
+- eval_results/hasegawa_mima_nonlinear/dataframes/
 - eval_results/euler_1d_icl_accuracy_focused/dataframes/
 - eval_results/euler_1d_icl_cost_excluded/dataframes/
 - eval_results/euler_1d_icl_full/dataframes/
@@ -249,6 +251,8 @@ def main():
         "heat_2d",
         "mpm_2d",
         "diff_react_1d",
+        "hasegawa_mima_linear",
+        "hasegawa_mima_nonlinear",
         "euler_1d_icl_accuracy_focused",
         "euler_1d_icl_cost_excluded",
         "euler_1d_icl_full",
