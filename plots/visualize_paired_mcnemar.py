@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Visualization script for paired t-test results.
+Visualization script for paired McNemar's test results.
 Creates forest plot to visualize mean differences and confidence intervals.
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from utils import read_0shot_data, read_iterative_data, get_paired_data
 from constants import BASE_DATASETS, PAIRING_COLS, PRECISION_ORDER
-from ttest_utils import compute_ttest_results, print_ttest_summary, plot_forest_plot
+from mcnemar_utils import compute_mcnemar_test, print_ttest_summary, plot_forest_plot
 
 # Set style
 sns.set_style("whitegrid")
@@ -27,7 +27,7 @@ plt.rcParams["legend.fontsize"] = 14
 
 if __name__ == "__main__":
     parquet_path = "../eval_results/merged_results.parquet"
-    output_dir = Path("res/ttest")
+    output_dir = Path("res/mcnemar")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load data
@@ -49,21 +49,47 @@ if __name__ == "__main__":
             subset = paired[(paired["model_name"] == model) & (paired["precision_level"] == precision)]
             if len(subset) == 0:
                 continue
-            result = compute_ttest_results(subset, "is_successful", PAIRING_COLS)
-            result["model_name"] = model
-            result["precision_level"] = precision.capitalize()
-            model_precision_results.append(result)
+            mcnemar_res = compute_mcnemar_test(subset["is_successful_zs"].values, subset["is_successful_iter"].values)
+            model_precision_results.append(
+                {
+                    "statistic": mcnemar_res["statistic"],
+                    "p_value": mcnemar_res["p_value"],
+                    "mean_diff": mcnemar_res["mean_diff"],
+                    "ci_lower": mcnemar_res["ci_95"][0],
+                    "ci_upper": mcnemar_res["ci_95"][1],
+                    "n_pairs": mcnemar_res["n_pairs"],
+                    "n_improved": mcnemar_res["n_improved"],
+                    "n_degraded": mcnemar_res["n_degraded"],
+                    "mean_zs": mcnemar_res["mean_base"],
+                    "mean_iter": mcnemar_res["mean_variant"],
+                    "model_name": model,
+                    "precision_level": precision.capitalize(),
+                }
+            )
     # Add overall model (aggregating all models) for each precision
     for precision in precision_data_order:
         subset = paired[paired["precision_level"] == precision]
-        result = compute_ttest_results(subset, "is_successful", PAIRING_COLS)
-        result["model_name"] = "Overall"
-        result["precision_level"] = precision.capitalize()
-        model_precision_results.append(result)
+        mcnemar_res = compute_mcnemar_test(subset["is_successful_zs"].values, subset["is_successful_iter"].values)
+        model_precision_results.append(
+            {
+                "statistic": mcnemar_res["statistic"],
+                "p_value": mcnemar_res["p_value"],
+                "mean_diff": mcnemar_res["mean_diff"],
+                "ci_lower": mcnemar_res["ci_95"][0],
+                "ci_upper": mcnemar_res["ci_95"][1],
+                "n_pairs": mcnemar_res["n_pairs"],
+                "n_improved": mcnemar_res["n_improved"],
+                "n_degraded": mcnemar_res["n_degraded"],
+                "mean_zs": mcnemar_res["mean_base"],
+                "mean_iter": mcnemar_res["mean_variant"],
+                "model_name": "Overall",
+                "precision_level": precision.capitalize(),
+            }
+        )
     model_precision_results_df = pd.DataFrame(model_precision_results)
 
     print_ttest_summary(model_precision_results_df)
-    csv_path = output_dir / "paired_ttest_by_model_precision.csv"
+    csv_path = output_dir / "paired_mcnemar_by_model_precision.csv"
     model_precision_results_df.to_csv(csv_path, index=False)
     print(f"  Saved CSV: {csv_path}")
     plot_forest_plot(

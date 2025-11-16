@@ -1,5 +1,5 @@
 """
-Utilities for paired t-test analysis.
+Utilities for McNemar's test analysis (paired binary data).
 """
 
 import numpy as np
@@ -9,107 +9,68 @@ from scipy import stats
 from constants import PRECISION_ORDER, PRECISION_MARKERS, SUBGROUP_COLORS
 
 
-def compute_paired_differences(paired_df, metric_col, pairing_cols):
+def compute_mcnemar_test(base_vals, variant_vals):
     """
-    Extract paired differences for a specific metric.
+    Perform McNemar's test on paired binary data.
+
+    Tests H0: P(base=0, variant=1) = P(base=1, variant=0) (no difference in proportions)
 
     Args:
-        paired_df: DataFrame from get_paired_data() with _zs and _iter suffixes
-        metric_col: Column name to compute differences for (without suffix)
-        pairing_cols: List of columns that identify unique pairs (e.g., ["dataset", "task", "model_name", "precision_level"])
+        base_vals: Array of binary values for base condition
+        variant_vals: Array of binary values for variant condition
 
     Returns:
-        DataFrame with pairing_cols, metric_col_zs, metric_col_iter, difference
+        dict with statistic, p_value, mean_diff, ci_95, n_pairs, contingency table counts
     """
-    zs_col = f"{metric_col}_zs"
-    iter_col = f"{metric_col}_iter"
+    # Convert to numeric if boolean
+    base_vals = np.asarray(base_vals)
+    variant_vals = np.asarray(variant_vals)
+    if base_vals.dtype == bool:
+        base_vals = base_vals.astype(int)
+    if variant_vals.dtype == bool:
+        variant_vals = variant_vals.astype(int)
 
-    result = paired_df[pairing_cols + [zs_col, iter_col]].copy()
+    n = len(base_vals)
 
-    # Convert to numeric if boolean (for subtraction)
-    if result[zs_col].dtype == "bool":
-        result[zs_col] = result[zs_col].astype(int)
-    if result[iter_col].dtype == "bool":
-        result[iter_col] = result[iter_col].astype(int)
+    # Build contingency table
+    # a: both fail (0,0), b: base fail, variant success (0,1)
+    # c: base success, variant fail (1,0), d: both success (1,1)
+    a = np.sum((base_vals == 0) & (variant_vals == 0))  # both fail
+    b = np.sum((base_vals == 0) & (variant_vals == 1))  # base fail, variant success (improvement)
+    c = np.sum((base_vals == 1) & (variant_vals == 0))  # base success, variant fail (degradation)
+    d = np.sum((base_vals == 1) & (variant_vals == 1))  # both success
 
-    # Compute difference (iterative - zero_shot)
-    result["difference"] = result[iter_col] - result[zs_col]
+    # McNemar's test statistic (with continuity correction)
+    if b + c == 0:
+        statistic = 0.0
+        p_value = 1.0
+    else:
+        # Chi-squared with continuity correction
+        statistic = (abs(b - c) - 1) ** 2 / (b + c)
+        p_value = stats.chi2.sf(statistic, df=1)  # survival function = 1 - cdf
 
-    return result
+    # Mean difference in proportions
+    mean_diff = (b - c) / n
 
-
-def compute_paired_ttest(diff_df):
-    """
-    Perform paired t-test on differences.
-
-    Tests H0: mean(difference) = 0 vs H1: mean(difference) != 0
-
-    Args:
-        diff_df: DataFrame with 'difference' column (from compute_paired_differences)
-
-    Returns:
-        dict with t_statistic, p_value, df, mean_diff, std_diff, se_diff, ci_95, n_pairs, significance flags
-    """
-    differences = diff_df["difference"].values
-    n = len(differences)
-
-    # Perform one-sample t-test on differences
-    t_statistic, p_value = stats.ttest_1samp(differences, 0)
-
-    # Calculate statistics
-    mean_diff = np.mean(differences)
-    std_diff = np.std(differences, ddof=1)
-    se_diff = std_diff / np.sqrt(n)
-
-    # 95% confidence interval
-    t_crit = stats.t.ppf(0.975, df=n - 1)
-    ci_95 = (mean_diff - t_crit * se_diff, mean_diff + t_crit * se_diff)
+    # 95% confidence interval for difference in proportions
+    # Using Wald interval for paired proportions
+    se_diff = np.sqrt((b + c) - (b - c) ** 2 / n) / n
+    z_crit = 1.96
+    ci_95 = (mean_diff - z_crit * se_diff, mean_diff + z_crit * se_diff)
 
     return {
-        "t_statistic": t_statistic,
+        "statistic": statistic,
         "p_value": p_value,
-        "df": n - 1,
         "mean_diff": mean_diff,
-        "std_diff": std_diff,
         "se_diff": se_diff,
         "ci_95": ci_95,
         "n_pairs": n,
-        "significant_05": p_value < 0.05,
-        "significant_01": p_value < 0.01,
-        "significant_001": p_value < 0.001,
-    }
-
-
-def compute_ttest_results(paired_df, metric_col, pairing_cols):
-    """
-    Compute t-test statistics for paired data.
-
-    Combines compute_paired_differences and compute_paired_ttest into a single call,
-    returning a flat dictionary suitable for DataFrame construction.
-
-    Args:
-        paired_df: Paired data DataFrame with _zs and _iter suffixes
-        metric_col: Column name to compute differences for (without suffix)
-        pairing_cols: List of columns that identify unique pairs
-
-    Returns:
-        dict with t-test results and mean success rates
-    """
-    diff_df = compute_paired_differences(paired_df, metric_col, pairing_cols)
-    ttest_res = compute_paired_ttest(diff_df)
-
-    zs_col = f"{metric_col}_zs"
-    iter_col = f"{metric_col}_iter"
-
-    return {
-        "t_statistic": ttest_res["t_statistic"],
-        "p_value": ttest_res["p_value"],
-        "mean_diff": ttest_res["mean_diff"],
-        "ci_lower": ttest_res["ci_95"][0],
-        "ci_upper": ttest_res["ci_95"][1],
-        "n_pairs": ttest_res["n_pairs"],
-        "mean_zs": diff_df[zs_col].mean(),
-        "mean_iter": diff_df[iter_col].mean(),
+        "n_both_fail": int(a),
+        "n_improved": int(b),  # base fail -> variant success
+        "n_degraded": int(c),  # base success -> variant fail
+        "n_both_success": int(d),
+        "mean_base": float(np.mean(base_vals)),
+        "mean_variant": float(np.mean(variant_vals)),
     }
 
 
