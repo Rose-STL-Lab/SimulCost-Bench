@@ -29,7 +29,7 @@ show_help() {
     echo ""
     echo "Required options:"
     echo "  -d, --dataset    Dataset name (can be specified multiple times)"
-    echo "                   Available: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear"
+    echo "                   Available: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -46,6 +46,7 @@ show_help() {
     echo "  diff_react_1d: cfl, n_space, tol (with precision levels: low, medium, high)"
     echo "  hasegawa_mima_nonlinear: N, dt (with precision levels: low, medium, high)"
     echo "  hasegawa_mima_linear: N, dt, cg_atol (with precision levels: low, medium, high)"
+    echo "  fem_2d: dx, cfl (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -345,9 +346,27 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
 
+        "fem_2d")
+            echo "📋 Running FEM 2D evaluation..."
+            tasks=("dx" "cfl")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/fem_2d/eval.py -m $MODEL -d fem_2d -t $task -l $precision $mode"
+                        if ! python evaluation/fem_2d/eval.py -m $MODEL -d fem_2d -t $task -l $precision $mode; then
+                            echo "⚠️  Evaluation failed for model: $MODEL, task: $task, precision: $precision, mode: ${mode:-iterative}. Continuing with next evaluation..."
+                        fi
+                    done
+                done
+            done
+            ;;
+
         *)
             echo "❌ Unsupported dataset: $DATASET"
-            echo "Supported datasets: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear"
+            echo "Supported datasets: burgers_1d, euler_1d, epoch_1d, heat_1d, heat_2d, euler_2d, mpm_2d, ns_2d, ns_transient_2d, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d"
             exit 1
             ;;
     esac

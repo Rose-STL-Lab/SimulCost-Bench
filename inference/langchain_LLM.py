@@ -606,6 +606,7 @@ DATASET_TASK_MAP = {
     "mpm_2d_icl_accuracy_focused": ["nx", "npart", "cfl"],
     "mpm_2d_icl_cost_excluded": ["nx", "npart", "cfl"],
     "mpm_2d_icl_full": ["nx", "npart", "cfl"],
+    "fem_2d": ["dx", "cfl"],
     "diff_react_1d": ["cfl", "n_space", "tol"],
     "euler_2d": ["cfl", "n_grid_x", "cg_tolerance"],
     "hasegawa_mima_nonlinear": ["N", "dt"],
@@ -784,6 +785,7 @@ Available dataset-task combinations:
   mpm_2d_icl_accuracy_focused: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
   mpm_2d_icl_cost_excluded: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
   mpm_2d_icl_full: nx, npart, cfl (use -l for precision_level: low/medium/high) [ICL full version]
+  fem_2d: dx, cfl (use -l for precision_level: low/medium/high)
   diff_react_1d: cfl, n_space, tol (use -l for precision_level: low/medium/high)
   euler_2d: cfl, n_grid_x, cg_tolerance (use -l for precision_level: low/medium/high)
   hasegawa_mima_nonlinear: N, dt (use -l for precision_level: low/medium/high)

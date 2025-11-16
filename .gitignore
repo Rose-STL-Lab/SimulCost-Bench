@@ -11,7 +11,6 @@ data
 !**/README.md
 **/*.yaml
 **/sim_res/*
-sim_res
 
 eval_results/*
 !eval_results/merged_results.parquet
@@ -19,6 +18,7 @@ log_model_tool_call
 results_model_attempt
 *.txt
 outputs
+output
 claude.md
 extracted_prompts
 temp

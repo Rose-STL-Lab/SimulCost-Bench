@@ -46,6 +46,8 @@ TOOL_NAME_KEYS = {
     "mpm_2d_check_converge_nx": ["nx", "npart", "cfl"],
     "mpm_2d_check_converge_npart": ["nx", "npart", "cfl"],
     "mpm_2d_check_converge_cfl": ["nx", "npart", "cfl"],
+    "fem_2d_check_converge_dx": ["dx", "cfl"],
+    "fem_2d_check_converge_cfl": ["dx", "cfl"],
     "diff_react_1d_check_converge_cfl": ["n_space", "cfl", "tol"],
     "diff_react_1d_check_converge_n_space": ["n_space", "cfl", "tol"],
     "diff_react_1d_check_converge_tol": ["n_space", "cfl", "tol"],
@@ -390,6 +392,21 @@ class ToolCallManager:
                     profile=profile,
                     nx=fetch_param(tool_args, "nx"),
                     npart=fetch_param(tool_args, "npart", "n_part"),
+                    cfl=fetch_param(tool_args, "cfl"),
+                    energy_tolerance=self.energy_tolerance,
+                    var_threshold=self.var_threshold,
+                )
+            elif tool_name in [
+                "fem_2d_check_converge_dx", "fem_2d_check_converge_cfl"
+            ]:
+                # Use energy_tolerance and var_threshold from dataset - required fields
+                if None in [self.energy_tolerance, self.var_threshold]:
+                    raise ValueError(f"Both energy_tolerance and var_threshold are required for fem_2d tools but some were not provided in dataset (QID={self.qid})")
+
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    dx=fetch_param(tool_args, "dx"),
                     cfl=fetch_param(tool_args, "cfl"),
                     energy_tolerance=self.energy_tolerance,
                     var_threshold=self.var_threshold,
