@@ -9,13 +9,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-from utils import (
-    read_0shot_data,
-    read_iterative_data,
-    get_paired_data,
-)
-from ttest_utils import compute_paired_differences, compute_paired_ttest
-from constants import ICL_BASE_DATASETS, ICL_MODEL, PAIRING_COLS
+from ttest_utils import compute_paired_ttest, plot_forest_plot
+from constants import ICL_BASE_DATASETS, ICL_MODEL, PAIRING_COLS, SUBGROUP_COLORS
 from visualize_icl import _prepare_icl_data
 
 # Set style
@@ -64,25 +59,12 @@ def compute_icl_ttest_by_variant(df, base_model_name):
             continue
 
         # Compute differences (variant - base)
-        # Convert to int to avoid boolean subtraction issue
-        merged["difference"] = merged["is_successful_variant"].astype(int) - merged["is_successful_base"].astype(int)
+        merged["is_successful_base"] = merged["is_successful_base"].astype(int)
+        merged["is_successful_variant"] = merged["is_successful_variant"].astype(int)
+        merged["difference"] = merged["is_successful_variant"] - merged["is_successful_base"]
 
-        # Compute t-test
-        differences = merged["difference"].values
-        n = len(differences)
-
-        from scipy import stats
-
-        t_statistic, p_value = stats.ttest_1samp(differences, 0)
-
-        # Calculate statistics
-        mean_diff = np.mean(differences)
-        std_diff = np.std(differences, ddof=1)
-        se_diff = std_diff / np.sqrt(n)
-
-        # 95% confidence interval
-        t_crit = stats.t.ppf(0.975, df=n - 1)
-        ci_95 = (mean_diff - t_crit * se_diff, mean_diff + t_crit * se_diff)
+        # Compute t-test using utility function
+        ttest_res = compute_paired_ttest(merged)
 
         mean_base = merged["is_successful_base"].mean()
         mean_variant = merged["is_successful_variant"].mean()
@@ -93,12 +75,12 @@ def compute_icl_ttest_by_variant(df, base_model_name):
         results.append(
             {
                 "variant": variant_short,
-                "t_statistic": t_statistic,
-                "p_value": p_value,
-                "mean_diff": mean_diff,
-                "ci_lower": ci_95[0],
-                "ci_upper": ci_95[1],
-                "n_pairs": n,
+                "t_statistic": ttest_res["t_statistic"],
+                "p_value": ttest_res["p_value"],
+                "mean_diff": ttest_res["mean_diff"],
+                "ci_lower": ttest_res["ci_95"][0],
+                "ci_upper": ttest_res["ci_95"][1],
+                "n_pairs": ttest_res["n_pairs"],
                 "mean_base": mean_base,
                 "mean_variant": mean_variant,
             }
@@ -110,104 +92,16 @@ def compute_icl_ttest_by_variant(df, base_model_name):
 def plot_icl_forest_plot(results_df, output_path):
     """
     Create forest plot for ICL variant comparisons.
+    Uses plot_forest_plot with variant as group column and no subgroup.
 
     Args:
         results_df: DataFrame from compute_icl_ttest_by_variant()
         output_path: Path to save figure
     """
-    from barplot_utils import SUBGROUP_COLORS
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Reverse y_positions so we go top to bottom
-    y_positions = np.arange(len(results_df))[::-1]
-
-    # Plot points and error bars with different colors per variant
-    for i, (idx, row) in enumerate(results_df.iterrows()):
-        color = SUBGROUP_COLORS[i % len(SUBGROUP_COLORS)]
-
-        # Convert to percentage
-        mean_diff_pct = row["mean_diff"] * 100
-        ci_lower_pct = row["ci_lower"] * 100
-        ci_upper_pct = row["ci_upper"] * 100
-
-        # Plot error bar with horizontal ticks at boundaries
-        ax.plot(
-            [ci_lower_pct, ci_upper_pct],
-            [y_positions[i], y_positions[i]],
-            "-",
-            color=color,
-            linewidth=2,
-            zorder=2,
-        )
-
-        # Add horizontal ticks at interval boundaries
-        ax.plot(
-            [ci_lower_pct, ci_lower_pct],
-            [y_positions[i] - 0.15, y_positions[i] + 0.15],
-            "-",
-            color=color,
-            linewidth=2,
-            zorder=2,
-        )
-        ax.plot(
-            [ci_upper_pct, ci_upper_pct],
-            [y_positions[i] - 0.15, y_positions[i] + 0.15],
-            "-",
-            color=color,
-            linewidth=2,
-            zorder=2,
-        )
-
-        # Plot point
-        ax.plot(
-            mean_diff_pct,
-            y_positions[i],
-            "o",
-            color=color,
-            markersize=10,
-            zorder=3,
-        )
-
-        # Add p-value annotation below the confidence interval
-        p_value = row["p_value"]
-        if p_value < 1e-10:
-            p_text = f"p < 1e{int(np.floor(np.log10(p_value)))}"
-        elif p_value < 0.001:
-            p_text = f"p = {p_value:.2e}"
-        else:
-            p_text = f"p = {p_value:.3f}"
-
-        ax.text(
-            mean_diff_pct,
-            y_positions[i] - 0.25,
-            p_text,
-            va="top",
-            ha="center",
-            fontsize=12,
-            color=color,
-        )
-
-    # Reference line at 0
-    ax.axvline(x=0, color="black", linestyle="--", linewidth=1, alpha=0.5)
-
-    # Set y-axis with colored labels
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(results_df["variant"])
-
-    # Color each y-tick label to match its corresponding variant
-    for i, (tick_label, (idx, row)) in enumerate(zip(ax.get_yticklabels(), results_df.iterrows())):
-        color = SUBGROUP_COLORS[i % len(SUBGROUP_COLORS)]
-        tick_label.set_color(color)
-        tick_label.set_fontweight("bold")
-
-    ax.set_xlabel("Success Rate Difference vs Base (%)")
-    ax.grid(True, alpha=0.3, axis="x")
-
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
-    print(f"  Saved plot: {output_path}")
+    # Rename variant column to use plot_forest_plot
+    plot_df = results_df.copy()
+    plot_df = plot_df.rename(columns={"variant": "model_name"})
+    plot_forest_plot(plot_df, "model_name", None, output_path)
 
 
 def print_icl_summary(results_df):
