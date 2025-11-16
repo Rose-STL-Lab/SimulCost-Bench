@@ -13,8 +13,8 @@ from utils import (
     read_iterative_data,
     get_paired_data,
     compute_mean_metrics,
-    create_overall_metric_plot,
 )
+from barplot_utils import plot_metric_comparison_barplot
 from constants import BASE_DATASETS
 
 # Set style
@@ -53,7 +53,7 @@ def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_gr
     success_iter = compute_mean_metrics(df_iter, "is_successful", first_groupby, second_groupby)
     success_iter["metric_value"] *= 100  # Convert to percentage
 
-    create_overall_metric_plot(
+    plot_metric_comparison_barplot(
         success_zs,
         success_iter,
         xlabel="Model",
@@ -69,7 +69,7 @@ def _plot_metrics_for_data(df_zs, df_iter, output_dir, filename_prefix, first_gr
     efficiency_iter = compute_mean_metrics(df_iter, "efficiency", first_groupby, second_groupby)
 
     max_eff = max(efficiency_zs["metric_value"].max(), efficiency_iter["metric_value"].max())
-    create_overall_metric_plot(
+    plot_metric_comparison_barplot(
         efficiency_zs,
         efficiency_iter,
         xlabel="Model",
@@ -147,8 +147,8 @@ def plot(parquet_path, output_dir, datasets, paired_only, per_dataset):
 if __name__ == "__main__":
     # 1. Overall with all data
     plot(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/overall",
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="./res/overall",
         datasets=BASE_DATASETS,
         paired_only=False,
         per_dataset=False,
@@ -156,8 +156,8 @@ if __name__ == "__main__":
 
     # 2. Overall with paired data only
     plot(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/overall",
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="./res/overall",
         datasets=BASE_DATASETS,
         paired_only=True,
         per_dataset=False,
@@ -165,8 +165,8 @@ if __name__ == "__main__":
 
     # 3. Per-dataset with all data
     plot(
-        parquet_path="eval_results/merged_results.parquet",
-        output_dir="plots/res/overall/per_dataset",
+        parquet_path="../eval_results/merged_results.parquet",
+        output_dir="./res/overall/per_dataset",
         datasets=BASE_DATASETS,
         paired_only=False,
         per_dataset=True,

@@ -39,3 +39,20 @@ PAIRING_COLS = [
     "target_parameters",
     "non_target_parameters",
 ]
+
+# Precision level ordering for plots (high to low)
+PRECISION_ORDER = ["High", "Medium", "Low"]
+
+# Precision level markers for forest plots
+PRECISION_MARKERS = {"High": "o", "Medium": "s", "Low": "^"}
+
+# MATLAB-like default colors for subgroups
+SUBGROUP_COLORS = [
+    "#0072BD",  # Blue
+    "#D95319",  # Orange
+    "#EDB120",  # Yellow
+    "#7E2F8E",  # Purple
+    "#77AC30",  # Green
+    "#4DBEEE",  # Cyan
+    "#A2142F",  # Red
+]

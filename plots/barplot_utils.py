@@ -1,20 +1,11 @@
 """
-Utilities for creating grouped bar plots.
+Utilities for creating grouped bar plots and forest plots.
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-# MATLAB-like default colors for subgroups
-SUBGROUP_COLORS = [
-    "#0072BD",  # Blue
-    "#D95319",  # Orange
-    "#EDB120",  # Yellow
-    "#7E2F8E",  # Purple
-    "#77AC30",  # Green
-    "#4DBEEE",  # Cyan
-    "#A2142F",  # Red
-]
+from constants import PRECISION_ORDER, PRECISION_MARKERS, SUBGROUP_COLORS
 
 
 class GroupedBarPlot:
@@ -182,3 +173,71 @@ class GroupedBarPlot:
         self.fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
         print(f"Saved: {output_path}")
         plt.close(self.fig)
+
+
+def plot_metric_comparison_barplot(
+    zero_shot_metrics, iterative_metrics, xlabel, ylabel, ylim, output_path, include_overall
+):
+    """
+    Create bar plot grouped by model with precision level subgroups.
+
+    Args:
+        zero_shot_metrics: DataFrame with columns [model_name, precision_level, metric_value]
+        iterative_metrics: DataFrame with columns [model_name, precision_level, metric_value]
+        xlabel: X-axis label
+        ylabel: Y-axis label
+        ylim: Tuple (ymin, ymax) for y-axis limits
+        output_path: Path to save the figure
+        include_overall: Whether to include "Overall" group averaging across all models
+    """
+    # Configuration: human-readable names
+    precision_levels = ["low", "medium", "high"]
+    precision_names = {"low": "Low Precision", "medium": "Medium Precision", "high": "High Precision"}
+
+    # Get all unique models
+    models = sorted(zero_shot_metrics["model_name"].unique())
+
+    # Prepare data dict: model -> precision_name -> mode_name -> value
+    data_dict = {}
+
+    # Add individual models
+    for model in models:
+        data_dict[model] = {}
+        for precision in precision_levels:
+            precision_name = precision_names[precision]
+            data_dict[model][precision_name] = {}
+
+            # Zero-shot
+            zs_value = zero_shot_metrics[
+                (zero_shot_metrics["model_name"] == model) & (zero_shot_metrics["precision_level"] == precision)
+            ]["metric_value"].values[0]
+            data_dict[model][precision_name]["single-round"] = zs_value
+
+            # Iterative
+            iter_value = iterative_metrics[
+                (iterative_metrics["model_name"] == model) & (iterative_metrics["precision_level"] == precision)
+            ]["metric_value"].values[0]
+            data_dict[model][precision_name]["multi-round"] = iter_value
+
+    # Add overall average if requested
+    if include_overall:
+        overall_zs = {}
+        overall_iter = {}
+        for precision in precision_levels:
+            zs_data = zero_shot_metrics[zero_shot_metrics["precision_level"] == precision]
+            overall_zs[precision] = zs_data["metric_value"].mean()
+
+            iter_data = iterative_metrics[iterative_metrics["precision_level"] == precision]
+            overall_iter[precision] = iter_data["metric_value"].mean()
+
+        data_dict["Overall"] = {}
+        for precision in precision_levels:
+            precision_name = precision_names[precision]
+            data_dict["Overall"][precision_name] = {
+                "single-round": overall_zs[precision],
+                "multi-round": overall_iter[precision],
+            }
+
+    plotter = GroupedBarPlot(figsize=(18, 7))
+    plotter.plot(data_dict, xlabel=xlabel, ylabel=ylabel, ylim=ylim)
+    plotter.save(output_path)
