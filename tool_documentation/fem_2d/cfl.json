@@ -1,0 +1,28 @@
+{
+    "run_fem_2d": {
+        "description": {
+            "type": "function",
+            "function": {
+                "name": "fem_2d_check_converge_cfl",
+                "description": "Conduct a 2D Finite Element Method (FEM) simulation and evaluate temporal resolution convergence by halving cfl (*0.5). This experiment will conduct both FEM solving and convergence testing in one function. It will return {\"refined_parameter\": str, \"current_value\": float, \"refined_value\": float, \"avg_energy_diff\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int, \"current_energy_metrics\": dict, \"refine_energy_metrics\": dict}.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "dx": {
+                            "type": "number",
+                            "description": "Grid resolution parameter (spatial discretization size)"
+                        },
+                        "cfl": {
+                            "type": "number",
+                            "description": "CFL (Courant-Friedrichs-Lewy) number for time stepping"
+                        }
+                    },
+                    "required": [
+                        "dx",
+                        "cfl"
+                    ]
+                }
+            }
+        }
+    }
+}

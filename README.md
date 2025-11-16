@@ -48,6 +48,8 @@ poetry install --no-root
 
 **Note**: To run 2D Euler gas dynamics simulations, see the [Euler 2D Setup Guide](EULER_2D_SETUP.md) for additional configuration requirements.
 
+**Note**: To run 2D FEM simulations with FastIPC solver, see the [FEM 2D Setup Guide](FEM_2D_SETUP.md) for compilation and configuration requirements.
+
 ## 📋 Tasks and Zero-Shot Support
 
 <details>
@@ -102,6 +104,8 @@ The table below summarizes the available tasks for each simulation type and indi
 | Hasegawa-Mima Linear     | `N`              | ✅ Supported        |
 | Hasegawa-Mima Linear     | `dt`             | ✅ Supported        |
 | Hasegawa-Mima Linear     | `cg_atol`        | ✅ Supported        |
+| 2D FEM                   | `dx`             | ✅ Supported        |
+| 2D FEM                   | `cfl`            | ✅ Supported        |
 
 </details>
 
@@ -150,6 +154,9 @@ python qs_gen/hasegawa_mima_nonlinear.py
 
 # Hasegawa-Mima Linear Equation with RK4 and CG Solver
 python qs_gen/hasegawa_mima_linear.py
+
+# 2D Finite Element Method with Implicit Newton Solver
+python qs_gen/2D_fem.py
 ```
 
 </details>
@@ -199,6 +206,9 @@ python dataset_gen/hasegawa_mima_nonlinear.py
 
 # Hasegawa-Mima Linear Equation with RK4 and CG Solver
 python dataset_gen/hasegawa_mima_linear.py
+
+# 2D Finite Element Method with Implicit Newton Solver
+python dataset_gen/twoD_fem.py
 ```
 
 </details>

@@ -26,7 +26,7 @@ sudo apt-get install -y cmake build-essential libeigen3-dev libtbb-dev python3-d
 Execute the automated setup script from the repository root:
 
 ```bash
-cd /path/to/costsci-tools
+cd costsci_tools
 python solvers/setup_euler_2d.py
 ```
 

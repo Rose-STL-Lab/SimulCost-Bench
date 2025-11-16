@@ -26,7 +26,7 @@ sudo apt install gfortran openmpi-bin libopenmpi-dev
 Execute the automated setup script from the repository root:
 
 ```bash
-cd /path/to/costsci-tools
+cd costsci_tools
 python solvers/setup_epoch.py
 ```
 

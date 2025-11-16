@@ -95,6 +95,13 @@ from .hasegawa_mima_linear.run_hasegawa_mima_linear import (
     hasegawa_mima_linear_check_converge_cg_atol
 )
 
+# FEM 2D functions
+from .fem_2d.run_fem_2d import (
+    fem_2d_check_converge_dx,
+    fem_2d_check_converge_cfl,
+    fem_2d_check_converge_parameter
+)
+
 __all__ = [
     # Heat transfer 1D
     "heat_1d_check_converge_n_space",
@@ -168,4 +175,9 @@ __all__ = [
     "hasegawa_mima_linear_check_converge_N",
     "hasegawa_mima_linear_check_converge_dt",
     "hasegawa_mima_linear_check_converge_cg_atol",
+
+    # FEM 2D
+    "fem_2d_check_converge_dx",
+    "fem_2d_check_converge_cfl",
+    "fem_2d_check_converge_parameter",
 ]
