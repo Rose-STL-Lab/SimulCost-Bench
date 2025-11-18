@@ -34,7 +34,7 @@ def _load_profile_config(profile):
         'end_frame': config['end_frame'],
     }
 
-def _refine_parameters(params, refine_param):
+def _refine_parameters(params, refine_param, fixed_dt=None):
     """Apply parameter refinement rules based on which parameter to refine."""
     refined_params = params.copy()
 
@@ -46,6 +46,12 @@ def _refine_parameters(params, refine_param):
 
     if refine_param in refinement_rules:
         refined_params[refine_param] = refinement_rules[refine_param](params[refine_param])
+
+        # When refining N, adjust dt according to: dt_ref = fixed_dt * previous_N / current_N
+        if refine_param == 'N' and fixed_dt is not None:
+            previous_N = params['N']
+            current_N = refined_params['N']
+            refined_params['dt'] = fixed_dt * previous_N / current_N
     else:
         raise ValueError(f"Unknown parameter to refine: {refine_param}")
 
@@ -71,8 +77,11 @@ def hasegawa_mima_nonlinear_check_converge_parameter(
         'dt': dt,
     }
 
-    # Get refined parameters
-    refined_params = _refine_parameters(base_params, refine_param)
+    # Get refined parameters (pass fixed_dt when refining N)
+    if refine_param == 'N':
+        refined_params = _refine_parameters(base_params, refine_param, fixed_dt=dt)
+    else:
+        refined_params = _refine_parameters(base_params, refine_param)
 
     print(f"\nRunning simulation with {refine_param} refinement:")
     print(f"Current {refine_param} = {base_params[refine_param]}")
@@ -81,6 +90,7 @@ def hasegawa_mima_nonlinear_check_converge_parameter(
     # Run current simulation
     current_cost, current_results, simulation_completed = get_results(
         profile=profile,
+        max_wall_time=120,
         N=base_params['N'],
         dt=base_params['dt']
     )

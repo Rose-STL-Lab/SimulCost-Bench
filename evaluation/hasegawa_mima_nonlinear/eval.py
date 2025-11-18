@@ -298,21 +298,21 @@ def evaluate(
                 )
                 success = is_converged
 
-                # Check if wall time was exceeded in the last attempt
-                wall_time_exceeded = False
-                attempt_history = attempt_history_by_qid.get(qid, [])
-                if attempt_history:
-                    last_attempt = attempt_history[-1]
-                    try:
-                        wall_time_str = last_attempt.get("wall_time_exceeded", "False")
-                        wall_time_exceeded = wall_time_str.lower() in ("true", "1", "yes")
-                    except Exception:
-                        pass
+                # # Check if wall time was exceeded in the last attempt
+                # wall_time_exceeded = False
+                # attempt_history = attempt_history_by_qid.get(qid, [])
+                # if attempt_history:
+                #     last_attempt = attempt_history[-1]
+                #     try:
+                #         wall_time_str = last_attempt.get("wall_time_exceeded", "False")
+                #         wall_time_exceeded = wall_time_str.lower() in ("true", "1", "yes")
+                #     except Exception:
+                #         pass
 
-                # If wall time exceeded, definitely not successful
-                if wall_time_exceeded:
-                    success = False
-                    logger.info(f"⚠️ QID {qid}: Wall time exceeded, marking as failed")
+                # # If wall time exceeded, definitely not successful
+                # if wall_time_exceeded:
+                #     success = False
+                #     logger.info(f"⚠️ QID {qid}: Wall time exceeded, marking as failed")
 
                 # Convert None to float('inf') for formatting compatibility
                 if rmse_diff is None:

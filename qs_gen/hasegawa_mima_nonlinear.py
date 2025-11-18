@@ -221,25 +221,35 @@ class HasegawaMimaQuestionGenerator:
             else:
                 dummy_cost = cost_history[0]
 
-            # Find the best_params from parameter_history based on optimal_parameter_value
-            if "optimal_parameter_value" not in results:
-                raise KeyError(f"'optimal_parameter_value' not found in results for task {task_data.get('task_id')}")
+            # Find the best_params from parameter_history
+            # Special handling for N task: use last N with second-to-last dt
+            if task == 'N' and len(param_history) >= 2:
+                # When refining N, dt is adjusted: dt_ref = fixed_dt * prev_N / curr_N
+                # So we take the last (largest) N and the second-to-last dt
+                best_params = {
+                    'N': param_history[-1]['N'],
+                    'dt': param_history[-2]['dt']
+                }
+            else:
+                # For other tasks, use optimal_parameter_value to find best_params
+                if "optimal_parameter_value" not in results:
+                    raise KeyError(f"'optimal_parameter_value' not found in results for task {task_data.get('task_id')}")
 
-            optimal_value = results["optimal_parameter_value"]
-            best_params = None
+                optimal_value = results["optimal_parameter_value"]
+                best_params = None
 
-            # Search through parameter_history to find the matching parameter combination
-            for param_set in param_history:
-                if param_set.get(task) == optimal_value:
-                    best_params = param_set.copy()
-                    break
+                # Search through parameter_history to find the matching parameter combination
+                for param_set in param_history:
+                    if param_set.get(task) == optimal_value:
+                        best_params = param_set.copy()
+                        break
 
-            # If not found, this is an error in the data (fail-fast)
-            if best_params is None:
-                raise ValueError(
-                    f"Could not find optimal parameter {task}={optimal_value} "
-                    f"in parameter_history for task {task_data.get('task_id')}"
-                )
+                # If not found, this is an error in the data (fail-fast)
+                if best_params is None:
+                    raise ValueError(
+                        f"Could not find optimal parameter {task}={optimal_value} "
+                        f"in parameter_history for task {task_data.get('task_id')}"
+                    )
 
             # Filter best_params to only include the 2 tunable parameters
             filtered_best_params = {
