@@ -232,6 +232,7 @@ def evaluate(
                         "accumulated_cost": str(row['accumulated_cost']),
                         "The cost of the solver simulating the environment": str(row['The cost of the solver simulating the environment']),
                         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": str(row['The cost of the solver verifying convergence (This will not be included in your accumulated_cost)']),
+                        "wall_time_exceeded": str(row.get('wall_time_exceeded', 'False')),
                     }
                     attempt_list.append(attempt_dict)
                 attempt_history_by_qid[int(qid)] = attempt_list
@@ -314,6 +315,17 @@ def evaluate(
                 last_iter = res["param_sequence"][-1]
                 logger.warning(f"⚠️ QID {qid}: No fully valid parameter sets found, using last attempt")
 
+        # Check if wall time was exceeded in the last attempt (check early for all cases)
+        wall_time_exceeded = False
+        attempt_history = attempt_history_by_qid.get(qid, [])
+        if attempt_history:
+            last_attempt = attempt_history[-1]
+            try:
+                wall_time_str = last_attempt.get("wall_time_exceeded", "False")
+                wall_time_exceeded = wall_time_str.lower() in ("true", "1", "yes")
+            except Exception:
+                pass
+
         # Handle entries with empty parameter dictionaries - mark as failed instead of skipping
         if not last_iter:
             logger.warning(f"⚠️ QID {qid}: empty parameter dictionary, marking as failed")
@@ -337,7 +349,13 @@ def evaluate(
                     cfl2=get_required_param(ref_iter, "cfl"),
                     energy_tolerance=energy_tol,
                     var_threshold=var_tol,
+                    max_wall_time1=-1,
+                    max_wall_time2=None
                 )
+
+                # If wall time exceeded, definitely not successful
+                if wall_time_exceeded:
+                    success = False
 
             except Exception as e:
                 logger.warning(f"⚠️ QID {qid}: Error in success determination: {e}, marking as failed")
@@ -375,6 +393,7 @@ def evaluate(
             f"\n📊 --- Evaluation Result ---\n"
             f"🆔 QID: {qid}\n"
             f"🔄 Converged flag: {converged}\n"
+            f"⏱️ Wall time exceeded: {wall_time_exceeded}\n"
             f"🎯 Success (within tolerance): {success}\n"
             f"💰 Model Cost: {cost}\n"
             f"💰 Dummy Cost: {dummy['dummy_cost']}\n"
@@ -430,6 +449,7 @@ def evaluate(
             # Evaluation results
             'is_converged': converged,
             'is_successful': success,
+            'wall_time_exceeded': wall_time_exceeded,
             'model_cost': cost,
             'dummy_cost': dummy_cost,
             'avg_energy_diff': avg_energy_diff if not (np.isnan(avg_energy_diff) or np.isinf(avg_energy_diff)) else None,

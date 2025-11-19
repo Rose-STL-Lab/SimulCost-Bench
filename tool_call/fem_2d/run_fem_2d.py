@@ -82,19 +82,21 @@ def fem_2d_check_converge_parameter(
     print(f"Refined {refine_param} = {refined_params[refine_param]}")
 
     # Run current simulation
-    _, current_cost = get_fem2d_data(
+    _, current_cost, wall_time_exceeded = get_fem2d_data(
         profile=profile,
         dx=base_params['dx'],
-        cfl=base_params['cfl']
+        cfl=base_params['cfl'],
+        max_wall_time=-1
     )
 
     accumulated_cost += current_cost
 
     # Run refined simulation (convergence checking does not increase cost)
-    _, refine_cost = get_fem2d_data(
+    _, refine_cost, _ = get_fem2d_data(
         profile=profile,
         dx=refined_params['dx'],
-        cfl=refined_params['cfl']
+        cfl=refined_params['cfl'],
+        max_wall_time=None
     )
 
     # Compare energy results
@@ -106,7 +108,9 @@ def fem_2d_check_converge_parameter(
         dx2=refined_params['dx'],
         cfl2=refined_params['cfl'],
         energy_tolerance=energy_tolerance,
-        var_threshold=var_threshold
+        var_threshold=var_threshold,
+        max_wall_time1=-1,
+        max_wall_time2=None
     )
 
     if converged:
@@ -125,6 +129,7 @@ def fem_2d_check_converge_parameter(
         "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": refine_cost,
         "current_energy_metrics": _to_jsonable(metrics1),
         "refine_energy_metrics": _to_jsonable(metrics2),
+        "wall_time_exceeded": wall_time_exceeded,
     }
 
 
