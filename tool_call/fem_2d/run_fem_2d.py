@@ -91,13 +91,16 @@ def fem_2d_check_converge_parameter(
 
     accumulated_cost += current_cost
 
-    # Run refined simulation (convergence checking does not increase cost)
-    _, refine_cost, _ = get_fem2d_data(
-        profile=profile,
-        dx=refined_params['dx'],
-        cfl=refined_params['cfl'],
-        max_wall_time=None
-    )
+    if wall_time_exceeded:
+        refine_cost = 0
+    else:
+        # Run refined simulation (convergence checking does not increase cost)
+        _, refine_cost, _ = get_fem2d_data(
+            profile=profile,
+            dx=refined_params['dx'],
+            cfl=refined_params['cfl'],
+            max_wall_time=None
+        )
 
     # Compare energy results
     converged, metrics1, metrics2, avg_energy_diff = compare_energies_fem2d(

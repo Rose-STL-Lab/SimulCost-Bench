@@ -33,15 +33,15 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 #  "meta.llama3-70b-instruct-v1:0"
 # )
 
-# model_provider="custom_model"
-# models=(
-#  "qwen3_32b"
-# )
-
-model_provider="openai"
+model_provider="custom_model"
 models=(
-  "gpt-5-2025-08-07"
+ "qwen3_32b"
 )
+
+# model_provider="openai"
+# models=(
+#   "gpt-5-2025-08-07"
+# )
 
 # ========= Main loop =========
 for mode in "${modes[@]}"; do
