@@ -93,7 +93,7 @@ The parquet files contain the following columns:
 | `is_successful` | bool | Whether optimization succeeded |
 | `model_cost` | float | Computational cost of model solution |
 | `dummy_cost` | float | Computational cost of baseline solution |
-| `tolerance` | float | Error tolerance threshold |
+| `tolerance` | float | Error tolerance threshold (dataset-specific: some use `rmse_tolerance`, `energy_tolerance`, etc.) |
 | `efficiency` | float | Cost efficiency ratio (dummy_cost / model_cost) |
 | `attempt_history` | str (JSON) | Complete experimental trajectory with all tool calls |
 
@@ -178,6 +178,7 @@ The parquet files contain the following columns:
 - `model_N`, `dummy_N`: Grid resolution parameter
 - `model_dt`, `dummy_dt`: Time step size
 - `case`: Simulation case identifier (monopole, dipole, sinusoidal, sin_x_gauss_y, gauss_x_sin_y)
+- `wall_time_exceeded`: Boolean flag indicating if wall time limit was exceeded
 - `rmse`: Root mean square error
 - `rmse_tolerance`: RMSE tolerance threshold
 
