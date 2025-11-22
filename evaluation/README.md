@@ -182,6 +182,15 @@ The parquet files contain the following columns:
 - `rmse`: Root mean square error
 - `rmse_tolerance`: RMSE tolerance threshold
 
+**FEM 2D** (`fem_2d`):
+- `model_dx`, `dummy_dx`: Spatial grid spacing
+- `model_cfl`, `dummy_cfl`: CFL number for time stepping
+- `case`: Simulation case identifier (cantilever, vibration_bar, twisting_column)
+- `wall_time_exceeded`: Boolean flag indicating if wall time limit was exceeded
+- `avg_energy_diff`: Average energy difference between model and reference solutions
+- `energy_tolerance`: Energy tolerance threshold
+- `var_threshold`: Variance threshold for convergence
+
 > **Note**: Each dataset has different parameter columns based on the physics simulation. Missing columns are filled with `NaN` when merging datasets.
 
 ---

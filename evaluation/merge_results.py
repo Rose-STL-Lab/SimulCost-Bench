@@ -9,6 +9,8 @@ This script automatically detects and merges parquet files from:
 - eval_results/burgers_1d/dataframes/
 - eval_results/heat_1d/dataframes/
 - eval_results/heat_2d/dataframes/
+- eval_results/fem_2d/dataframes/
+- eval_results/mpm_2d/dataframes/
 - eval_results/diff_react_1d/dataframes/
 - eval_results/hasegawa_mima_linear/dataframes/
 - eval_results/hasegawa_mima_nonlinear/dataframes/
@@ -21,6 +23,9 @@ This script automatically detects and merges parquet files from:
 - eval_results/ns_transient_2d_icl_accuracy_focused/dataframes/
 - eval_results/ns_transient_2d_icl_cost_excluded/dataframes/
 - eval_results/ns_transient_2d_icl_full/dataframes/
+- eval_results/mpm_2d_icl_accuracy_focused/dataframes/
+- eval_results/mpm_2d_icl_cost_excluded/dataframes/
+- eval_results/mpm_2d_icl_full/dataframes/
 
 The merged result is saved to: eval_results/merged_results.parquet
 
@@ -249,6 +254,7 @@ def main():
         "burgers_1d",
         "heat_1d",
         "heat_2d",
+        "fem_2d",
         "mpm_2d",
         "diff_react_1d",
         "hasegawa_mima_linear",
