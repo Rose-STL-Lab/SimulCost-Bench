@@ -19,19 +19,10 @@ This directory contains tools for evaluating model performance, analyzing result
 # 1. Run evaluation for a specific model and task
 python evaluation/heat_1d/eval.py -m gpt-4o -d heat_1d -t cfl -l medium -z
 
-# 2. Inspect evaluation results
-python test_df.py eval_results/heat_1d/dataframes/iterative_gpt-4o.parquet --info
-
-# 3. View attempt history for a specific question
-python test_df.py eval_results/heat_1d/dataframes/iterative_gpt-4o.parquet --qid 6 --attempt-history
-
-# 4. Merge results from multiple datasets
+# 2. Merge results from multiple datasets
 python evaluation/stats_utils/merge_results.py
 
-# 5. Compare inference modes across tasks
-python test_df.py eval_results/merged_results.parquet --mode-comparison
-
-# 6. Analyze the merged data
+# 3. Analyze the merged data
 python -c "import pandas as pd; df = pd.read_parquet('eval_results/merged_results.parquet'); print(df.head())"
 ```
 
