@@ -19,7 +19,7 @@ def load_and_process_data(parquet_path: str):
     df = pd.read_parquet(parquet_path)
 
     # Filter only the target datasets (exclude icl variants)
-    target_datasets = ['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d']
+    target_datasets = ['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d', 'euler_2d', 'hasegawa_mima_linear', 'hasegawa_mima_nonlinear', 'fem_2d']
     df_filtered = df[df['dataset'].isin(target_datasets)].copy()
 
     # Standardize precision level names for sorting
@@ -78,7 +78,11 @@ def format_dataset_name(dataset_name):
         'heat_1d': 'Heat 1D',
         'heat_2d': 'Heat 2D',
         'mpm_2d': 'MPM 2D',
-        'ns_transient_2d': 'NS Transient 2D'
+        'ns_transient_2d': 'NS Transient 2D',
+        'euler_2d': 'Euler 2D',
+        'hasegawa_mima_linear': 'Hasegawa-Mima Linear',
+        'hasegawa_mima_nonlinear': 'Hasegawa-Mima Nonlinear',
+        'fem_2d': 'FEM 2D'
     }
     return name_mapping.get(dataset_name, dataset_name)
 
@@ -182,7 +186,7 @@ def main():
     df = load_and_process_data(parquet_path)
 
     # Define datasets and model order
-    datasets = sorted(['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d'])
+    datasets = sorted(['burgers_1d', 'diff_react_1d', 'epoch_1d', 'euler_1d', 'heat_1d', 'heat_2d', 'mpm_2d', 'ns_transient_2d', 'euler_2d', 'hasegawa_mima_linear', 'hasegawa_mima_nonlinear', 'fem_2d'])
     model_order = sorted(df['model_name'].unique())
 
     # Output directory
