@@ -147,7 +147,7 @@ class LLMAgentBase():
                     model_name=model_name,
                     seed=42,
                     openai_api_key=os.getenv("OPENAI_API_KEY"),
-                    model_kwargs={"reasoning_effort": reasoning_effort}
+                    reasoning_effort=reasoning_effort
                 )
             else:
                 self.llm = ChatOpenAI(
