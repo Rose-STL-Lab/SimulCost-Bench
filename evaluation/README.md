@@ -17,7 +17,7 @@ This directory contains tools for evaluating model performance, analyzing result
 
 ```bash
 # 1. Run evaluation for a specific model and task
-python evaluation/heat_1d/eval.py -m gpt-4o -d heat_1d -t cfl -l medium -z
+python evaluation/heat_1d/eval.py -m gpt-5-2025-08-07 -d heat_1d -t cfl -l medium -z
 
 # 2. Merge results from multiple datasets
 python evaluation/stats_utils/merge_results.py

@@ -67,8 +67,7 @@ model_provider="openai"        # Set new provider
 
 # Update model list accordingly
 models=(
-  "gpt-4o"
-  "gpt-4o-mini"
+  "gpt-5-2025-08-07"
 )
 ```
 

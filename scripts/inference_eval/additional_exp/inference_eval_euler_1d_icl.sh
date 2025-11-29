@@ -26,8 +26,7 @@ run_cmd () {
 icl_datasets=("euler_1d_icl_accuracy_focused" "euler_1d_icl_cost_excluded" "euler_1d_icl_full")
 tasks=("cfl" "beta" "k" "n_space")
 precision_levels=("low" "medium" "high")
-# modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
-modes=("")
+modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 # ========= Model configuration =========
 # Configure one provider and corresponding models at a time

@@ -29,8 +29,7 @@ icl_datasets=("ns_transient_2d_icl_accuracy_focused" "ns_transient_2d_icl_cost_e
 # tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
 tasks=("resolution" "cfl")
 precision_levels=("low" "medium" "high")
-# modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
-modes=("")
+modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 # ========= Model configuration =========
 # Configure one provider and corresponding models at a time

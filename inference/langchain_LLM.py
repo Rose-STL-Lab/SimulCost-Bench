@@ -121,12 +121,41 @@ class LLMAgentBase():
         self.logger = logger
         self._dataset_name = None  # For special dataset handling
         if provider_global == "openai":
-            self.llm = ChatOpenAI(
-                model_name=model_name_global,
-                seed=42,
-                #temperature=0,
-                openai_api_key=os.getenv("OPENAI_API_KEY")
-            )
+            # Parse model name for reasoning_effort suffix
+            model_name = model_name_global
+            reasoning_effort = None
+
+            # Check for -re-{effort} suffix
+            if "-re-" in model_name_global:
+                parts = model_name_global.rsplit("-re-", 1)  # Use rsplit to handle model names with hyphens
+                model_name = parts[0]
+                effort_candidate = parts[1].lower()
+
+                # Validate reasoning_effort value
+                valid_efforts = ['minimal', 'low', 'medium', 'high']
+                if effort_candidate in valid_efforts:
+                    reasoning_effort = effort_candidate
+                else:
+                    raise ValueError(
+                        f"Invalid reasoning_effort '{effort_candidate}'. "
+                        f"Must be one of: {', '.join(valid_efforts)}"
+                    )
+
+            # Create ChatOpenAI with appropriate parameters
+            if reasoning_effort:
+                self.llm = ChatOpenAI(
+                    model_name=model_name,
+                    seed=42,
+                    openai_api_key=os.getenv("OPENAI_API_KEY"),
+                    model_kwargs={"reasoning_effort": reasoning_effort}
+                )
+            else:
+                self.llm = ChatOpenAI(
+                    model_name=model_name,
+                    seed=42,
+                    openai_api_key=os.getenv("OPENAI_API_KEY")
+                )
+
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "gemini":

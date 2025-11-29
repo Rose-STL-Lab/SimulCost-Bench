@@ -315,7 +315,7 @@ Execute LLM inference on benchmark datasets to generate predictions.
 
 ```bash
 # Commercial API Models
-python inference/langchain_LLM.py -p openai -m gpt-4o -d heat_1d -t cfl -l medium -z
+python inference/langchain_LLM.py -p openai -m gpt-5-2025-08-07 -d heat_1d -t cfl -l medium -z
 
 # Single Custom Model
 python inference/langchain_LLM.py -p custom_model -m qwen3_8b -d heat_1d -t cfl -l medium -z
@@ -440,7 +440,7 @@ python evaluation/simul_sum.py -d mpm_2d
   - `anthropic.claude-3-5-haiku-20241022-v1:0`
   - `anthropic.claude-3-5-sonnet-20240620-v1:0` 
   - `anthropic.claude-3-7-sonnet-20250219-v1:0`
-- **OpenAI**: `gpt-4o`
+- **OpenAI**: `gpt-5-2025-08-07`
 - **Google**: `gemini-2.5-pro`
 - **Mistral**: `mistral.mistral-large-2402-v1:0`
 - **Meta**: `meta.llama3-70b-instruct-v1:0`
