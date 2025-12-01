@@ -25,8 +25,8 @@ run_cmd () {
 # ========= Parameter lists =========
 tasks=("cfl" "n_space")
 precision_levels=("low" "medium" "high")
-# modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
-modes=("-z")
+modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+# modes=("-z")
 
 # model_provider="bedrock"
 # models=(
@@ -43,8 +43,9 @@ modes=("-z")
 
 model_provider="openai"
 models=(
-  # "gpt-5-2025-08-07"
-  "gpt-5-2025-08-07-re-high"
+  "gpt-5-2025-08-07"
+  # "gpt-5-2025-08-07-re-high"
+  # "gpt-5-2025-08-07-re-minimal"
 )
 
 # ========= Main loop =========

@@ -274,8 +274,9 @@ def generate_human_readable_report(all_comparisons: List[Dict], output_path: str
 
 def main():
     # Find all dataset table files
-    latex_dir = 'eval_results/stats_utils/latex'
-    pattern = os.path.join(latex_dir, '*_tables.txt')
+    input_dir = 'eval_results/stats_utils/latex'
+    output_dir = 'eval_results/stats_utils'
+    pattern = os.path.join(input_dir, '*_tables.txt')
     files = glob.glob(pattern)
 
     # Exclude overall_tables.txt
@@ -318,7 +319,7 @@ def main():
         print(f"  Multi-round DROP: -{comp['difference']:.2f}")
 
     # Save to CSV
-    output_csv = os.path.join(latex_dir, 'single_vs_multi_comparison.csv')
+    output_csv = os.path.join(output_dir, 'single_vs_multi_comparison.csv')
     with open(output_csv, 'w', newline='', encoding='utf-8') as f:
         fieldnames = ['dataset', 'model', 'precision', 'metric', 'single_value',
                      'multi_value', 'difference']
@@ -327,7 +328,7 @@ def main():
         writer.writerows(all_comparisons)
 
     # Generate human-readable report
-    output_txt = os.path.join(latex_dir, 'single_vs_multi_degradation_report.txt')
+    output_txt = os.path.join(output_dir, 'single_vs_multi_degradation_report.txt')
     generate_human_readable_report(all_comparisons, output_txt)
 
     print(f"\n\n{'=' * 100}")
