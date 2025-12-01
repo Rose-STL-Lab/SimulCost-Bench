@@ -223,6 +223,8 @@ The merge script automatically standardizes model names for consistency. The fol
 | `mistral.mistral-large-2402-v1:0` | `Mistral-Large` |
 | `meta.llama3-70b-instruct-v1:0` | `Llama-3-70B-Instruct` |
 | `gpt-5-2025-08-07` | `GPT-5` |
+| `gpt-5-2025-08-07-re-minimal` | `GPT-5-RE-Minimal` |
+| `gpt-5-2025-08-07-re-high` | `GPT-5-RE-High` |
 
 **Important**: All model names must be in the mapping dictionary. If an unmapped model name is encountered, the script will raise a `ValueError` with the unmapped model names listed. To add new models, edit `MODEL_NAME_MAPPING` in `evaluation/merge_results.py`.
 

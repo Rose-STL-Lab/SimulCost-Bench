@@ -50,6 +50,8 @@ MODEL_NAME_MAPPING = {
     'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',
     'meta.llama3-70b-instruct-v1_0': 'Llama-3-70B-Instruct',
     'gpt-5-2025-08-07': 'GPT-5',
+    'gpt-5-2025-08-07-re-minimal': 'GPT-5-RE-Minimal',
+    'gpt-5-2025-08-07-re-high': 'GPT-5-RE-High',
     'qwen3_32b': 'Qwen3-32B',
     'qwen3_0_6b': 'Qwen3-0.6B',
     'qwen3_8b': 'Qwen3-8B',
