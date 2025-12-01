@@ -342,7 +342,17 @@ bash scripts/inference_eval/inference_eval_heat_1d.sh
 - `-z`: Enable zero-shot mode
 - `--list-combinations`: Show all valid dataset-task combinations and exit
 
-**OpenAI Reasoning Models: Setting reasoning_effort**
+**Outputs:**
+- Results: `results_model_attempt/{dataset}/{precision_level}/{task}/`
+- Logs: `log_model_tool_call/{dataset}/{precision_level}/{task}/`
+
+**💡 Tip**: Use `--list-combinations` to see all available dataset-task combinations:
+```bash
+python inference/langchain_LLM.py --list-combinations
+```
+
+<details>
+<summary><b>OpenAI Reasoning Models: Setting reasoning_effort</b></summary>
 
 For OpenAI reasoning models (e.g., GPT-5), you can control the reasoning effort by appending `-re-{effort}` to the model name:
 
@@ -355,14 +365,7 @@ Example:
 python inference/langchain_LLM.py -p openai -m gpt-5-2025-08-07-re-minimal -d heat_1d -t cfl -l medium -z
 ```
 
-**💡 Tip**: Use `--list-combinations` to see all available dataset-task combinations:
-```bash
-python inference/langchain_LLM.py --list-combinations
-```
-
-**Outputs:**
-- Results: `results_model_attempt/{dataset}/{precision_level}/{task}/`
-- Logs: `log_model_tool_call/{dataset}/{precision_level}/{task}/`
+</details>
 
 ## 🔄 Resume Functionality
 
