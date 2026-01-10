@@ -3,7 +3,118 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import logging
 import json
-from tool_call import *
+
+# === LAZY LOADING SYSTEM FOR TOOL FUNCTIONS ===
+# Tool functions are imported on-demand to reduce startup time and memory usage.
+# Each dataset's functions are loaded from their respective modules only when first used.
+
+# Cache for loaded modules and functions
+_tool_module_cache = {}
+_tool_function_cache = {}
+
+# Mapping of tool name prefixes to their module paths
+# This enables deterministic module resolution from function names
+_TOOL_MODULE_MAP = {
+    "heat_1d": "tool_call.oneD_heat_transfer.run_oneD_heat_transfer_PDE_exp",
+    "heat_2d": "tool_call.twoD_heat_transfer.run_twoD_heat_transfer_PDE_exp",
+    "burgers_1d": "tool_call.burgers_1d.run_oneD_burgers_PDE_exp",
+    "euler_1d": "tool_call.euler_1d.run_oneD_euler_PDE_exp",
+    "epoch_1d": "tool_call.epoch_1d.run_oneD_epoch",
+    "ns_2d": "tool_call.ns_2d.run_twoD_ns_exp",
+    "ns_transient_2d": "tool_call.ns_transient_2d.run_twoD_ns_transient",
+    "mpm_2d": "tool_call.mpm_2d.run_twoD_mpm",
+    "diff_react_1d": "tool_call.diff_react_1d.run_oneD_diff_react",
+    "euler_2d": "tool_call.euler_2d.run_twoD_euler_PDE_exp",
+    "hasegawa_mima_nonlinear": "tool_call.hasegawa_mima_nonlinear.run_hasegawa_mima_nonlinear",
+    "hasegawa_mima_linear": "tool_call.hasegawa_mima_linear.run_hasegawa_mima_linear",
+    "fem_2d": "tool_call.fem_2d.run_fem_2d",
+}
+
+def _get_tool_function(tool_name: str):
+    """
+    Lazy load and return a tool function by name.
+
+    This function implements a two-level caching strategy:
+    1. Check if function is already cached (O(1) lookup)
+    2. If not, determine module from tool name prefix
+    3. Import module if not already imported (cached at module level)
+    4. Extract and cache function from module
+    5. Return function reference
+
+    The caching ensures that:
+    - Each module is imported at most once
+    - Each function lookup after first call is O(1)
+    - Module-level side effects (e.g., load_dotenv() in hasegawa_mima_linear)
+      occur exactly once when the module is first loaded
+
+    Args:
+        tool_name: Full function name (e.g., "heat_1d_check_converge_cfl")
+
+    Returns:
+        Function object ready to be called
+
+    Raises:
+        ValueError: If tool_name doesn't match any known prefix
+        ImportError: If module cannot be imported
+        AttributeError: If function doesn't exist in expected module
+
+    Example:
+        >>> func = _get_tool_function("heat_1d_check_converge_cfl")
+        >>> result = func(accumulated_cost=0, profile="profile1", n_space=100, cfl=0.5, tolerance=0.01)
+    """
+    # Fast path: function already cached
+    if tool_name in _tool_function_cache:
+        return _tool_function_cache[tool_name]
+
+    # Determine module path from tool name prefix
+    # Tool names follow pattern: {prefix}_check_converge_{param}
+    module_path = None
+    matched_prefix = None
+    for prefix, path in _TOOL_MODULE_MAP.items():
+        if tool_name.startswith(prefix + "_"):
+            module_path = path
+            matched_prefix = prefix
+            break
+
+    if module_path is None:
+        raise ValueError(
+            f"Unknown tool name prefix in '{tool_name}'. "
+            f"Expected tool name to start with one of: {', '.join(sorted(_TOOL_MODULE_MAP.keys()))}. "
+            f"Tool names should follow pattern: {{prefix}}_check_converge_{{param}}"
+        )
+
+    # Import module if not cached
+    if module_path not in _tool_module_cache:
+        import importlib
+        try:
+            module = importlib.import_module(module_path)
+            _tool_module_cache[module_path] = module
+        except ImportError as e:
+            raise ImportError(
+                f"Failed to import module '{module_path}' for tool '{tool_name}'. "
+                f"Original error: {e}"
+            )
+
+    # Get module from cache
+    module = _tool_module_cache[module_path]
+
+    # Extract function from module
+    try:
+        func = getattr(module, tool_name)
+    except AttributeError:
+        # Provide helpful error message with available functions
+        available_funcs = [name for name in dir(module) if not name.startswith('_') and callable(getattr(module, name))]
+        raise AttributeError(
+            f"Function '{tool_name}' not found in module '{module_path}'. "
+            f"Available functions in this module: {', '.join(available_funcs)}"
+        )
+
+    # Cache function for future calls
+    _tool_function_cache[tool_name] = func
+
+    return func
+
+# === END LAZY LOADING SYSTEM ===
 from typing import List, Dict, Any, Tuple
 import pandas as pd
 import numpy as np
@@ -263,7 +374,7 @@ class ToolCallManager:
             if tool_reason_missing:
                 tool_reason = "[tool_reason was missing from model response, proceeding with simulation]"
 
-            func = globals()[tool_name]
+            func = _get_tool_function(tool_name)
 
             if tool_name in ["heat_1d_check_converge_cfl", "heat_1d_check_converge_n_space"]:
                 # Use tolerance_rmse from dataset - required field
