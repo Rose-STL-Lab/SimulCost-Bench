@@ -26,18 +26,15 @@ run_cmd () {
 tasks=("resolution" "cfl" "relaxation_factor" "residual_threshold")
 precision_levels=("low" "medium" "high")
 modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
-# modes=("-z")
 
 # model_provider="bedrock"
 # models=(
-#  "anthropic.claude-3-7-sonnet-20250219-v1:0"
+#  "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 #  "meta.llama3-70b-instruct-v1:0"
 # )
 
 # model_provider="custom_model"
 # models=(
-#  "qwen3_0_6b"
-#  "qwen3_8b"
 #  "qwen3_32b" 
 # )
 
@@ -47,6 +44,11 @@ models=(
   # "gpt-5-2025-08-07-re-high"
   # "gpt-5-2025-08-07-re-minimal"
 )
+
+# model_provider="bedrock_gpt_oss"
+# models=(
+#   "openai.gpt-oss-120b-1:0"
+# )
 
 # ========= Main loop =========
 for task in "${tasks[@]}"; do

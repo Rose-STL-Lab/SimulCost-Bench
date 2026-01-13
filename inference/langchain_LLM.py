@@ -167,11 +167,12 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "bedrock":
-            if any(keyword in model_name_global for keyword in ["mistral", "llama", "jamba"]):
-                model_id = model_name_global
-            else:
-                model_id = "us." + model_name_global
-            print(model_id)
+            # if any(keyword in model_name_global for keyword in ["mistral", "llama", "jamba"]):
+            #     model_id = model_name_global
+            # else:
+            #     model_id = "us." + model_name_global
+            model_id = model_name_global
+            print("Model ID:", model_id)
 
             self.llm = ChatBedrock(
                 model_id=model_id,
@@ -204,7 +205,18 @@ class LLMAgentBase():
 
             # Instantiate the custom model class
             self.llm = CustomModelClass(model_path=model_path)
-            
+
+        elif provider_global == "bedrock_gpt_oss":
+            print("Model:", model_name_global)
+
+            self.llm = ChatBedrock(
+                model_id=model_name_global,
+                temperature=0,
+                max_tokens=2048,
+                region_name="us-west-2"
+            )
+            self.llm.bind(response_format={"type": "json_object"})
+
         else:
             raise ValueError(f"Unsupported provider: {provider_global}")
         
@@ -222,11 +234,7 @@ class LLMAgentBase():
         max_retries = 3
         for attempt in range(max_retries):
             if provider_global == "custom_model":
-                # Special handling for heat_1d_bo dataset
-                if hasattr(self, '_dataset_name') and self._dataset_name == "heat_1d_bo":
-                    raw_response = self.llm.invoke(messages, profile)
-                else:
-                    raw_response = self.llm.invoke(messages)
+                raw_response = self.llm.invoke(messages)
                 json_response = raw_response.strip()
             else:
                 raw_response = self.llm.invoke(messages)
@@ -614,7 +622,6 @@ def check_resume_state(progress_file: str, result_file: str, requested_samples: 
 # Dataset-Task compatibility mapping
 DATASET_TASK_MAP = {
     "heat_1d": ["cfl", "n_space"],
-    "heat_1d_bo": ["cfl", "n_space"],  # Bayesian Optimization version for heat_1d
     "heat_1d_icl_accuracy_focused": ["cfl", "n_space"],  # ICL accuracy_focused version for heat_1d
     "heat_1d_icl_cost_excluded": ["cfl", "n_space"],  # ICL cost_excluded version for heat_1d
     "heat_1d_icl_full": ["cfl", "n_space"],  # ICL full version for heat_1d
@@ -697,8 +704,6 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
     # Handle dataset directory name mapping
     if dataset == "ns_2d":
         data_dir_name = "ns_channel_2d"
-    elif dataset == "heat_1d_bo":
-        data_dir_name = "heat_1d"  # Use heat_1d data directory for heat_1d_bo
     else:
         data_dir_name = dataset
 
@@ -718,10 +723,6 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
                 dataset_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{task}_{flag}_dataset.json"
                 archive_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{task}_{flag}_agent.json"
                 break
-    elif dataset == "heat_1d_bo":
-        # For heat_1d_bo, use the generated BO dataset files
-        dataset_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_dataset.json"
-        archive_file = f"data/heat_1d_bo/human_write/{precision_level}/{task}_{flag}_agent.json"
     else:
         # Standard dataset structure
         dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{task}_{flag}_dataset.json"
@@ -752,9 +753,6 @@ def build_paths(dataset: str, task: str, flag: str, model_name: str,
                         alt_dataset_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{alt_task}_{flag}_dataset.json"
                         alt_archive_file = f"data/icl/{base_dataset}/{variant}/{precision_level}/{alt_task}_{flag}_agent.json"
                         break
-            elif dataset == "heat_1d_bo":
-                alt_dataset_file = f"data/heat_1d_bo/human_write/{precision_level}/{alt_task}_{flag}_dataset.json"
-                alt_archive_file = f"data/heat_1d_bo/human_write/{precision_level}/{alt_task}_{flag}_agent.json"
             else:
                 alt_dataset_file = f"data/{data_dir_name}/human_write/{precision_level}/{alt_task}_{flag}_dataset.json"
                 alt_archive_file = f"data/{data_dir_name}/human_write/{precision_level}/{alt_task}_{flag}_agent.json"
@@ -794,7 +792,6 @@ Examples:
 
 Available dataset-task combinations:
   heat_1d: cfl, n_space (use -l for precision_level: low/medium/high)
-  heat_1d_bo: cfl, n_space (use -l for precision_level: low/medium/high) [Bayesian Optimization with profile passing]
   heat_1d_icl_accuracy_focused: cfl, n_space (use -l for precision_level: low/medium/high) [ICL accuracy_focused version]
   heat_1d_icl_cost_excluded: cfl, n_space (use -l for precision_level: low/medium/high) [ICL cost_excluded version]
   heat_1d_icl_full: cfl, n_space (use -l for precision_level: low/medium/high) [ICL full version]

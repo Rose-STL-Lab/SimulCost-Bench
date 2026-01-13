@@ -24,11 +24,6 @@ scripts/
 ```bash
 # Run inference and evaluation for individual problem types
 bash scripts/inference_eval/inference_eval_heat_1d.sh
-bash scripts/inference_eval/inference_eval_heat_2d.sh
-bash scripts/inference_eval/inference_eval_burgers_1d.sh
-bash scripts/inference_eval/inference_eval_euler_1d.sh
-bash scripts/inference_eval/inference_eval_ns_2d.sh
-bash scripts/inference_eval/inference_eval_ns_transient_2d.sh
 ```
 
 ### Run Evaluation Only
@@ -42,8 +37,8 @@ bash scripts/inference_eval/eval_all.sh -d <dataset>
 bash scripts/inference_eval/eval_all_partial.sh -d <dataset>
 
 # Examples:
-bash scripts/inference_eval/eval_all.sh -d ns_2d                    # Strict evaluation
-bash scripts/inference_eval/eval_all_partial.sh -d ns_2d           # Skip missing files
+bash scripts/inference_eval/eval_all.sh -d heat_1d                    # Strict evaluation
+bash scripts/inference_eval/eval_all_partial.sh -d heat_1d           # Skip missing files
 bash scripts/inference_eval/eval_all_partial.sh -d burgers_1d -d euler_1d  # Multiple datasets
 ```
 
@@ -52,8 +47,8 @@ bash scripts/inference_eval/eval_all_partial.sh -d burgers_1d -d euler_1d  # Mul
 Scripts support multiple model providers. **Simply modify the `model_provider` variable** at the top of each script.
 
 ### Supported Providers:
-- **`bedrock`**: AWS Bedrock (Claude, Llama, Mistral models)
-- **`openai`**: OpenAI API (GPT models)  
+- **`bedrock`**: AWS Bedrock
+- **`openai`**: OpenAI API 
 - **`gemini`**: Google Gemini API
 - **`custom_model`**: Your custom model implementation
 

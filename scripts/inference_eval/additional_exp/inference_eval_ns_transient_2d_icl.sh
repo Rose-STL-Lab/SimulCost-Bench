@@ -34,24 +34,17 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 # ========= Model configuration =========
 # Configure one provider and corresponding models at a time
 
-# Bedrock models
 model_provider="bedrock"
 models=(
-  "anthropic.claude-3-7-sonnet-20250219-v1:0"
-  # "mistral.mistral-large-2402-v1:0"
-  # "meta.llama3-70b-instruct-v1:0"
-  # "amazon.nova-premier-v1:0"
+ "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+#  "meta.llama3-70b-instruct-v1:0"
 )
 
-# Custom models (uncomment to use)
 # model_provider="custom_model"
 # models=(
-#   "qwen3_0_6b"
-#   "qwen3_8b"
-#   "qwen3_32b"
+#  "qwen3_32b" 
 # )
 
-# # OpenAI models (uncomment to use)
 # model_provider="openai"
 # models=(
 #   "gpt-5-2025-08-07"
