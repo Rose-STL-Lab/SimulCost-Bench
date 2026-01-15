@@ -59,6 +59,7 @@ MODEL_NAME_MAPPING = {
     'anthropic.claude-3-5-haiku-20241022-v1_0': 'Claude-3.5-Haiku',
     'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
     'anthropic.claude-3-5-sonnet-20240620-v1_0': 'Claude-3.5-Sonnet',
+    'openai.gpt-oss-120b-1:0': 'GPT-OSS-120B',
 }
 
 
