@@ -10,6 +10,7 @@ A comprehensive benchmark for evaluating Large Language Models (LLMs) on computa
 - [Generate Benchmark Datasets](#-generate-benchmark-datasets)
 - [Configure Model Providers](#-configure-model-providers)
 - [Customize Simulation Results Directory](#-customize-simulation-results-directory)
+- [Pre-cached Simulation Results](#-pre-cached-simulation-results)
 - [Run Inference](#-run-inference)
 - [Resume Functionality](#-resume-functionality)
 - [Evaluate Performance](#-evaluate-models-performance)
@@ -308,6 +309,45 @@ Currently supported for:
 - 2D Material Point Method (MPM) simulations (`unstruct_mpm`)
 
 **Note:** This feature is backward compatible. If `SIM_RES_BASE_DIR` is not set, the system will use the default relative path behavior. -->
+
+## 📥 Pre-cached Simulation Results
+
+<details>
+<summary><b>⚡ Pre-cached results (optional)</b></summary>
+
+To help you skip long simulation runtimes, **pre-computed simulation results for all baseline experiments** have been uploaded to Hugging Face:
+
+- **Cache (≈22.5 GB):** **[LeoLai689/SimulCost-baseline-sim_res](https://huggingface.co/datasets/LeoLai689/SimulCost-baseline-sim_res)**
+
+If you choose to use the cache, download the files you need from the dataset page and place/extract them into your simulation results directory (e.g., `./sim_res/` or your `SIM_RES_BASE_DIR`).
+
+### Available Simulation Results
+
+| Simulation File | Size | Simulation Type |
+|----------------|------|-----------------|
+| `burgers_1d.zip` | 675 MB | 1D Burgers Equation |
+| `diff_react_1d.zip` | 293 MB | 1D Diffusion-Reaction |
+| `epoch.zip` | 3.65 GB | 1D EPOCH PIC |
+| `euler_1d.zip` | 3.86 GB | 1D Euler Equations |
+| `euler_2d.zip` | 1.54 GB | 2D Euler Gas Dynamics |
+| `fem_2d.zip` | 146 MB | 2D Finite Element Method |
+| `hasegawa_mima_linear.zip` | 1.45 GB | Hasegawa-Mima Linear |
+| `hasegawa_mima_nonlinear.zip` | 300 MB | Hasegawa-Mima Nonlinear |
+| `heat_1d.zip` | 182 MB | 1D Heat Transfer |
+| `heat_2d.zip` | 2.66 GB | 2D Steady Heat Transfer |
+| `ns_channel_2d.zip` | 96.7 MB | 2D Navier-Stokes Channel |
+| `ns_transient_2d.zip` | 6.56 GB | 2D Navier-Stokes Transient |
+| `unstruct_mpm.zip` | 1.13 GB | 2D Material Point Method |
+
+### 🚀 Simulation Speed Reference
+
+If you're getting started, begin with the “Fast” group to avoid wasting time on very slow simulations.
+
+- **Fast (recommended to start):** `burgers_1d`, `diff_react_1d`, `heat_1d`, `unstruct_mpm`, `fem_2d`
+- **Moderate:** `euler_1d`, `euler_2d`, `hasegawa_mima_linear`, `hasegawa_mima_nonlinear`, `ns_transient_2d`, `epoch`
+- **Slow ⚠️:** `heat_2d`, `ns_channel_2d` (can be **very slow**)
+
+</details>
 
 ## 🧠 Run Inference
 
