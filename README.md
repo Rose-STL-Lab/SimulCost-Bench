@@ -345,7 +345,7 @@ If you're getting started, begin with the “Fast” group to avoid wasting time
 
 - **Fast (recommended to start):** `burgers_1d`, `diff_react_1d`, `heat_1d`, `unstruct_mpm`, `fem_2d`
 - **Moderate:** `euler_1d`, `euler_2d`, `hasegawa_mima_linear`, `hasegawa_mima_nonlinear`, `ns_transient_2d`, `epoch`
-- **Slow ⚠️:** `heat_2d`, `ns_channel_2d` (can be **very slow**)
+- **Slow:** `heat_2d`, `ns_channel_2d` (Can be **very slow**⚠️)
 
 </details>
 
