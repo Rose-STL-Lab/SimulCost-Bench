@@ -339,17 +339,17 @@ If you choose to use the cache, download the files you need from the dataset pag
 | `ns_transient_2d.zip` | 6.56 GB | 2D Navier-Stokes Transient |
 | `unstruct_mpm.zip` | 1.13 GB | 2D Material Point Method |
 
+</details>
+
+## 🧠 Run Inference
+
 ### 🚀 Simulation Speed Reference
 
 If you're getting started, begin with the “Fast” group to avoid wasting time on very slow simulations.
 
-- **Fast (recommended to start):** `burgers_1d`, `diff_react_1d`, `heat_1d`, `unstruct_mpm`, `fem_2d`
-- **Moderate:** `euler_1d`, `euler_2d`, `hasegawa_mima_linear`, `hasegawa_mima_nonlinear`, `ns_transient_2d`, `epoch`
+- **Fast (recommended to start):** `burgers_1d`, `diff_react_1d`, `heat_1d`, `fem_2d`
+- **Moderate:** `euler_1d`, `euler_2d`, `ns_transient_2d`, `unstruct_mpm`,`hasegawa_mima_linear`, `hasegawa_mima_nonlinear`, `epoch`
 - **Slow:** `heat_2d`, `ns_channel_2d` (Can be **very slow**⚠️)
-
-</details>
-
-## 🧠 Run Inference
 
 Execute LLM inference on benchmark datasets to generate predictions.
 
