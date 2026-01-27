@@ -40,7 +40,9 @@ modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
 
 model_provider="openai"
 models=(
-  "gpt-5-2025-08-07"
+  # "gpt-5-2025-08-07"
+  "gpt-5-2025-08-07-re-high"
+  "gpt-5-2025-08-07-re-minimal"
 )
 
 # model_provider="bedrock_gpt_oss"

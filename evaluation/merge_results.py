@@ -45,6 +45,8 @@ MODEL_NAME_MAPPING = {
     'amazon.nova-premier-v1_0': 'Nova-Premier',
     'anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
     'anthropic.claude-3-7-sonnet-20250219-v1_0': 'Claude-3.7-Sonnet',
+    'us.anthropic.claude-3-7-sonnet-20250219-v1:0': 'Claude-3.7-Sonnet',
+    'us.anthropic.claude-3-7-sonnet-20250219-v1_0': 'Claude-3.7-Sonnet',
     'mistral.mistral-large-2402-v1:0': 'Mistral-Large',
     'mistral.mistral-large-2402-v1_0': 'Mistral-Large',
     'meta.llama3-70b-instruct-v1:0': 'Llama-3-70B-Instruct',

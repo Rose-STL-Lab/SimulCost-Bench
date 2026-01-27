@@ -128,7 +128,7 @@ def evaluate(
         raise RuntimeError(error_msg)
 
     # Try to find dummy/reference data file
-    dummy_path = f"data/{dataset}/{task}/{precision_level}/{flag}_questions.json"
+    dummy_path = f"data/hasegawa_mima_nonlinear/{task}/{precision_level}/{flag}_questions.json"
 
     if not os.path.exists(dummy_path):
         error_msg = f"Reference data file not found: {dummy_path}"
@@ -488,7 +488,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="hasegawa_mima_nonlinear",
-                        help="Dataset name: hasegawa_mima_nonlinear")
+                        choices=["hasegawa_mima_nonlinear", "hasegawa_mima_nonlinear_icl_accuracy_focused",
+                                 "hasegawa_mima_nonlinear_icl_cost_excluded", "hasegawa_mima_nonlinear_icl_full"],
+                        help="Dataset name: hasegawa_mima_nonlinear (standard) or hasegawa_mima_nonlinear_icl_* (with ICL examples)")
     parser.add_argument("-t", "--task", default="N",
                         choices=list(VALID_TASKS),
                         help="Task: one of the 2 tasks (N, dt)")

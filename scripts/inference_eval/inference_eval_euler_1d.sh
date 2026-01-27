@@ -48,6 +48,8 @@ models=(
 # model_provider="bedrock_gpt_oss"
 # models=(
 #   "openai.gpt-oss-120b-1:0"
+#   # "openai.gpt-oss-120b-1:0-re-low"
+#   # "openai.gpt-oss-120b-1:0-re-high"
 # )
 
 # ========= Main loop =========

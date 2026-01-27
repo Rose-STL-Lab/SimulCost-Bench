@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from langchain_aws import ChatBedrock
+from langchain_aws import ChatBedrockConverse
 from inference.utils import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
@@ -167,14 +167,10 @@ class LLMAgentBase():
             self.llm.bind(response_format={"type": "json_object"})
 
         elif provider_global == "bedrock":
-            # if any(keyword in model_name_global for keyword in ["mistral", "llama", "jamba"]):
-            #     model_id = model_name_global
-            # else:
-            #     model_id = "us." + model_name_global
             model_id = model_name_global
             print("Model ID:", model_id)
 
-            self.llm = ChatBedrock(
+            self.llm = ChatBedrockConverse(
                 model_id=model_id,
                 temperature=0,
                 max_tokens=2048,
@@ -209,13 +205,38 @@ class LLMAgentBase():
         elif provider_global == "bedrock_gpt_oss":
             print("Model:", model_name_global)
 
-            self.llm = ChatBedrock(
-                model_id=model_name_global,
+            # Parse model_id for reasoning_effort suffix, e.g. "openai.gpt-oss-120b-1:0-re-low"
+            model_id = model_name_global
+            reasoning_effort = None
+
+            if "-re-" in model_name_global:
+                parts = model_name_global.rsplit("-re-", 1)
+                model_id = parts[0]
+                effort_candidate = parts[1].lower()
+
+                # Bedrock GPT-OSS officially supports: low|medium (default)|high
+                valid_efforts = ["low", "medium", "high"]
+                if effort_candidate in valid_efforts:
+                    reasoning_effort = effort_candidate
+                else:
+                    raise ValueError(
+                        f"Invalid reasoning_effort '{effort_candidate}'. "
+                        f"Must be one of: {', '.join(valid_efforts)}"
+                    )
+
+            additional_fields = {
+                "response_format": {"type": "json_object"},
+            }
+            if reasoning_effort:
+                additional_fields["reasoning_effort"] = reasoning_effort
+
+            self.llm = ChatBedrockConverse(
+                model_id=model_id,
                 temperature=0,
                 max_tokens=2048,
-                region_name="us-west-2"
+                region_name="us-west-2",
+                additional_model_request_fields=additional_fields,
             )
-            self.llm.bind(response_format={"type": "json_object"})
 
         else:
             raise ValueError(f"Unsupported provider: {provider_global}")
@@ -646,6 +667,9 @@ DATASET_TASK_MAP = {
     "diff_react_1d": ["cfl", "n_space", "tol"],
     "euler_2d": ["cfl", "n_grid_x", "cg_tolerance"],
     "hasegawa_mima_nonlinear": ["N", "dt"],
+    "hasegawa_mima_nonlinear_icl_accuracy_focused": ["N", "dt"],
+    "hasegawa_mima_nonlinear_icl_cost_excluded": ["N", "dt"],
+    "hasegawa_mima_nonlinear_icl_full": ["N", "dt"],
     "hasegawa_mima_linear": ["N", "dt", "cg_atol"]
 }
 
