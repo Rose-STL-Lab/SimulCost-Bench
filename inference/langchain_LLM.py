@@ -4,6 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 from langchain_aws import ChatBedrockConverse
 from inference.utils import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -205,38 +206,13 @@ class LLMAgentBase():
         elif provider_global == "bedrock_gpt_oss":
             print("Model:", model_name_global)
 
-            # Parse model_id for reasoning_effort suffix, e.g. "openai.gpt-oss-120b-1:0-re-low"
-            model_id = model_name_global
-            reasoning_effort = None
-
-            if "-re-" in model_name_global:
-                parts = model_name_global.rsplit("-re-", 1)
-                model_id = parts[0]
-                effort_candidate = parts[1].lower()
-
-                # Bedrock GPT-OSS officially supports: low|medium (default)|high
-                valid_efforts = ["low", "medium", "high"]
-                if effort_candidate in valid_efforts:
-                    reasoning_effort = effort_candidate
-                else:
-                    raise ValueError(
-                        f"Invalid reasoning_effort '{effort_candidate}'. "
-                        f"Must be one of: {', '.join(valid_efforts)}"
-                    )
-
-            additional_fields = {
-                "response_format": {"type": "json_object"},
-            }
-            if reasoning_effort:
-                additional_fields["reasoning_effort"] = reasoning_effort
-
-            self.llm = ChatBedrockConverse(
-                model_id=model_id,
+            self.llm = ChatBedrock(
+                model_id=model_name_global,
                 temperature=0,
                 max_tokens=2048,
-                region_name="us-west-2",
-                additional_model_request_fields=additional_fields,
+                region_name="us-west-2"
             )
+            self.llm.bind(response_format={"type": "json_object"})
 
         else:
             raise ValueError(f"Unsupported provider: {provider_global}")
