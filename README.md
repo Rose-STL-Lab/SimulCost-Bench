@@ -51,6 +51,37 @@ poetry install --no-root
 
 **Note**: To run 2D FEM simulations with FastIPC solver, see the [FEM 2D Setup Guide](FEM_2D_SETUP.md) for compilation and configuration requirements.
 
+<details>
+<summary><b>Docker (alternative)</b></summary>
+
+A Dockerfile is provided that installs all dependencies and compiles every solver, so you can skip the Conda / Poetry / solver setup steps above.
+
+**Prerequisites:** Clone the repository with submodules first:
+```bash
+git clone --recursive https://github.com/Rose-STL-Lab/SimulCost-Bench.git
+cd SimulCost-Bench
+```
+
+**Build the image:**
+```bash
+docker build -t simulcost-bench .
+```
+
+**Run the container:**
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v $(pwd)/sim_res:/app/sim_res \
+  -v $(pwd)/eval_results:/app/eval_results \
+  -v $(pwd)/results_model_attempt:/app/results_model_attempt \
+  -v $(pwd)/log_model_tool_call:/app/log_model_tool_call \
+  simulcost-bench
+```
+
+> **Note**: The FEM 2D solver (FastIPC) is compiled with `-mavx -mavx2 -mfma`. Your CPU (both build and run host) must support AVX/AVX2/FMA instructions.
+
+</details>
+
 ## 📋 Tasks and Zero-Shot Support
 
 <details>

@@ -1,0 +1,35 @@
+# Git metadata
+.git/
+**/.git
+
+# Secrets
+.env
+
+# Generated output directories
+eval_results/
+log_model_tool_call/
+results_model_attempt/
+sim_res/
+
+# Temporary / logging directories
+wandb/
+outputs/
+output/
+temp/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+
+# IDE / OS files
+.vscode/
+.DS_Store
+
+# Pre-compiled solver artifacts (rebuilt inside container)
+costsci_tools/solvers/epoch/epoch1d/bin/
+costsci_tools/solvers/euler_2d_utils/CSMPM_BOW/build/
+costsci_tools/solvers/fastipc_utils/common/math/wrapper/a.so
+
+# Docker files
+Dockerfile
+.dockerignore
