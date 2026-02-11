@@ -1,6 +1,3 @@
 [submodule "costsci-tools"]
 	path = costsci_tools
 	url = https://github.com/Eydcao/costsci-tools.git
-[submodule "cascoagent"]
-	path = cascoagent
-	url = https://github.com/ystephenzhang/cascoagent/
