@@ -29,61 +29,99 @@ RUN poetry install --no-root --no-interaction
 COPY . .
 
 # ── Compile EPOCH (2nd, 3rd, 5th order binaries) ───────────────────
-RUN python -c "\
-import re, pathlib;\
-\
-def modify(mf, order):\
-    c = mf.read_text();\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'#\1', c, flags=re.MULTILINE);\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'#\1', c, flags=re.MULTILINE);\
-    if order == '2nd':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'\1', c, flags=re.MULTILINE);\
-    elif order == '5th':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'\1', c, flags=re.MULTILINE);\
-    mf.write_text(c);\
-\
-modify(pathlib.Path('costsci_tools/solvers/epoch/epoch1d/Makefile'), '2nd');\
-" && \
-    make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d && \
-    cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d \
-       costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_2nd && \
-    make clean -C costsci_tools/solvers/epoch/epoch1d && \
-    \
-    python -c "\
-import re, pathlib;\
-def modify(mf, order):\
-    c = mf.read_text();\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'#\1', c, flags=re.MULTILINE);\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'#\1', c, flags=re.MULTILINE);\
-    if order == '2nd':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'\1', c, flags=re.MULTILINE);\
-    elif order == '5th':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'\1', c, flags=re.MULTILINE);\
-    mf.write_text(c);\
-modify(pathlib.Path('costsci_tools/solvers/epoch/epoch1d/Makefile'), '3rd');\
-" && \
-    make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d && \
-    cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d \
-       costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_3rd && \
-    make clean -C costsci_tools/solvers/epoch/epoch1d && \
-    \
-    python -c "\
-import re, pathlib;\
-def modify(mf, order):\
-    c = mf.read_text();\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'#\1', c, flags=re.MULTILINE);\
-    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'#\1', c, flags=re.MULTILINE);\
-    if order == '2nd':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_TOPHAT.*)',  r'\1', c, flags=re.MULTILINE);\
-    elif order == '5th':\
-        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\\\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)', r'\1', c, flags=re.MULTILINE);\
-    mf.write_text(c);\
-modify(pathlib.Path('costsci_tools/solvers/epoch/epoch1d/Makefile'), '5th');\
-" && \
-    make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d && \
-    cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d \
-       costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_5th && \
-    make clean -C costsci_tools/solvers/epoch/epoch1d
+RUN <<'BASH'
+set -eux
+
+# 2nd
+python - <<'PY'
+import re
+import pathlib
+
+mf = pathlib.Path("costsci_tools/solvers/epoch/epoch1d/Makefile")
+
+def modify(order: str) -> None:
+    c = mf.read_text()
+    # comment out both
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'#\1', c, flags=re.MULTILINE)
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'#\1', c, flags=re.MULTILINE)
+
+    # enable chosen
+    if order == "2nd":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'\1', c, flags=re.MULTILINE)
+    elif order == "5th":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'\1', c, flags=re.MULTILINE)
+    elif order == "3rd":
+        pass
+    else:
+        raise ValueError(order)
+
+    mf.write_text(c)
+
+modify("2nd")
+PY
+make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d
+cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_2nd
+make clean -C costsci_tools/solvers/epoch/epoch1d
+
+# 3rd
+python - <<'PY'
+import re
+import pathlib
+
+mf = pathlib.Path("costsci_tools/solvers/epoch/epoch1d/Makefile")
+
+def modify(order: str) -> None:
+    c = mf.read_text()
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'#\1', c, flags=re.MULTILINE)
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'#\1', c, flags=re.MULTILINE)
+
+    if order == "2nd":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'\1', c, flags=re.MULTILINE)
+    elif order == "5th":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'\1', c, flags=re.MULTILINE)
+    elif order == "3rd":
+        pass
+    else:
+        raise ValueError(order)
+
+    mf.write_text(c)
+
+modify("3rd")
+PY
+make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d
+cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_3rd
+make clean -C costsci_tools/solvers/epoch/epoch1d
+
+# 5th
+python - <<'PY'
+import re
+import pathlib
+
+mf = pathlib.Path("costsci_tools/solvers/epoch/epoch1d/Makefile")
+
+def modify(order: str) -> None:
+    c = mf.read_text()
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'#\1', c, flags=re.MULTILINE)
+    c = re.sub(r'^(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'#\1', c, flags=re.MULTILINE)
+
+    if order == "2nd":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_TOPHAT.*)$',  r'\1', c, flags=re.MULTILINE)
+    elif order == "5th":
+        c = re.sub(r'^#(\s*DEFINES\s*\+=\s*\$\(D\)PARTICLE_SHAPE_BSPLINE3.*)$', r'\1', c, flags=re.MULTILINE)
+    elif order == "3rd":
+        pass
+    else:
+        raise ValueError(order)
+
+    mf.write_text(c)
+
+modify("5th")
+PY
+make COMPILER=gfortran -C costsci_tools/solvers/epoch/epoch1d
+cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d costsci_tools/solvers/epoch/epoch1d/bin/epoch1d_5th
+make clean -C costsci_tools/solvers/epoch/epoch1d
+
+BASH
 
 # ── Compile Euler 2D ────────────────────────────────────────────────
 RUN mkdir -p costsci_tools/solvers/euler_2d_utils/CSMPM_BOW/build && \

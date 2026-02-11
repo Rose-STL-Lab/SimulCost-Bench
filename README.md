@@ -51,23 +51,25 @@ poetry install --no-root
 
 **Note**: To run 2D FEM simulations with FastIPC solver, see the [FEM 2D Setup Guide](FEM_2D_SETUP.md) for compilation and configuration requirements.
 
-<details>
-<summary><b>Docker (alternative)</b></summary>
+### 🐳 Docker Setup (Recommended)
 
-A Dockerfile is provided that installs all dependencies and compiles every solver, so you can skip the Conda / Poetry / solver setup steps above.
+A pre-built Docker image is available with all dependencies and solvers compiled. This lets you skip the Conda / Poetry / solver setup entirely.
 
-**Prerequisites:** Clone the repository with submodules first:
+**1. Clone the repository:**
 ```bash
 git clone --recursive https://github.com/Rose-STL-Lab/SimulCost-Bench.git
 cd SimulCost-Bench
 ```
 
-**Build the image:**
+**2. Pull the image:**
 ```bash
-docker build -t simulcost-bench .
+docker pull ghcr.io/leo-lsc/simulcost-bench:latest
+docker tag ghcr.io/leo-lsc/simulcost-bench:latest simulcost-bench
 ```
 
-**Run the container:**
+Or build locally with `docker build -t simulcost-bench .`
+
+**3. Run the container:**
 ```bash
 docker run --rm -it \
   --env-file .env \
@@ -78,9 +80,10 @@ docker run --rm -it \
   simulcost-bench
 ```
 
-> **Note**: The FEM 2D solver (FastIPC) is compiled with `-mavx -mavx2 -mfma`. Your CPU (both build and run host) must support AVX/AVX2/FMA instructions.
+- `--env-file .env` passes your API keys (e.g. OpenAI) into the container.
+- `-v` mounts persist results to the host — without them, all output is lost when the container exits.
 
-</details>
+> **Note**: The FEM 2D solver (FastIPC) is compiled with `-mavx -mavx2 -mfma`. Your CPU (both build and run host) must support AVX/AVX2/FMA instructions.
 
 ## 📋 Tasks and Zero-Shot Support
 
