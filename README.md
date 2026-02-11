@@ -51,7 +51,7 @@ poetry install --no-root
 
 **Note**: To run 2D FEM simulations with FastIPC solver, see the [FEM 2D Setup Guide](FEM_2D_SETUP.md) for compilation and configuration requirements.
 
-### 🐳 Docker Setup (Recommended)
+### 🐳 Docker Setup (Alternative)
 
 A pre-built Docker image is available with all dependencies and solvers compiled. This lets you skip the Conda / Poetry / solver setup entirely.
 
