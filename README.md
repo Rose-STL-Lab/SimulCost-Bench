@@ -77,6 +77,7 @@ docker run --rm -it \
   -v $(pwd)/eval_results:/app/eval_results \
   -v $(pwd)/results_model_attempt:/app/results_model_attempt \
   -v $(pwd)/log_model_tool_call:/app/log_model_tool_call \
+  -v $(pwd)/data:/app/data \
   simulcost-bench
 ```
 
