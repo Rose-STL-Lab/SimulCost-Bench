@@ -346,12 +346,7 @@ Results will be saved to: `/data/leo_work_new/sim_res/...`
 ```
 Results will be saved to: `./sim_res/...` (relative to working directory)
 
-<!-- ### Supported Simulations
-
-Currently supported for:
-- 2D Material Point Method (MPM) simulations (`unstruct_mpm`)
-
-**Note:** This feature is backward compatible. If `SIM_RES_BASE_DIR` is not set, the system will use the default relative path behavior. -->
+> **Docker users:** If you run via Docker, you don't need `SIM_RES_BASE_DIR`. Simply mount your desired host directory to the container's `sim_res/` path when running `docker run`, e.g. `-v /your/host/dir:/app/sim_res`.
 
 ## 📥 Pre-cached Simulation Results
 
