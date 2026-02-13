@@ -16,14 +16,16 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# ── Install Poetry & configure ──────────────────────────────────────
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false
+# ── Install Poetry + export plugin (used only for exporting deps) ──
+RUN pip install --no-cache-dir poetry poetry-plugin-export
 
 # ── Dependency layer caching ────────────────────────────────────────
-# Copy only dependency manifests first so code changes don't trigger reinstall
+# Export from poetry.lock → requirements.txt, then install with pip
+# This avoids Poetry 2.x installer bugs with system site-packages
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --no-interaction
+RUN poetry export -f requirements.txt --without-hashes -o requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm requirements.txt
 
 # ── Copy project source ────────────────────────────────────────────
 COPY . .
@@ -122,6 +124,9 @@ cp costsci_tools/solvers/epoch/epoch1d/bin/epoch1d costsci_tools/solvers/epoch/e
 make clean -C costsci_tools/solvers/epoch/epoch1d
 
 BASH
+
+# ── Symlink so that runner-relative paths (solvers/...) resolve inside the container
+RUN ln -s /app/costsci_tools/solvers /app/solvers
 
 # ── Compile Euler 2D ────────────────────────────────────────────────
 RUN mkdir -p costsci_tools/solvers/euler_2d_utils/CSMPM_BOW/build && \
