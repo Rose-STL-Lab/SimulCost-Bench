@@ -69,10 +69,18 @@ docker tag ghcr.io/leo-lsc/simulcost-bench:latest simulcost-bench
 
 Or build locally with `docker build -t simulcost-bench .`
 
-**3. Run the container:**
+**3. Run the container (Dev / hot-reload):**
+This mode mounts frequently-edited code directories from the host into the container so changes take effect immediately, without rebuilding the image.  
+Do NOT mount `costsci_tools/` unless you also build the solvers on the host — otherwise you may overwrite the compiled binaries shipped in the image.
+
 ```bash
 docker run --rm -it \
   --env-file .env \
+  -v $(pwd)/scripts:/app/scripts \
+  -v $(pwd)/inference:/app/inference \
+  -v $(pwd)/evaluation:/app/evaluation \
+  -v $(pwd)/configs:/app/configs \
+  -v $(pwd)/custom_model:/app/custom_model \
   -v $(pwd)/sim_res:/app/sim_res \
   -v $(pwd)/eval_results:/app/eval_results \
   -v $(pwd)/results_model_attempt:/app/results_model_attempt \
@@ -81,7 +89,7 @@ docker run --rm -it \
   simulcost-bench
 ```
 
-- `--env-file .env` passes your API keys (e.g. OpenAI) into the container.
+- `--env-file .env` passes your API keys (e.g. OpenAI / AWS Bedrock) into the container.
 - `-v` mounts persist results to the host — without them, all output is lost when the container exits.
 
 > **Note**: The FEM 2D solver (FastIPC) is compiled with `-mavx -mavx2 -mfma`. Your CPU (both build and run host) must support AVX/AVX2/FMA instructions.
@@ -258,15 +266,15 @@ Configure API keys in your `.env` file:
 
 ```ini
 # OpenAI API key
-OPENAI_API_KEY="your_openai_api_key"
+OPENAI_API_KEY=your_openai_api_key
 
 # Google API key for Gemini
-GOOGLE_API_KEY="your_google_api_key"
+GOOGLE_API_KEY=your_google_api_key
 
 # AWS API credentials for Bedrock
-AWS_ACCESS_KEY_ID="your_aws_access_key"
-AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
-AWS_REGION_NAME="your_aws_region_name"
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION_NAME=your_aws_region_name
 ```
 
 ### 🧠 Custom Models Configuration
