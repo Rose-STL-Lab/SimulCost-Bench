@@ -8,9 +8,9 @@
 
 ## Introduction
 
-**SimulCost** is a cost-aware benchmark and toolkit for evaluating how well LLM agents tune *simulation parameters* under realistic computational budgets. Unlike prior evaluations that focus on correctness (and sometimes token cost) while implicitly treating tool usage as “free,” SimulCost explicitly measures **both**: (1) whether a proposed configuration meets an accuracy target and (2) how much **simulation compute** it consumes.
+SimulCost is a cost-aware benchmark and toolkit for evaluating how well LLM agents tune simulation parameters under realistic computational budgets. Unlike prior evaluations that focus on correctness (and sometimes token cost) while implicitly treating tool usage as “free,” SimulCost explicitly measures both: (1) whether a proposed configuration meets an accuracy target and (2) how much simulation compute it consumes.
 
-The benchmark covers **12 physics simulators** across fluid dynamics, solid mechanics, and plasma physics, with **single-round** (one-shot initial guess) and **multi-round** (trial-and-error with feedback) settings. Tool cost is defined in a **platform-independent** way (analytical cost models / FLOPs) to make results reproducible and comparable.
+The benchmark covers 12 physics simulators across fluid dynamics, solid mechanics, and plasma physics, with single-round (one-shot initial guess) and multi-round (trial-and-error with feedback) settings. Tool cost is defined in a platform-independent way (analytical cost models / FLOPs) to make results reproducible and comparable.
 
 ![SimulCost Overview](assets/overview_v4.webp)
 
