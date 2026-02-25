@@ -1,6 +1,18 @@
 # SimulCost-Bench
 
-A comprehensive benchmark for evaluating Large Language Models (LLMs) on computational physics simulation parameter optimization tasks. This benchmark assesses how well LLMs can determine optimal numerical parameters for solving partial differential equations.
+📖 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Paper</a> |
+🤗 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Dataset</a> |
+🌐 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Website</a> |
+💾 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Cache (Baseline)</a> |
+💾 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Cache (Full)</a>
+
+## Introduction
+
+**SimulCost** is a cost-aware benchmark and toolkit for evaluating how well LLM agents tune *simulation parameters* under realistic computational budgets. Unlike prior evaluations that focus on correctness (and sometimes token cost) while implicitly treating tool usage as “free,” SimulCost explicitly measures **both**: (1) whether a proposed configuration meets an accuracy target and (2) how much **simulation compute** it consumes.
+
+The benchmark covers **12 physics simulators** across fluid dynamics, solid mechanics, and plasma physics, with **single-round** (one-shot initial guess) and **multi-round** (trial-and-error with feedback) settings. Tool cost is defined in a **platform-independent** way (analytical cost models / FLOPs) to make results reproducible and comparable.
+
+![SimulCost Overview](assets/overview_v4.webp)
 
 ## 📚 Table of Contents
 
