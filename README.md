@@ -353,13 +353,12 @@ Results will be saved to: `./sim_res/...` (relative to working directory)
 <details>
 <summary><b>⚡ Pre-cached results (optional)</b></summary>
 
-To help you skip long simulation runtimes, **pre-computed simulation results for all baseline experiments** have been uploaded to Hugging Face:
+To help you skip long simulation runtimes, pre-computed simulation results are available on Hugging Face.
 
-- **Cache (≈22.5 GB):** **[LeoLai689/SimulCost-baseline-sim_res](https://huggingface.co/datasets/LeoLai689/SimulCost-baseline-sim_res)**
+### Option A — Baseline cache (recommended for quick start)
 
-If you choose to use the cache, download the files you need from the dataset page and place/extract them into your simulation results directory (e.g., `./sim_res/` or your `SIM_RES_BASE_DIR`).
-
-### Available Simulation Results
+- **Baseline cache (≈22.5 GB):** **[LeoLai689/SimulCost-baseline-sim_res](https://huggingface.co/datasets/LeoLai689/SimulCost-baseline-sim_res)**
+- Contains **pre-computed results for all baseline experiments**, and is much smaller to download.
 
 | Simulation File | Size | Simulation Type |
 |----------------|------|-----------------|
@@ -376,6 +375,35 @@ If you choose to use the cache, download the files you need from the dataset pag
 | `ns_channel_2d.zip` | 96.7 MB | 2D Navier-Stokes Channel |
 | `ns_transient_2d.zip` | 6.56 GB | 2D Navier-Stokes Transient |
 | `unstruct_mpm.zip` | 1.13 GB | 2D Material Point Method |
+
+---
+
+### Option B — Full cache (complete project cache)
+
+- **Full cache (≈328 GB):** **[LeoLai689/SimulCost-full-sim_res](https://huggingface.co/datasets/LeoLai689/SimulCost-full-sim_res)**
+  - This is the **complete simulation cache used in this project**.
+
+| Simulation File | Size | Simulation Type |
+|----------------|------|-----------------|
+| `burgers_1d.tar.gz` | 1.69 GB | 1D Burgers Equation |
+| `diff_react_1d.tar.gz` | 1.35 GB | 1D Diffusion-Reaction |
+| `epoch.tar.gz` | 3.65 GB | 1D EPOCH PIC |
+| `euler_1d.tar.gz` | 14.1 GB | 1D Euler Equations |
+| `euler_2d.tar.gz` | 5.64 GB | 2D Euler Gas Dynamics |
+| `fem2d.tar.gz` | 877 MB | 2D Finite Element Method |
+| `hasegawa_mima_linear.tar.gz` | 10.8 GB | Hasegawa-Mima Linear |
+| `hasegawa_mima_nonlinear.tar.gz` | 1.32 GB | Hasegawa-Mima Nonlinear |
+| `heat_1d.tar.gz` | 3.46 GB | 1D Heat Transfer |
+| `heat_steady_2d.tar.gz` | 5.19 GB | 2D Steady Heat Transfer |
+| `ns_transient_2d.tar.gz` | 58.8 GB | 2D Navier-Stokes Transient |
+| `unstruct_mpm.tar.gz` | 221 GB | 2D Material Point Method |
+
+---
+
+### How to use
+
+Download the files you need from the dataset page and place/extract them into your simulation results directory
+(e.g., `./sim_res/` or your `SIM_RES_BASE_DIR`).
 
 </details>
 
