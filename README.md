@@ -44,6 +44,17 @@ cd SimulCost-Bench
 git submodule update --init --recursive
 ```
 
+**⚠️ Important:** This repository uses deeply nested submodules (5 levels deep). Always use the `--recursive` flag when cloning to ensure all dependencies are initialized properly.
+
+If you encounter submodule issues after cloning, try these commands:
+```bash
+# Sync submodule URLs (if they've changed)
+git submodule sync --recursive
+
+# Re-initialize all submodules
+git submodule update --init --recursive
+```
+
 ### Create Conda environment
 ```bash
 # Create Conda environment
