@@ -39,29 +39,6 @@ The script will automatically:
 5. Verify the binary was created successfully
 6. Print the binary location for wrapper use
 
-### Directory Structure After Setup
-
-```
-solvers/euler_2d_utils/
-└── CSMPM_BOW/                    # Standalone C++ solver
-    ├── build/                    # Build directory
-    │   └── Examples/
-    │       └── gas_2d            # Compiled binary (~580 KB)
-    ├── Examples/
-    │   └── gas_2d.cpp           # 2D gas simulation source
-    ├── Libs/                    # Core libraries
-    │   ├── BowReplacement/      # BOW framework replacements
-    │   ├── EOS/                 # Equation of state
-    │   ├── EulerGas/            # Euler gas operators
-    │   ├── RPSolver/            # WENO reconstruction
-    │   ├── TimeIntegration/     # TVD Runge-Kutta
-    │   ├── LinearProjectionSys/ # Projection methods
-    │   ├── Simulator/           # Gas simulator
-    │   └── IO/                  # VTK output
-    ├── CMakeLists.txt           # Build configuration
-    └── README.md                # Project overview
-```
-
 ## Manual Setup (For Reference)
 
 If you need to set up the solver manually or troubleshoot the automated script:
@@ -181,11 +158,4 @@ ls -lh solvers/euler_2d_utils/CSMPM_BOW/build/Examples/gas_2d
 - Check memory availability
 - Rebuild in Debug mode for more info: `cmake .. -DCMAKE_BUILD_TYPE=Debug`
 
-### Performance Issues
-
-- Use **Release** build for production runs (10-100x faster than Debug)
-- Start with small grids (e.g., 32×32) for testing
-- Increase grid resolution gradually
-- Monitor memory usage (scales with `N_grid_x^2`)
-
-**Note**: This solver was originally part of the BOW physics framework and has been refactored as a standalone project for easier integration.
+> **Using Docker?** These solvers are pre-compiled in the Docker image — no manual setup needed.

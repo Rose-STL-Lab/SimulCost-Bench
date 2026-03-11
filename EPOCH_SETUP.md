@@ -165,14 +165,4 @@ Once set up, EPOCH simulations will automatically use the appropriate binary bas
 - Verify physics table path in `runners/input.deck`
 - Ensure binaries have execute permissions (`chmod +x`)
 
-## Parameter Optimization
-
-EPOCH supports optimization of 5 parameters:
-
-- **`dt_multipler`**: Controls temporal discretization [0.80-0.99]
-- **`nx`**: Spatial grid resolution [400→]
-- **`npart`**: Particles per cell [10→]
-- **`field_order`**: Field integration order {2,4,6}
-- **`particle_order`**: Particle weighting order {2,3,5}
-
-The automated dummy solutions will explore these parameter spaces across 3 precision levels and 3 physics profiles.
+> **Using Docker?** These solvers are pre-compiled in the Docker image — no manual setup needed.

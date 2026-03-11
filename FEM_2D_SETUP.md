@@ -162,41 +162,4 @@ ls -lh solvers/fastipc_utils/common/math/wrapper/a.so
 chmod +x solvers/fastipc_utils/common/math/wrapper/a.so
 ```
 
-## Development Notes
-
-### Code Structure
-
-- `common/math/wrapper/`: C++ wrapper for Python interface
-  - `wrapper.cpp`: Main wrapper implementation
-  - `EVCTCD/CTCD.cpp`: Continuous collision detection
-  - `a.so`: Compiled shared library
-- `common/math/`: Python interface and mathematical utilities
-  - `external_func.py`: Loads the C++ library
-  - `math_tools.py`: High-level mathematical functions
-- `common/physics/`: Physics implementations
-  - `fixed_corotated.py`: Corotational elasticity model
-
-### Python Path Requirements
-
-The FastIPC utilities use relative imports like `from common.math.math_tools import *`, which require the `fastipc_utils` directory to be in the Python path. The FEM2D runner automatically handles this.
-
-## Working with the Git Submodule
-
-The FastIPC utilities are tracked as a git submodule. When updating:
-
-```bash
-# Update to latest version
-cd solvers/fastipc_utils
-git pull origin main
-
-# Return to repo root and commit the submodule update
-cd ../..
-git add solvers/fastipc_utils
-git commit -m "Update fastipc_utils submodule"
-```
-
-After updating the submodule, you may need to recompile the shared library.
-
-## References
-
-For more information about the FastIPC solver and its implementation, see the original FastIPC repository and related publications.
+> **Using Docker?** These solvers are pre-compiled in the Docker image — no manual setup needed.
