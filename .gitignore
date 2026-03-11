@@ -11,6 +11,7 @@ data
 !**/README.md
 **/*.yaml
 **/sim_res/*
+configs/custom_models.json
 
 eval_results/*
 !eval_results/merged_results.parquet

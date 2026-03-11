@@ -2,7 +2,7 @@
 name = "SimulCost"
 version = "0.1.0"
 description = "SimulCost Bench"
-authors = ["LeoLai <sichenglai6@gmail.com>"]
+authors = ["LeoLai"]
 readme = "README.md"
 
 [tool.poetry.dependencies]

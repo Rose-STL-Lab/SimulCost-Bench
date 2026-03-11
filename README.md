@@ -294,7 +294,12 @@ AWS_REGION_NAME=your_aws_region_name
 **Two configuration methods available:**
 
 #### Method 1: JSON Configuration (Recommended for Multiple Models)
-Create `configs/custom_models.json` to manage multiple custom models:
+Copy the example file and create your own configuration:
+```bash
+cp configs/custom_models.json.example configs/custom_models.json
+```
+
+Then edit `configs/custom_models.json` to manage multiple custom models:
 
 ```json
 {
