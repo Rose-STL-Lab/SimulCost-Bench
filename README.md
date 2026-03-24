@@ -1,6 +1,6 @@
 # SimulCost-Bench
 
-📖 <a href="https://github.com/Rose-STL-Lab/SimulCost-Bench">Paper</a> |
+📖 <a href="https://arxiv.org/abs/2603.20253">Paper</a> |
 🤗 <a href="https://huggingface.co/datasets/Rose-STL-Lab/SimulCost-Bench">Dataset</a> |
 🛠️ <a href="https://github.com/Eydcao/simulcost-tools">Tools</a> |
 🌐 <a href="https://leo-lsc.github.io/SimulCost-Website/">Website</a> |
