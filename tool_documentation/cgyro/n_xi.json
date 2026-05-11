@@ -1,0 +1,23 @@
+{
+  "run_cgyro": {
+    "description": {
+      "type": "function",
+      "function": {
+        "name": "cgyro_check_converge_n_xi",
+        "description": "Run a linear CGYRO gyrokinetic simulation and evaluate convergence for the n_xi task by doubling n_xi. It returns {\"L2_error\": float, \"is_converged\": bool, \"accumulated_cost\": int, \"The cost of the solver simulating the environment\": int, \"The cost of the solver verifying convergence (This will not be included in your accumulated_cost)\": int}. L2_error is the L∞ distance between the final complex eigenvalues of the current and refined runs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "n_radial": { "type": "integer", "description": "Number of radial wavenumber points (radial Fourier harmonics retained)" },
+            "n_theta": { "type": "integer", "description": "Number of poloidal grid points" },
+            "n_xi": { "type": "integer", "description": "Number of Legendre pseudospectral mesh points in pitch angle" },
+            "n_energy": { "type": "integer", "description": "Number of generalized-Laguerre pseudospectral mesh points in energy" },
+            "freq_tol": { "type": "number", "description": "Eigenvalue convergence tolerance for the linear simulation" },
+            "delta_t": { "type": "number", "description": "Initial simulation timestep (adaptive)" }
+          },
+          "required": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"]
+        }
+      }
+    }
+  }
+}

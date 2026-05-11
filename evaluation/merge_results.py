@@ -281,7 +281,8 @@ def main():
         "ns_transient_2d_icl_full",
         "mpm_2d_icl_accuracy_focused",
         "mpm_2d_icl_cost_excluded",
-        "mpm_2d_icl_full"
+        "mpm_2d_icl_full",
+        "cgyro"
     ]
     output_file = Path(base_dir) / "merged_results.parquet"
 
