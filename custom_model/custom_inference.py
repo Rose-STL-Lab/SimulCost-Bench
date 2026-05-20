@@ -1,7 +1,9 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import json
+import os
 import requests
+from openai import OpenAI
 
 class Qwen3:
     def __init__(self, model_path: str):
@@ -117,4 +119,50 @@ class GPT_OSS:
         # print("GPT_OSS Response:", result)
 
         return result
-    
+
+
+class Llama:
+    def __init__(self, model_path: str):
+        """
+        Initialize the Llama remote model served via OpenRouter.
+
+        Args:
+            model_path (str): OpenRouter model identifier
+                (e.g. "meta-llama/llama-3.3-70b-instruct").
+        """
+        self.model_path = model_path
+
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise KeyError(
+                "Missing required environment variable: OPENROUTER_API_KEY"
+            )
+
+        self.client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+
+    def invoke(self, messages: list[dict], profile: int = None) -> str:
+        """
+        Perform inference by sending the messages to OpenRouter via the OpenAI SDK.
+
+        Args:
+            messages (list[dict]): List of message dictionaries
+                Each message should have the format:
+                {"role": "system|user|assistant", "content": "message content"}
+            profile (int): Profile identifier for the experiment (only used by BOAgent)
+
+        Returns:
+            str: JSON-formatted string containing the model's response
+        """
+        completion = self.client.chat.completions.create(
+            model=self.model_path,
+            messages=messages,
+        )
+
+        response = completion.choices[0].message.content
+
+        # print("Llama Response:", response)
+
+        return response
