@@ -29,6 +29,7 @@ This script automatically detects and merges parquet files from:
 - eval_results/mpm_2d_icl_accuracy_focused/dataframes/
 - eval_results/mpm_2d_icl_cost_excluded/dataframes/
 - eval_results/mpm_2d_icl_full/dataframes/
+- eval_results/cgyro/dataframes/
 
 The merged result is saved to: eval_results/merged_results.parquet
 
@@ -65,6 +66,10 @@ MODEL_NAME_MAPPING = {
     'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
     'anthropic.claude-3-5-sonnet-20240620-v1_0': 'Claude-3.5-Sonnet',
     'openai.gpt-oss-120b-1:0': 'GPT-OSS-120B',
+    # CGYRO model names
+    'claude-sonnet-4-5-20250929': 'Claude-Sonnet-4.5',
+    'GPT_OSS': 'GPT-OSS-120B',
+    'llama-3-70b-instruct': 'Llama-3-70B-Instruct',
 }
 
 
