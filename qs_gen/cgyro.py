@@ -38,6 +38,24 @@ PRECISION_LEVELS = {
 
 TASKS = ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"]
 
+# Per-task precision coverage. Tasks absent from this mapping are generated at
+# every level in PRECISION_LEVELS; delta_t is evaluated at "low" only.
+TASK_PRECISION_LEVELS = {
+    "delta_t": ["low"],
+}
+
+
+def precision_levels_for(task: str) -> List[str]:
+    """Precision levels a given CGYRO task is evaluated at."""
+    levels = TASK_PRECISION_LEVELS.get(task, list(PRECISION_LEVELS.keys()))
+    unknown = [lvl for lvl in levels if lvl not in PRECISION_LEVELS]
+    if unknown:
+        raise KeyError(
+            f"Unknown precision level(s) {unknown} configured for task '{task}'. "
+            f"Valid levels: {list(PRECISION_LEVELS.keys())}"
+        )
+    return levels
+
 
 class CgyroQuestionGenerator:
     """Generate CGYRO training-set questions from pre-computed tasks.json."""
@@ -59,7 +77,7 @@ class CgyroQuestionGenerator:
             print(f"\n📋 TASK: {task.upper()}")
             print("-" * 50)
 
-            for precision_level in PRECISION_LEVELS.keys():
+            for precision_level in precision_levels_for(task):
                 tolerance = PRECISION_LEVELS[precision_level]["tolerance_rmse"]
                 print(f"  🎯 {precision_level.upper()} precision (Δeig ≤ {tolerance:.0e}):")
 
@@ -80,6 +98,12 @@ class CgyroQuestionGenerator:
 
     def generate_question_dataset(self, task: str, precision_level: str, zero_shot: bool) -> List[Dict]:
         dataset: List[Dict] = []
+        allowed = precision_levels_for(task)
+        if precision_level not in allowed:
+            raise ValueError(
+                f"Task '{task}' is only evaluated at precision level(s) {allowed}; "
+                f"got '{precision_level}'."
+            )
         tolerance = PRECISION_LEVELS[precision_level]["tolerance_rmse"]
 
         matching_tasks = [
@@ -198,6 +222,8 @@ def main() -> None:
     print(f"📂 Output directory: data/cgyro/{{task}}/{{precision_level}}/")
     print(f"📋 Tasks: {', '.join(TASKS)}")
     print(f"🎯 Precision levels: {list(PRECISION_LEVELS.keys())}")
+    for task, levels in TASK_PRECISION_LEVELS.items():
+        print(f"   ↳ {task}: restricted to {levels}")
 
     CgyroQuestionGenerator().generate_all_questions()
     print(f"\n✅ All questions generated successfully!")

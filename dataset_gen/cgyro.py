@@ -12,6 +12,26 @@ from utils.param_compatibility import fetch_param
 
 TASKS = ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"]
 
+ALL_PRECISION_LEVELS = ["low", "medium", "high"]
+
+# Per-task precision coverage, mirroring qs_gen/cgyro.py. Tasks absent from this
+# mapping cover every level; delta_t is evaluated at "low" only.
+TASK_PRECISION_LEVELS = {
+    "delta_t": ["low"],
+}
+
+
+def precision_levels_for(task: str) -> list:
+    """Precision levels a given CGYRO task is evaluated at."""
+    levels = TASK_PRECISION_LEVELS.get(task, ALL_PRECISION_LEVELS)
+    unknown = [lvl for lvl in levels if lvl not in ALL_PRECISION_LEVELS]
+    if unknown:
+        raise KeyError(
+            f"Unknown precision level(s) {unknown} configured for task '{task}'. "
+            f"Valid levels: {ALL_PRECISION_LEVELS}"
+        )
+    return levels
+
 
 zero_shot_HUMAN_CODE = r"""
 def forward(self, data: dict):
@@ -209,11 +229,17 @@ def main():
         print("-" * 50)
 
         task_dir = f"data/cgyro/{task}"
+        allowed_levels = precision_levels_for(task)
         precision_levels = []
         if os.path.exists(task_dir):
             precision_levels = [d for d in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, d))]
         if not precision_levels:
-            precision_levels = ["low", "medium", "high"]
+            precision_levels = list(allowed_levels)
+        # Ignore any stale question directories outside this task's precision coverage.
+        skipped = [d for d in precision_levels if d not in allowed_levels]
+        precision_levels = [d for d in allowed_levels if d in precision_levels]
+        if skipped:
+            print(f"  [i] Skipping precision level(s) {sorted(skipped)}: {task} is evaluated at {allowed_levels} only")
 
         generator = CgyroDatasetGenerator(f"tool_documentation/cgyro/{task}.json")
 
