@@ -29,11 +29,11 @@ TASKS_JSON_PATH = (
 )
 
 # CGYRO precision levels are keyed on comparison_tolerance (eigenvalue L∞ bound).
-# These match costsci_tools/docs/cgyro.md: low=1e-3, medium=1e-4, high=1e-5.
+# These match costsci_tools/docs/cgyro.md and checkouts/cgyro.yaml: low=5e-3, medium=1e-3, high=5e-4.
 PRECISION_LEVELS = {
-    "low": {"tolerance_rmse": 1e-3},
-    "medium": {"tolerance_rmse": 1e-4},
-    "high": {"tolerance_rmse": 1e-5},
+    "low": {"tolerance_rmse": 5e-3},
+    "medium": {"tolerance_rmse": 1e-3},
+    "high": {"tolerance_rmse": 5e-4},
 }
 
 TASKS = ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"]

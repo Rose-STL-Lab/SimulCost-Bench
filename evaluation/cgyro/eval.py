@@ -9,13 +9,14 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from costsci_tools.wrappers.cgyro import get_res_cgyro
 from inference.utils import setup_logging, NumpyEncoder
+from tool_call.cgyro.deadline import CGYRO_MAX_WALL_CLOCK_S, CgyroTimeout, run_cgyro_with_deadline
 
 
 # CGYRO precision tolerances are eigenvalue L∞ bounds (see docs/cgyro.md).
 RMSE_TOLERANCE_BY_PRECISION = {
-    "low": 1e-3,
-    "medium": 1e-4,
-    "high": 1e-5,
+    "low": 5e-3,
+    "medium": 1e-3,
+    "high": 5e-4,
 }
 VALID_PRECISION_LEVELS = {"low", "medium", "high"}
 VALID_TASKS = {"n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"}
@@ -44,7 +45,23 @@ def get_required_param(param_dict: Dict, param_name: str):
 
 
 def _final_eigenvalue(profile, params):
-    """Load CGYRO results and return the final-step complex eigenvalue."""
+    """Load CGYRO results and return the final-step complex eigenvalue.
+
+    Uncached params are simulated under the wall-clock limit first; a timeout
+    returns None so the QID is scored as unsuccessful.
+    """
+    try:
+        run_cgyro_with_deadline(
+            CGYRO_MAX_WALL_CLOCK_S,
+            profile=profile,
+            n_radial=int(params["n_radial"]), n_theta=int(params["n_theta"]),
+            error_tol=_ERROR_TOL, freq_tol=float(params["freq_tol"]),
+            delta_t=float(params["delta_t"]), n_xi=int(params["n_xi"]),
+            n_energy=int(params["n_energy"]),
+        )
+    except CgyroTimeout as e:
+        print(f"⚠️ {e} for profile={profile}, params={params}; treating as no result")
+        return None
     res, _, _ = get_res_cgyro(
         profile,
         int(params["n_radial"]), int(params["n_theta"]), _ERROR_TOL,

@@ -1,5 +1,8 @@
+import time
+
 import numpy as np
-from costsci_tools.wrappers.cgyro import runCgyro, get_res_cgyro
+from costsci_tools.wrappers.cgyro import get_res_cgyro
+from tool_call.cgyro.deadline import CGYRO_MAX_WALL_CLOCK_S, CgyroTimeout, run_cgyro_with_deadline
 
 # error_tol is a fixed non-tunable parameter across the CGYRO benchmark (see
 # costsci_tools/dataset/cgyro/successful/tasks.json where all tasks use 1e-4).
@@ -85,6 +88,18 @@ def _eigenvalue_diff(profile, current, refined):
     return max(diff_real, diff_imag)
 
 
+def _timeout_result(accumulated_cost, current_cost, refine_cost):
+    return {
+        "L2_error": float("inf"),
+        "is_converged": False,
+        "accumulated_cost": accumulated_cost,
+        "The cost of the solver simulating the environment": current_cost,
+        "The cost of the solver verifying convergence (This will not be included in your accumulated_cost)": refine_cost,
+        "timed_out": True,
+        "note": f"CGYRO simulation killed after exceeding the {CGYRO_MAX_WALL_CLOCK_S / 3600:g}h wall-clock limit for this tool call",
+    }
+
+
 def _check_converge(
     task,
     *,
@@ -109,22 +124,34 @@ def _check_converge(
         f"\nRunning {task} convergence test with current={current}, refined={refined}"
     )
 
-    current_cost, _ = runCgyro(
-        profile=profile,
-        n_radial=current["n_radial"], n_theta=current["n_theta"],
-        error_tol=_ERROR_TOL, freq_tol=current["freq_tol"],
-        delta_t=current["delta_t"], n_xi=current["n_xi"],
-        n_energy=current["n_energy"],
-    )
-    refine_cost, _ = runCgyro(
-        profile=profile,
-        n_radial=refined["n_radial"], n_theta=refined["n_theta"],
-        error_tol=_ERROR_TOL, freq_tol=refined["freq_tol"],
-        delta_t=refined["delta_t"], n_xi=refined["n_xi"],
-        n_energy=refined["n_energy"],
-    )
+    # One wall-clock budget shared by the current and refined runs of this tool call
+    deadline = time.monotonic() + CGYRO_MAX_WALL_CLOCK_S
+
+    try:
+        current_cost, _ = run_cgyro_with_deadline(
+            deadline - time.monotonic(),
+            profile=profile,
+            n_radial=current["n_radial"], n_theta=current["n_theta"],
+            error_tol=_ERROR_TOL, freq_tol=current["freq_tol"],
+            delta_t=current["delta_t"], n_xi=current["n_xi"],
+            n_energy=current["n_energy"],
+        )
+    except CgyroTimeout as e:
+        return _timeout_result(accumulated_cost + e.elapsed_s, e.elapsed_s, 0.0)
 
     accumulated_cost += current_cost
+
+    try:
+        refine_cost, _ = run_cgyro_with_deadline(
+            deadline - time.monotonic(),
+            profile=profile,
+            n_radial=refined["n_radial"], n_theta=refined["n_theta"],
+            error_tol=_ERROR_TOL, freq_tol=refined["freq_tol"],
+            delta_t=refined["delta_t"], n_xi=refined["n_xi"],
+            n_energy=refined["n_energy"],
+        )
+    except CgyroTimeout as e:
+        return _timeout_result(accumulated_cost, current_cost, e.elapsed_s)
 
     eig_err = _eigenvalue_diff(profile, current, refined)
     is_converged = bool(np.isfinite(eig_err)) and (eig_err < tolerance)

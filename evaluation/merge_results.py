@@ -70,6 +70,10 @@ MODEL_NAME_MAPPING = {
     'claude-sonnet-4-5-20250929': 'Claude-Sonnet-4.5',
     'GPT_OSS': 'GPT-OSS-120B',
     'llama-3-70b-instruct': 'Llama-3-70B-Instruct',
+    'openrouter_claude-sonnet-4.5': 'Claude-Sonnet-4.5',
+    'openrouter_gpt-oss-120b': 'GPT-OSS-120B',
+    'openrouter_qwen3-32b': 'Qwen3-32B',
+    'bedrock_llama-3-70b-instruct': 'Llama-3-70B-Instruct',
 }
 
 
