@@ -29,6 +29,7 @@ This script automatically detects and merges parquet files from:
 - eval_results/mpm_2d_icl_accuracy_focused/dataframes/
 - eval_results/mpm_2d_icl_cost_excluded/dataframes/
 - eval_results/mpm_2d_icl_full/dataframes/
+- eval_results/cgyro/dataframes/
 
 The merged result is saved to: eval_results/merged_results.parquet
 
@@ -65,6 +66,14 @@ MODEL_NAME_MAPPING = {
     'anthropic.claude-3-5-sonnet-20240620-v1:0': 'Claude-3.5-Sonnet',
     'anthropic.claude-3-5-sonnet-20240620-v1_0': 'Claude-3.5-Sonnet',
     'openai.gpt-oss-120b-1:0': 'GPT-OSS-120B',
+    # CGYRO model names
+    'claude-sonnet-4-5-20250929': 'Claude-Sonnet-4.5',
+    'GPT_OSS': 'GPT-OSS-120B',
+    'llama-3-70b-instruct': 'Llama-3-70B-Instruct',
+    'openrouter_claude-sonnet-4.5': 'Claude-Sonnet-4.5',
+    'openrouter_gpt-oss-120b': 'GPT-OSS-120B',
+    'openrouter_qwen3-32b': 'Qwen3-32B',
+    'bedrock_llama-3-70b-instruct': 'Llama-3-70B-Instruct',
 }
 
 
@@ -281,7 +290,8 @@ def main():
         "ns_transient_2d_icl_full",
         "mpm_2d_icl_accuracy_focused",
         "mpm_2d_icl_cost_excluded",
-        "mpm_2d_icl_full"
+        "mpm_2d_icl_full",
+        "cgyro"
     ]
     output_file = Path(base_dir) / "merged_results.parquet"
 

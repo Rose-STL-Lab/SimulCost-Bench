@@ -646,7 +646,8 @@ DATASET_TASK_MAP = {
     "hasegawa_mima_nonlinear_icl_accuracy_focused": ["N", "dt"],
     "hasegawa_mima_nonlinear_icl_cost_excluded": ["N", "dt"],
     "hasegawa_mima_nonlinear_icl_full": ["N", "dt"],
-    "hasegawa_mima_linear": ["N", "dt", "cg_atol"]
+    "hasegawa_mima_linear": ["N", "dt", "cg_atol"],
+    "cgyro": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"]
 }
 
 # Generate all valid tasks for choices
@@ -816,6 +817,7 @@ Available dataset-task combinations:
   euler_2d: cfl, n_grid_x, cg_tolerance (use -l for precision_level: low/medium/high)
   hasegawa_mima_nonlinear: N, dt (use -l for precision_level: low/medium/high)
   hasegawa_mima_linear: N, dt, cg_atol (use -l for precision_level: low/medium/high)
+  cgyro: n_radial, n_theta, n_xi, n_energy, freq_tol, delta_t (use -l for precision_level: low/medium/high)
 
 Note: All datasets now use precision_level structure for better organization.
         """

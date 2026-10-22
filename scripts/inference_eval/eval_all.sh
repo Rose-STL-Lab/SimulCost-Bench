@@ -27,7 +27,7 @@ show_help() {
     echo "                              epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
     echo "                              heat_2d, euler_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
     echo "                              ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d"
+    echo "                              ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d, cgyro"
     echo ""
     echo "  -h, --help       Show this help message"
     echo ""
@@ -45,6 +45,7 @@ show_help() {
     echo "  hasegawa_mima_nonlinear: N, dt (with precision levels: low, medium, high)"
     echo "  hasegawa_mima_linear: N, dt, cg_atol (with precision levels: low, medium, high)"
     echo "  fem_2d: dx, cfl (with precision levels: low, medium, high)"
+    echo "  cgyro: n_radial, n_theta, n_xi, n_energy, freq_tol, delta_t (with precision levels: low, medium, high)"
     echo ""
     echo "Models to be evaluated:"
     for model in "${models[@]}"; do
@@ -528,13 +529,29 @@ for DATASET in "${DATASETS[@]}"; do
             done
             ;;
 
+        "cgyro")
+            echo "📋 Running CGYRO evaluation..."
+            tasks=("n_radial" "n_theta" "n_xi" "n_energy" "freq_tol" "delta_t")
+            precision_levels=("low" "medium" "high")
+            modes=("-z" "")   # "-z" for zero-shot, empty string for iterative
+
+            for mode in "${modes[@]}"; do
+                for task in "${tasks[@]}"; do
+                    for precision in "${precision_levels[@]}"; do
+                        echo "▶ Executing: python evaluation/cgyro/eval.py -m $MODEL -d cgyro -t $task -l $precision $mode"
+                        python evaluation/cgyro/eval.py -m $MODEL -d cgyro -t $task -l $precision $mode
+                    done
+                done
+            done
+            ;;
+
         *)
             echo "❌ Unsupported dataset: $DATASET"
             echo "Supported datasets: burgers_1d, euler_1d, euler_1d_icl_accuracy_focused, euler_1d_icl_cost_excluded, euler_1d_icl_full,"
             echo "                    epoch_1d, heat_1d, heat_1d_icl_accuracy_focused, heat_1d_icl_cost_excluded, heat_1d_icl_full,"
             echo "                    heat_2d, euler_2d, mpm_2d, mpm_2d_icl_accuracy_focused, mpm_2d_icl_cost_excluded, mpm_2d_icl_full,"
             echo "                    ns_2d, ns_transient_2d, ns_transient_2d_icl_accuracy_focused,"
-            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d"
+            echo "                    ns_transient_2d_icl_cost_excluded, ns_transient_2d_icl_full, diff_react_1d, hasegawa_mima_nonlinear, hasegawa_mima_linear, fem_2d, cgyro"
             exit 1
             ;;
     esac

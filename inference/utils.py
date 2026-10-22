@@ -28,6 +28,7 @@ _TOOL_MODULE_MAP = {
     "hasegawa_mima_nonlinear": "tool_call.hasegawa_mima_nonlinear.run_hasegawa_mima_nonlinear",
     "hasegawa_mima_linear": "tool_call.hasegawa_mima_linear.run_hasegawa_mima_linear",
     "fem_2d": "tool_call.fem_2d.run_fem_2d",
+    "cgyro": "tool_call.cgyro.run_cgyro",
 }
 
 def _get_tool_function(tool_name: str):
@@ -169,7 +170,13 @@ TOOL_NAME_KEYS = {
     "hasegawa_mima_nonlinear_check_converge_dt": ["N", "dt"],
     "hasegawa_mima_linear_check_converge_N": ["N", "dt", "cg_atol"],
     "hasegawa_mima_linear_check_converge_dt": ["N", "dt", "cg_atol"],
-    "hasegawa_mima_linear_check_converge_cg_atol": ["N", "dt", "cg_atol"]
+    "hasegawa_mima_linear_check_converge_cg_atol": ["N", "dt", "cg_atol"],
+    "cgyro_check_converge_n_radial": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
+    "cgyro_check_converge_n_theta": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
+    "cgyro_check_converge_n_xi": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
+    "cgyro_check_converge_n_energy": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
+    "cgyro_check_converge_freq_tol": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
+    "cgyro_check_converge_delta_t": ["n_radial", "n_theta", "n_xi", "n_energy", "freq_tol", "delta_t"],
 }
 
 
@@ -579,6 +586,31 @@ class ToolCallManager:
                     N=fetch_param(tool_args, "N"),
                     dt=fetch_param(tool_args, "dt"),
                     tolerance_rmse=tolerance
+                )
+            elif tool_name in [
+                "cgyro_check_converge_n_radial",
+                "cgyro_check_converge_n_theta",
+                "cgyro_check_converge_n_xi",
+                "cgyro_check_converge_n_energy",
+                "cgyro_check_converge_freq_tol",
+                "cgyro_check_converge_delta_t",
+            ]:
+                # CGYRO uses eigenvalue comparison tolerance (plumbed through
+                # tolerance_rmse on the ToolCallManager, set from the dataset's
+                # precision_config.comparison_tolerance)
+                if self.tolerance_rmse is None:
+                    raise ValueError(f"tolerance_rmse (comparison_tolerance) is required for cgyro tools but was not provided in dataset (QID={self.qid})")
+                tolerance = self.tolerance_rmse
+                result = func(
+                    accumulated_cost=self.accumulated_cost,
+                    profile=profile,
+                    n_radial=fetch_param(tool_args, "n_radial"),
+                    n_theta=fetch_param(tool_args, "n_theta"),
+                    n_xi=fetch_param(tool_args, "n_xi"),
+                    n_energy=fetch_param(tool_args, "n_energy"),
+                    freq_tol=fetch_param(tool_args, "freq_tol"),
+                    delta_t=fetch_param(tool_args, "delta_t"),
+                    tolerance=tolerance,
                 )
             elif tool_name in [
                 "hasegawa_mima_linear_check_converge_N",
