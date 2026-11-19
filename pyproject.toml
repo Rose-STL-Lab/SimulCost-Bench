@@ -6,7 +6,7 @@ authors = ["LeoLai"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.15"
 langchain = "^0.3.19"
 wandb = "^0.19.7"
 tqdm = "^4.67.1"
@@ -29,6 +29,9 @@ seaborn = "^0.13.2"
 taichi = "^1.7.4"
 pyarrow = "^21.0.0"
 meshio = "^5.3.5"
+transformers = "^5.8.0"
+torch = "^2.11.0"
+accelerate = "^1.13.0"
 
 [build-system]
 requires = ["poetry-core"]
